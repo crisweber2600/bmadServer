@@ -20,10 +20,12 @@ workflow_status:
         command: "/bmad:bmm:workflows:research"
         included: true
       product-brief:
-        status: "optional"
+        status: "complete"
         agent: "analyst"
         command: "/bmad:bmm:workflows:create-product-brief"
         included: true
+        output: "/root/bmadServer/_bmad-output/planning-artifacts/product-brief-bmadServer-2026-01-20.md"
+        completed_at: "2026-01-20"
 
   phase_2_planning:
     name: "Planning"
