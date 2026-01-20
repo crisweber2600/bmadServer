@@ -1,0 +1,73 @@
+generated: "2026-01-20"
+project: "bmadServer"
+project_type: "collaboration-platform"
+selected_track: "method"
+field_type: "greenfield"
+workflow_path: "method-greenfield"
+
+workflow_status:
+  phase_1_analysis:
+    name: "Analysis (Optional)"
+    workflows:
+      brainstorm-project:
+        status: "optional"
+        agent: "analyst"
+        command: "/bmad:core:workflows:brainstorming"
+        included: true
+      research:
+        status: "optional"
+        agent: "analyst"
+        command: "/bmad:bmm:workflows:research"
+        included: true
+      product-brief:
+        status: "optional"
+        agent: "analyst"
+        command: "/bmad:bmm:workflows:create-product-brief"
+        included: true
+
+  phase_2_planning:
+    name: "Planning"
+    workflows:
+      prd:
+        status: "required"
+        agent: "pm"
+        command: "/bmad:bmm:workflows:prd"
+        output: "Product Requirements Document with FRs and NFRs"
+      create-ux-design:
+        status: "conditional:if_has_ui"
+        agent: "ux-designer"
+        command: "/bmad:bmm:workflows:create-ux-design"
+        note: "Determined after PRD"
+
+  phase_3_solutioning:
+    name: "Solutioning"
+    workflows:
+      create-architecture:
+        status: "required"
+        agent: "architect"
+        command: "/bmad:bmm:workflows:create-architecture"
+        output: "System architecture document"
+      create-epics-and-stories:
+        status: "required"
+        agent: "pm"
+        command: "/bmad:bmm:workflows:create-epics-and-stories"
+        note: "Break down PRD into implementable epics and stories"
+      test-design:
+        status: "optional"
+        agent: "tea"
+        command: "/bmad:bmm:workflows:testarch-test-design"
+        output: "System-level testability review"
+      implementation-readiness:
+        status: "required"
+        agent: "architect"
+        command: "/bmad:bmm:workflows:check-implementation-readiness"
+        note: "Gate check before implementation"
+
+  phase_4_implementation:
+    name: "Implementation"
+    workflows:
+      sprint-planning:
+        status: "required"
+        agent: "sm"
+        command: "/bmad:bmm:workflows:sprint-planning"
+        note: "Creates sprint plan - subsequent work tracked in sprint-status.yaml"
