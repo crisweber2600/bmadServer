@@ -1,16 +1,53 @@
 import type { Plugin, PluginInput, Hooks } from '@opencode-ai/plugin';
 import { tool } from '@opencode-ai/plugin';
-import type { LLMProvider, BmadPhase } from './types';
-import { detectCurrentPhase } from './workflow';
-import { filterCandidatesByPhase, isDevPhase } from './rules';
-import { filterCandidatesByQuota, getCopilotQuota } from './quota';
-import { routeModel } from './router';
+import type { LLMProvider, BmadPhase, RateLimitStatus } from './types.js';
+import { detectCurrentPhase } from './workflow.js';
+import { filterCandidatesByPhase, isDevPhase } from './rules.js';
+import { filterCandidatesByQuota, getCopilotQuota } from './quota.js';
+import { filterCandidatesByRateLimit, getAllRateLimitStatuses, updateRateLimitFromHeaders } from './ratelimit.js';
+import { mapProviderToOpenCode } from './model-mapping.js';
+import { routeModel } from './router.js';
+
+declare global {
+  var __bmadRouterUpdateRateLimit: ((headers: Headers, provider: string) => void) | undefined;
+}
+
+globalThis.__bmadRouterUpdateRateLimit = updateRateLimitFromHeaders;
 
 const DEFAULT_CANDIDATES: LLMProvider[] = [
+  // Premium GitHub Copilot models
+  { provider: 'github-copilot', model: 'gpt-5.2' },
+  { provider: 'github-copilot', model: 'gpt-5.1' },
+  { provider: 'github-copilot', model: 'gpt-5' },
+  { provider: 'github-copilot', model: 'gpt-4.1' },
+  { provider: 'github-copilot', model: 'claude-opus-4.5' },
+  { provider: 'github-copilot', model: 'claude-sonnet-4.5' },
+  { provider: 'github-copilot', model: 'claude-sonnet-4' },
+  { provider: 'github-copilot', model: 'claude-haiku-4.5' },
+  { provider: 'github-copilot', model: 'gemini-3-pro-preview' },
+  { provider: 'github-copilot', model: 'gemini-3-flash-preview' },
+  { provider: 'github-copilot', model: 'gemini-2.5-pro' },
+  { provider: 'github-copilot', model: 'grok-code-fast-1' },
+  
+  // Standard GitHub Copilot models
+  { provider: 'github-copilot', model: 'gpt-4o' },
+  { provider: 'github-copilot', model: 'gpt-5-mini' },
+  { provider: 'github-copilot', model: 'gpt-4o-mini' },
+  
+  // Direct Anthropic models (when available)
+  { provider: 'anthropic', model: 'claude-opus-4-1-20250805' },
+  { provider: 'anthropic', model: 'claude-opus-4-20250514' },
   { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' },
-  { provider: 'openai', model: 'gpt-4o' },
-  { provider: 'github-copilot', model: 'gpt-4o' },
-  { provider: 'github-copilot', model: 'gpt-4o' },
+  { provider: 'anthropic', model: 'claude-sonnet-4-20250514' },
+  { provider: 'anthropic', model: 'claude-haiku-4-5-20251001' },
+  { provider: 'anthropic', model: 'claude-3-7-sonnet-20250219' },
+  { provider: 'anthropic', model: 'claude-3-5-haiku-20241022' },
+  { provider: 'anthropic', model: 'claude-3-haiku-20240307' },
+  
+  // Direct OpenAI models (when available) 
+  { provider: 'openai', model: 'gpt-5.2' },
+  { provider: 'openai', model: 'gpt-5.1-codex-max' },
+  { provider: 'openai', model: 'gpt-5.2-codex' },
 ];
 
 const KEEP_MODEL_PATTERNS = [/^!km\b/i, /^!keep-model\b/i];
@@ -32,7 +69,12 @@ function getTextFromParts(parts: Array<{ type: string; text?: string }>): string
   return textPart?.type === 'text' ? (textPart as { type: 'text'; text: string }).text : null;
 }
 
-function buildRouteReason(phase: BmadPhase, selected: LLMProvider, copilotFiltered: boolean): string {
+function buildRouteReason(
+  phase: BmadPhase, 
+  selected: LLMProvider, 
+  copilotFiltered: boolean,
+  rateLimitedProviders: string[]
+): string {
   const reasons: string[] = [];
   
   if (!isDevPhase(phase)) {
@@ -41,6 +83,10 @@ function buildRouteReason(phase: BmadPhase, selected: LLMProvider, copilotFilter
   
   if (copilotFiltered) {
     reasons.push('copilot quota low');
+  }
+  
+  if (rateLimitedProviders.length > 0) {
+    reasons.push(`rate limited: ${rateLimitedProviders.join(', ')}`);
   }
   
   reasons.push(`selected: ${selected.provider}/${selected.model}`);
@@ -68,28 +114,34 @@ export const BmadRouterPlugin: Plugin = async ({ client, directory }: PluginInpu
       candidates = await filterCandidatesByQuota(candidates);
       const copilotFiltered = candidates.length < candidatesBeforeQuota;
       
+      const { filtered: rateLimitFiltered, limitedProviders } = filterCandidatesByRateLimit(candidates);
+      candidates = rateLimitFiltered;
+      
       if (candidates.length === 0) {
-        console.warn('[bmad-router] No candidates available after filtering');
         return;
       }
 
       const selected = await routeModel(candidates, output.parts);
-      
+
+      // Map NotDiamond model name back to OpenCode-compatible model
+      const opencodeModel = mapProviderToOpenCode(selected);
+
       output.message.model = {
-        providerID: selected.provider,
-        modelID: selected.model,
+        providerID: opencodeModel.provider,
+        modelID: opencodeModel.model,
       };
 
-      const reason = buildRouteReason(phase, selected, copilotFiltered);
-      console.log(`[bmad-router] Routed: ${reason}`);
+      const reason = buildRouteReason(phase, selected, copilotFiltered, limitedProviders);
 
       try {
-        await client.event.publish({
-          type: 'tui.toast.show',
-          properties: {
-            message: `Model: ${selected.provider}/${selected.model}`,
-            variant: 'info',
-            duration: 3000,
+        await client.tui.publish({
+          body: {
+            type: 'tui.toast.show',
+            properties: {
+              message: `Model: ${opencodeModel.provider}/${opencodeModel.model}`,
+              variant: 'info',
+              duration: 3000,
+            },
           },
         });
       } catch {
@@ -104,6 +156,7 @@ export const BmadRouterPlugin: Plugin = async ({ client, directory }: PluginInpu
           const phase = await detectCurrentPhase(directory);
           const quota = await getCopilotQuota();
           const copilotAllowed = isDevPhase(phase);
+          const rateLimits = getAllRateLimitStatuses();
           
           return JSON.stringify({
             phase,
@@ -112,6 +165,13 @@ export const BmadRouterPlugin: Plugin = async ({ client, directory }: PluginInpu
               percentRemaining: Math.round(quota.percentRemaining),
               unlimited: quota.unlimited ?? false,
             } : null,
+            rateLimits: Object.fromEntries(
+              Object.entries(rateLimits).map(([k, v]) => [k, {
+                percentRemaining: Math.round((v as RateLimitStatus).percentRemaining),
+                isLimited: (v as RateLimitStatus).isLimited,
+                remainingRequests: (v as RateLimitStatus).remainingRequests,
+              }])
+            ),
             candidates: filterCandidatesByPhase(DEFAULT_CANDIDATES, phase),
           }, null, 2);
         },
