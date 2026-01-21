@@ -77,6 +77,8 @@ export interface BmmWorkflowStatus {
   generated?: string;
   project?: string;
   selected_track?: string;
+  current_phase?: string;
+  phase_status?: string;
   workflow_status?: {
     'quick-spec'?: string;
     'quick-dev'?: string;

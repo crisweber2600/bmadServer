@@ -67,7 +67,9 @@ async function fetchCopilotQuota(copilotToken) {
     }
 }
 export class CopilotQuotaProvider {
-    name = 'github-copilot';
+    constructor() {
+        this.name = 'github-copilot';
+    }
     async checkQuota() {
         const authData = await loadAuthData();
         const copilotAuth = authData?.['github-copilot'];

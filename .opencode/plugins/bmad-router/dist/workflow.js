@@ -17,6 +17,27 @@ function getActivePhaseFromWorkflowStatus(status) {
     const workflowStatus = status.workflow_status;
     if (!workflowStatus)
         return null;
+    if (status.current_phase === 'phase_2_planning' || workflowStatus.phase_2_planning) {
+        const phase2 = workflowStatus.phase_2_planning;
+        if (phase2?.workflows?.prd?.status === 'in_progress') {
+            return 'prd';
+        }
+        if (phase2?.workflows?.prd?.status === 'required' && !phase2?.workflows?.prd?.completed_at) {
+            return 'prd';
+        }
+    }
+    if (status.current_phase === 'phase_3_solutioning' || workflowStatus.phase_3_solutioning) {
+        const phase3 = workflowStatus.phase_3_solutioning;
+        if (phase3?.workflows?.['create-architecture']?.status === 'in_progress') {
+            return 'architecture';
+        }
+        if (phase3?.workflows?.['create-architecture']?.status === 'required' && !phase3?.workflows?.['create-architecture']?.completed_at) {
+            return 'architecture';
+        }
+    }
+    if (status.current_phase === 'phase_4_implementation') {
+        return 'quick-dev';
+    }
     const phases = ['quick-spec', 'quick-dev', 'code-review'];
     for (const phase of phases) {
         if (workflowStatus[phase] === 'in-progress') {

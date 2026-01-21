@@ -4,15 +4,17 @@ import type { LLMProvider, BmadPhase, RateLimitStatus } from './types.js';
 import { detectCurrentPhase } from './workflow.js';
 import { filterCandidatesByPhase, isDevPhase } from './rules.js';
 import { filterCandidatesByQuota, getCopilotQuota } from './quota.js';
-import { filterCandidatesByRateLimit, getAllRateLimitStatuses, updateRateLimitFromHeaders } from './ratelimit.js';
+import { filterCandidatesByRateLimit, getAllRateLimitStatuses, updateRateLimitFromHeaders, markProviderRateLimited } from './ratelimit.js';
 import { mapProviderToOpenCode } from './model-mapping.js';
 import { routeModel } from './router.js';
 
 declare global {
   var __bmadRouterUpdateRateLimit: ((headers: Headers, provider: string) => void) | undefined;
+  var __bmadRouterMarkRateLimited: ((provider: string, resetAt?: Date) => void) | undefined;
 }
 
 globalThis.__bmadRouterUpdateRateLimit = updateRateLimitFromHeaders;
+globalThis.__bmadRouterMarkRateLimited = markProviderRateLimited;
 
 const DEFAULT_CANDIDATES: LLMProvider[] = [
   // Premium GitHub Copilot models
@@ -69,6 +71,25 @@ function getTextFromParts(parts: Array<{ type: string; text?: string }>): string
   return textPart?.type === 'text' ? (textPart as { type: 'text'; text: string }).text : null;
 }
 
+function headersFromRecord(record?: Record<string, string>): Headers | null {
+  if (!record) return null;
+  const headers = new Headers();
+  for (const [key, value] of Object.entries(record)) {
+    if (typeof value === 'string') headers.set(key, value);
+  }
+  return headers;
+}
+
+function parseRetryAfter(value?: string): Date | undefined {
+  if (!value) return undefined;
+  const seconds = parseInt(value, 10);
+  if (!Number.isNaN(seconds)) {
+    return new Date(Date.now() + seconds * 1000);
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
 function buildRouteReason(
   phase: BmadPhase, 
   selected: LLMProvider, 
@@ -96,6 +117,22 @@ function buildRouteReason(
 
 export const BmadRouterPlugin: Plugin = async ({ client, directory }: PluginInput) => {
   const hooks: Hooks = {
+    event: async input => {
+      const event = input.event;
+      if (event.type !== 'message.updated') return;
+      const info = event.properties.info as { role?: string; providerID?: string; error?: { name?: string; data?: { statusCode?: number; responseHeaders?: Record<string, string> } } };
+      if (info.role !== 'assistant' || !info.providerID || !info.error) return;
+      const error = info.error;
+      if (error.name !== 'APIError') return;
+      const statusCode = error.data?.statusCode;
+      const headersRecord = error.data?.responseHeaders;
+      const headers = headersFromRecord(headersRecord ?? undefined);
+      if (headers) updateRateLimitFromHeaders(headers, info.providerID);
+      if (statusCode === 429) {
+        const resetAt = parseRetryAfter(headersRecord?.['retry-after']);
+        markProviderRateLimited(info.providerID, resetAt);
+      }
+    },
     'chat.message': async (input, output) => {
       const textPart = output.parts.find(p => p.type === 'text');
       if (textPart?.type === 'text') {

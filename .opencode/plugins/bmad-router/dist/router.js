@@ -24,9 +24,8 @@ function getApiKey() {
     return process.env.NOT_DIAMOND_API_KEY ?? process.env.NOTDIAMOND_API_KEY;
 }
 export class NotDiamondRouter {
-    client = null;
-    timeoutMs;
     constructor(apiKey, timeoutMs = DEFAULT_TIMEOUT_MS) {
+        this.client = null;
         this.timeoutMs = timeoutMs;
         const key = apiKey ?? getApiKey();
         if (key) {
@@ -53,32 +52,37 @@ export class NotDiamondRouter {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
             try {
-                // Only include tradeoff if it's cost or latency (quality is default when omitted)
-                const params = {
+                const result = await this.client.modelRouter.selectModel({
                     messages: [{ role: 'user', content: messageContext }],
                     llm_providers: ndCandidates,
-                };
-                if (tradeoff && tradeoff !== 'quality') {
-                    params.tradeoff = tradeoff;
-                }
-                const result = await this.client.modelRouter.selectModel(params);
+                    tradeoff,
+                });
                 clearTimeout(timeoutId);
                 if (result?.providers?.[0]) {
                     const selected = result.providers[0];
-                    const match = candidates.find(c => mapProviderName(c.provider) === selected.provider && c.model === selected.model);
-                    if (match)
-                        return match;
+                    // Prefer exact provider match first.
+                    // This avoids provider alias collisions where github-copilot is mapped to openai
+                    // and accidentally wins due to candidate ordering.
+                    const exact = candidates.find(c => c.provider === selected.provider && c.model === selected.model);
+                    if (exact)
+                        return exact;
+                    const mapped = candidates.find(c => mapProviderName(c.provider) === selected.provider && c.model === selected.model);
+                    if (mapped)
+                        return mapped;
                 }
             }
             catch (err) {
                 clearTimeout(timeoutId);
                 if (err.name === 'AbortError') {
+                    console.warn('[bmad-router] NotDiamond API timeout, using fallback');
                 }
                 else {
+                    console.warn('[bmad-router] NotDiamond API error:', err);
                 }
             }
         }
         catch (err) {
+            console.warn('[bmad-router] NotDiamond routing failed:', err);
         }
         return candidates[0];
     }

@@ -18,6 +18,21 @@ function parseRateLimitHeaders(headers, provider) {
                 isLimited: percentRemaining < DEFAULT_MIN_PERCENT,
             };
         }
+        // Check for retry-after header on 429 responses
+        const retryAfter = headers.get('retry-after');
+        if (retryAfter) {
+            const retrySeconds = parseInt(retryAfter, 10);
+            const resetAt = isNaN(retrySeconds)
+                ? new Date(retryAfter) // ISO date format
+                : new Date(Date.now() + retrySeconds * 1000); // seconds format
+            return {
+                provider,
+                remainingRequests: 0,
+                percentRemaining: 0,
+                resetAt,
+                isLimited: true,
+            };
+        }
     }
     if (provider === 'anthropic') {
         const remaining = headers.get('anthropic-ratelimit-requests-remaining');
@@ -35,6 +50,21 @@ function parseRateLimitHeaders(headers, provider) {
                 isLimited: percentRemaining < DEFAULT_MIN_PERCENT,
             };
         }
+        // Check for retry-after header on 429 responses
+        const retryAfter = headers.get('retry-after');
+        if (retryAfter) {
+            const retrySeconds = parseInt(retryAfter, 10);
+            const resetAt = isNaN(retrySeconds)
+                ? new Date(retryAfter) // ISO date format
+                : new Date(Date.now() + retrySeconds * 1000); // seconds format
+            return {
+                provider,
+                remainingRequests: 0,
+                percentRemaining: 0,
+                resetAt,
+                isLimited: true,
+            };
+        }
     }
     return null;
 }
@@ -48,6 +78,24 @@ export function updateRateLimitFromHeaders(headers, provider) {
         if (status.isLimited) {
         }
     }
+}
+/**
+ * Mark a provider as rate-limited when receiving a 429 response
+ * This bypasses header parsing and immediately marks the provider as unavailable
+ */
+export function markProviderRateLimited(provider, resetAt) {
+    const status = {
+        provider,
+        remainingRequests: 0,
+        percentRemaining: 0,
+        resetAt: resetAt ?? new Date(Date.now() + RATE_LIMIT_CACHE_TTL_MS),
+        isLimited: true,
+    };
+    rateLimitCache.set(provider, {
+        status,
+        cachedAt: Date.now(),
+    });
+    console.warn(`[bmad-router] Provider ${provider} marked as rate-limited until ${status.resetAt?.toISOString()}`);
 }
 export function getRateLimitStatus(provider) {
     const cached = rateLimitCache.get(provider);

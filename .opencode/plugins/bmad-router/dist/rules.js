@@ -23,7 +23,9 @@ export function isCopilotProvider(provider) {
     return provider === 'github-copilot' || provider === 'copilot';
 }
 export function filterCandidatesByPhase(candidates, phase) {
-    if (isDevPhase(phase) || phase === 'unknown') {
+    // Be conservative: if phase can't be determined, treat as non-dev.
+    // (Prevents unintended Copilot selection during planning/spec workflows.)
+    if (isDevPhase(phase)) {
         return candidates;
     }
     return candidates.filter(c => !isCopilotProvider(c.provider));

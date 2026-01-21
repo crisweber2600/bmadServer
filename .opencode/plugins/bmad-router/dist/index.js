@@ -2,10 +2,11 @@ import { tool } from '@opencode-ai/plugin';
 import { detectCurrentPhase } from './workflow.js';
 import { filterCandidatesByPhase, isDevPhase } from './rules.js';
 import { filterCandidatesByQuota, getCopilotQuota } from './quota.js';
-import { filterCandidatesByRateLimit, getAllRateLimitStatuses, updateRateLimitFromHeaders } from './ratelimit.js';
+import { filterCandidatesByRateLimit, getAllRateLimitStatuses, updateRateLimitFromHeaders, markProviderRateLimited } from './ratelimit.js';
 import { mapProviderToOpenCode } from './model-mapping.js';
 import { routeModel } from './router.js';
 globalThis.__bmadRouterUpdateRateLimit = updateRateLimitFromHeaders;
+globalThis.__bmadRouterMarkRateLimited = markProviderRateLimited;
 const DEFAULT_CANDIDATES = [
     // Premium GitHub Copilot models
     { provider: 'github-copilot', model: 'gpt-5.2' },
@@ -54,6 +55,26 @@ function getTextFromParts(parts) {
     const textPart = parts.find(p => p.type === 'text' && p.text);
     return textPart?.type === 'text' ? textPart.text : null;
 }
+function headersFromRecord(record) {
+    if (!record)
+        return null;
+    const headers = new Headers();
+    for (const [key, value] of Object.entries(record)) {
+        if (typeof value === 'string')
+            headers.set(key, value);
+    }
+    return headers;
+}
+function parseRetryAfter(value) {
+    if (!value)
+        return undefined;
+    const seconds = parseInt(value, 10);
+    if (!Number.isNaN(seconds)) {
+        return new Date(Date.now() + seconds * 1000);
+    }
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? undefined : date;
+}
 function buildRouteReason(phase, selected, copilotFiltered, rateLimitedProviders) {
     const reasons = [];
     if (!isDevPhase(phase)) {
@@ -70,6 +91,26 @@ function buildRouteReason(phase, selected, copilotFiltered, rateLimitedProviders
 }
 export const BmadRouterPlugin = async ({ client, directory }) => {
     const hooks = {
+        event: async (input) => {
+            const event = input.event;
+            if (event.type !== 'message.updated')
+                return;
+            const info = event.properties.info;
+            if (info.role !== 'assistant' || !info.providerID || !info.error)
+                return;
+            const error = info.error;
+            if (error.name !== 'APIError')
+                return;
+            const statusCode = error.data?.statusCode;
+            const headersRecord = error.data?.responseHeaders;
+            const headers = headersFromRecord(headersRecord ?? undefined);
+            if (headers)
+                updateRateLimitFromHeaders(headers, info.providerID);
+            if (statusCode === 429) {
+                const resetAt = parseRetryAfter(headersRecord?.['retry-after']);
+                markProviderRateLimited(info.providerID, resetAt);
+            }
+        },
         'chat.message': async (input, output) => {
             const textPart = output.parts.find(p => p.type === 'text');
             if (textPart?.type === 'text') {
