@@ -4,6 +4,8 @@ project_type: "collaboration-platform"
 selected_track: "method"
 field_type: "greenfield"
 workflow_path: "method-greenfield"
+current_phase: "phase_2_planning"
+phase_status: "in_progress"
 
 workflow_status:
   phase_1_analysis:
@@ -31,10 +33,12 @@ workflow_status:
     name: "Planning"
     workflows:
       prd:
-        status: "required"
+        status: "complete"
         agent: "pm"
         command: "/bmad:bmm:workflows:prd"
-        output: "Product Requirements Document with FRs and NFRs"
+        output: "_bmad-output/planning-artifacts/prd.md"
+        started_at: "2026-01-21"
+        completed_at: "2026-01-21"
       create-ux-design:
         status: "conditional:if_has_ui"
         agent: "ux-designer"
