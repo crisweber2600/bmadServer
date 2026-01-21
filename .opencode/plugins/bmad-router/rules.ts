@@ -1,4 +1,4 @@
-import type { BmadPhase, LLMProvider } from './types';
+import type { BmadPhase, LLMProvider } from './types.js';
 
 const DEV_PHASES: Set<BmadPhase> = new Set([
   'quick-dev',
@@ -33,6 +33,8 @@ export function filterCandidatesByPhase(
   candidates: LLMProvider[],
   phase: BmadPhase
 ): LLMProvider[] {
+  // Be conservative: if phase can't be determined, treat as non-dev.
+  // (Prevents unintended Copilot selection during planning/spec workflows.)
   if (isDevPhase(phase)) {
     return candidates;
   }

@@ -128,3 +128,15 @@ export interface QuotaProvider {
  * NotDiamond tradeoff preference
  */
 export type NotDiamondTradeoff = 'cost' | 'latency' | 'quality';
+
+/**
+ * Rate limit status for a provider
+ */
+export interface RateLimitStatus {
+  provider: string;
+  remainingRequests?: number;
+  remainingTokens?: number;
+  resetAt?: Date;
+  percentRemaining: number;
+  isLimited: boolean;
+}

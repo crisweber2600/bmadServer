@@ -1,7 +1,7 @@
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import * as yaml from 'js-yaml';
-import type { BmadPhase, BmmWorkflowStatus, SprintStatus } from './types';
+import type { BmadPhase, BmmWorkflowStatus, SprintStatus } from './types.js';
 
 const PLANNING_ARTIFACTS_PATH = '_bmad-output/planning-artifacts';
 const BMM_WORKFLOW_STATUS_FILE = 'bmm-workflow-status.yaml';

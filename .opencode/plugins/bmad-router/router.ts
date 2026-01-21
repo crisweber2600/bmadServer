@@ -1,5 +1,5 @@
 import NotDiamond from 'notdiamond';
-import type { LLMProvider, NotDiamondTradeoff } from './types';
+import type { LLMProvider, NotDiamondTradeoff } from './types.js';
 
 const DEFAULT_TIMEOUT_MS = 5000;
 
@@ -80,10 +80,19 @@ export class NotDiamondRouter {
 
         if (result?.providers?.[0]) {
           const selected = result.providers[0];
-          const match = candidates.find(
+
+          // Prefer exact provider match first.
+          // This avoids provider alias collisions where github-copilot is mapped to openai
+          // and accidentally wins due to candidate ordering.
+          const exact = candidates.find(
+            c => c.provider === selected.provider && c.model === selected.model
+          );
+          if (exact) return exact;
+
+          const mapped = candidates.find(
             c => mapProviderName(c.provider) === selected.provider && c.model === selected.model
           );
-          if (match) return match;
+          if (mapped) return mapped;
         }
       } catch (err) {
         clearTimeout(timeoutId);

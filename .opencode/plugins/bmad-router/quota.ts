@@ -8,8 +8,8 @@ import type {
   LLMProvider,
   CopilotTokenResponse,
   CopilotQuotaResponse 
-} from './types';
-import { isCopilotProvider } from './rules';
+} from './types.js';
+import { isCopilotProvider } from './rules.js';
 
 const AUTH_FILE_PATH = join(homedir(), '.local/share/opencode/auth.json');
 const COPILOT_TOKEN_URL = 'https://api.github.com/copilot_internal/v2/token';
