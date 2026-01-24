@@ -1,0 +1,84 @@
+# Story 12.2: Active Session Monitoring
+
+**Status:** ready-for-dev
+
+## Story
+
+As an administrator, I want to monitor active sessions, so that I can see who is using the system and intervene if needed.
+
+## Acceptance Criteria
+
+**Given** I access the sessions view  
+**When** I view active sessions  
+**Then** I see a table with: userId, displayName, workflowName, sessionDuration, lastActivity, connectionStatus
+
+**Given** I need session details  
+**When** I click on a session  
+**Then** I see: full session history, current workflow step, recent messages (last 10)
+
+**Given** I need to terminate a session  
+**When** I click "Terminate Session" with reason  
+**Then** the user is disconnected  
+**And** they see: "Your session was ended by an administrator"  
+**And** the termination is logged
+
+**Given** I filter sessions  
+**When** I apply filters  
+**Then** I can filter by: workflow type, duration, idle time, user role
+
+**Given** concurrent user limits apply  
+**When** I view session count  
+**Then** I see: "15/25 concurrent users"  
+**And** warning appears at 80% capacity
+
+## Tasks / Subtasks
+
+- [ ] Analyze acceptance criteria and create detailed implementation plan
+- [ ] Design data models and database schema if needed
+- [ ] Implement core business logic
+- [ ] Create API endpoints and/or UI components
+- [ ] Write unit tests for critical paths
+- [ ] Write integration tests for key scenarios
+- [ ] Update API documentation
+- [ ] Perform manual testing and validation
+- [ ] Code review and address feedback
+
+## Dev Notes
+
+### Implementation Guidance
+
+This story should be implemented following the patterns established in the codebase:
+- Follow the architecture patterns defined in `architecture.md`
+- Use existing service patterns and dependency injection
+- Ensure proper error handling and logging
+- Add appropriate authorization checks based on user roles
+- Follow the coding standards and conventions of the project
+
+### Testing Strategy
+
+- Unit tests should cover business logic and edge cases
+- Integration tests should verify API endpoints and database interactions
+- Consider performance implications for database queries
+- Test error scenarios and validation rules
+
+### Dependencies
+
+Review the acceptance criteria for dependencies on:
+- Other stories or epics that must be completed first
+- External packages or services that need to be configured
+- Database migrations that need to be created
+
+## Files to Create/Modify
+
+Files will be determined during implementation based on:
+- Data models and entities needed
+- API endpoints required
+- Service layer components
+- Database migrations
+- Test files
+
+## References
+
+- Source: [epics.md - Story 12.2](../planning-artifacts/epics.md)
+- Architecture: [architecture.md](../planning-artifacts/architecture.md)
+- PRD: [prd.md](../planning-artifacts/prd.md)

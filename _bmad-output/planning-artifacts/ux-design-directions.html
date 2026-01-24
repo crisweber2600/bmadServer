@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>bmadServer - Design Direction Showcase</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            line-height: 1.6;
+        }
+        
+        .showcase-header {
+            background: white;
+            padding: 24px;
+            border-bottom: 1px solid #e5e5e5;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .showcase-nav {
+            display: flex;
+            gap: 16px;
+            margin-top: 16px;
+        }
+        
+        .nav-btn {
+            padding: 8px 16px;
+            border: 1px solid #1677ff;
+            background: white;
+            color: #1677ff;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .nav-btn.active {
+            background: #1677ff;
+            color: white;
+        }
+        
+        .direction {
+            display: none;
+            min-height: calc(100vh - 120px);
+        }
+        
+        .direction.active {
+            display: block;
+        }
+        
+        /* Direction 1: Clean Sidebar Layout */
+        .direction-1 {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            height: calc(100vh - 120px);
+        }
+        
+        .sidebar {
+            background: white;
+            border-right: 1px solid #e5e5e5;
+            padding: 24px;
+        }
+        
+        .workflow-progress {
+            margin-bottom: 32px;
+        }
+        
+        .progress-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .progress-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #52c41a;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+        
+        .progress-icon.current {
+            background: #1677ff;
+        }
+        
+        .progress-icon.pending {
+            background: #d9d9d9;
+            color: #8c8c8c;
+        }
+        
+        .chat-area {
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+        
+        .chat-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #e5e5e5;
+            background: #fafafa;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+        }
+        
+        .message {
+            margin-bottom: 24px;
+            max-width: 80%;
+        }
+        
+        .message.user {
+            margin-left: auto;
+            background: #f0f8ff;
+            border: 1px solid #1677ff;
+            border-radius: 18px 18px 4px 18px;
+            padding: 16px 20px;
+        }
+        
+        .message.agent {
+            background: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 4px 18px 18px 18px;
+            padding: 20px;
+        }
+        
+        .agent-name {
+            font-size: 14px;
+            color: #1677ff;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .decision-output {
+            background: #f6ffed;
+            border: 1px solid #52c41a;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 16px 0;
+        }
+        
+        .chat-input {
+            padding: 20px 24px;
+            border-top: 1px solid #e5e5e5;
+            background: #fafafa;
+        }
+        
+        .input-container {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+        
+        .chat-input-field {
+            flex: 1;
+            min-height: 44px;
+            padding: 12px 16px;
+            border: 1px solid #d9d9d9;
+            border-radius: 8px;
+            resize: none;
+            font-family: inherit;
+        }
+        
+        .send-btn {
+            padding: 12px 20px;
+            background: #1677ff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        /* Direction 2: Full-Width Chat Focus */
+        .direction-2 {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            min-height: calc(100vh - 120px);
+        }
+        
+        .full-chat-header {
+            padding: 24px 32px;
+            background: linear-gradient(135deg, #1677ff, #52c41a);
+            color: white;
+        }
+        
+        .progress-bar {
+            background: rgba(255,255,255,0.2);
+            height: 8px;
+            border-radius: 4px;
+            margin-top: 16px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            background: white;
+            height: 100%;
+            width: 60%;
+            border-radius: 4px;
+        }
+        
+        /* Direction 3: Card-Based Layout */
+        .direction-3 {
+            padding: 24px;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 24px;
+            background: #f5f5f5;
+        }
+        
+        .main-chat {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .context-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .context-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        /* Direction 4: Mobile-First Stacked */
+        .direction-4 {
+            background: #fafafa;
+        }
+        
+        .mobile-header {
+            background: white;
+            padding: 16px 20px;
+            border-bottom: 1px solid #e5e5e5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .mobile-progress {
+            background: white;
+            padding: 16px 20px;
+            border-bottom: 1px solid #e5e5e5;
+        }
+        
+        .progress-dots {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+        
+        .progress-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #d9d9d9;
+        }
+        
+        .progress-dot.active {
+            background: #1677ff;
+        }
+        
+        .progress-dot.completed {
+            background: #52c41a;
+        }
+        
+        .mobile-chat {
+            padding: 16px 20px;
+        }
+        
+        /* Direction 5: Dashboard Style */
+        .direction-5 {
+            display: grid;
+            grid-template-columns: 320px 1fr 280px;
+            height: calc(100vh - 120px);
+        }
+        
+        .dashboard-sidebar {
+            background: #001529;
+            color: white;
+            padding: 24px;
+        }
+        
+        .dashboard-main {
+            background: white;
+            padding: 24px;
+        }
+        
+        .dashboard-aside {
+            background: #f9f9f9;
+            padding: 24px;
+            border-left: 1px solid #e5e5e5;
+        }
+        
+        /* Direction 6: Minimalist Clean */
+        .direction-6 {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            min-height: calc(100vh - 120px);
+            border-left: 1px solid #e5e5e5;
+            border-right: 1px solid #e5e5e5;
+        }
+        
+        .minimal-header {
+            padding: 32px 40px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .minimal-progress {
+            height: 2px;
+            background: #f0f0f0;
+            margin-bottom: 32px;
+        }
+        
+        .minimal-progress-fill {
+            height: 100%;
+            width: 65%;
+            background: #1677ff;
+        }
+        
+        .minimal-chat {
+            padding: 0 40px 40px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .direction-1, .direction-3, .direction-5 {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar, .context-panel, .dashboard-aside {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="showcase-header">
+        <h1>bmadServer Design Directions</h1>
+        <p>Explore different visual approaches for the conversational product formation experience</p>
+        
+        <div class="showcase-nav">
+            <button class="nav-btn active" onclick="showDirection(1)">Clean Sidebar</button>
+            <button class="nav-btn" onclick="showDirection(2)">Chat Focus</button>
+            <button class="nav-btn" onclick="showDirection(3)">Card Layout</button>
+            <button class="nav-btn" onclick="showDirection(4)">Mobile First</button>
+            <button class="nav-btn" onclick="showDirection(5)">Dashboard</button>
+            <button class="nav-btn" onclick="showDirection(6)">Minimalist</button>
+        </div>
+    </div>
+    
+    <!-- Direction 1: Clean Sidebar Layout -->
+    <div class="direction direction-1 active" id="direction-1">
+        <div class="sidebar">
+            <div class="workflow-progress">
+                <h3>Workflow Progress</h3>
+                <div class="progress-item">
+                    <div class="progress-icon">✓</div>
+                    <span>Project Analysis</span>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-icon current">2</div>
+                    <span>Requirements Planning</span>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-icon pending">3</div>
+                    <span>Architecture Design</span>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-icon pending">4</div>
+                    <span>Implementation Ready</span>
+                </div>
+            </div>
+            
+            <div>
+                <h4>Active Agents</h4>
+                <div style="margin-top: 12px; color: #1677ff;">🧠 PM Agent</div>
+                <div style="margin-top: 8px; color: #8c8c8c;">🏗️ Architect (waiting)</div>
+            </div>
+        </div>
+        
+        <div class="chat-area">
+            <div class="chat-header">
+                <h2>Product Formation Session</h2>
+                <p>Working on authentication requirements with PM Agent</p>
+            </div>
+            
+            <div class="chat-messages">
+                <div class="message user">
+                    <div>I need users to be able to login to access their personalized dashboard</div>
+                </div>
+                
+                <div class="message agent">
+                    <div class="agent-name">🧠 PM Agent</div>
+                    <div>I understand you need authentication for personalized dashboards. Let me help you think through this systematically.</div>
+                    
+                    <div class="decision-output">
+                        <strong>✅ Authentication Requirements Captured</strong>
+                        <ul style="margin-top: 8px;">
+                            <li>User authentication required</li>
+                            <li>Personalized dashboard access</li>
+                            <li>User session management needed</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="margin-top: 16px;">
+                        <strong>Follow-up questions to refine this:</strong>
+                        <ul style="margin-top: 8px;">
+                            <li>What type of users will you have? (customers, admins, etc.)</li>
+                            <li>Do you need social login options or just email/password?</li>
+                            <li>Any specific security requirements or compliance needs?</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="message user">
+                    <div>We'll have regular users and administrators. Email/password is fine for now, but we might want Google login later.</div>
+                </div>
+                
+                <div class="message agent">
+                    <div class="agent-name">🧠 PM Agent</div>
+                    <div>Perfect! Two user types with flexible auth options. This helps me structure the requirements properly...</div>
+                </div>
+            </div>
+            
+            <div class="chat-input">
+                <div class="input-container">
+                    <textarea class="chat-input-field" placeholder="Continue the conversation..."></textarea>
+                    <button class="send-btn">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Direction 2: Full-Width Chat Focus -->
+    <div class="direction direction-2" id="direction-2">
+        <div class="full-chat-header">
+            <h1>bmadServer Product Formation</h1>
+            <p>Phase 2: Requirements Planning - Working with PM Agent on Authentication</p>
+            <div class="progress-bar">
+                <div class="progress-fill"></div>
+            </div>
+        </div>
+        
+        <div style="padding: 32px;">
+            <div class="message user" style="margin-left: 0; max-width: 70%;">
+                <div>I need users to be able to login to access their personalized dashboard</div>
+            </div>
+            
+            <div class="message agent" style="max-width: 85%;">
+                <div class="agent-name">🧠 PM Agent</div>
+                <div>I understand you need authentication for personalized dashboards. Let me help you think through this systematically.</div>
+                
+                <div class="decision-output">
+                    <strong>✅ Authentication Requirements Captured</strong>
+                    <ul style="margin-top: 8px;">
+                        <li>User authentication required</li>
+                        <li>Personalized dashboard access</li>
+                        <li>User session management needed</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="chat-input" style="position: fixed; bottom: 0; left: 0; right: 0; max-width: 800px; margin: 0 auto;">
+            <div class="input-container">
+                <textarea class="chat-input-field" placeholder="Continue the conversation..."></textarea>
+                <button class="send-btn">Send</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Direction 3: Card-Based Layout -->
+    <div class="direction direction-3" id="direction-3">
+        <div class="main-chat">
+            <h2>Product Formation Chat</h2>
+            <div style="margin-top: 24px;">
+                <div class="message user">
+                    <div>I need users to be able to login to access their personalized dashboard</div>
+                </div>
+                
+                <div class="message agent">
+                    <div class="agent-name">🧠 PM Agent</div>
+                    <div>I understand you need authentication for personalized dashboards...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="context-panel">
+            <div class="context-card">
+                <h3>Workflow Status</h3>
+                <div style="margin-top: 16px;">
+                    <div style="color: #52c41a;">✅ Project Analysis</div>
+                    <div style="color: #1677ff; font-weight: 500;">🔄 Requirements Planning</div>
+                    <div style="color: #8c8c8c;">⏳ Architecture Design</div>
+                </div>
+            </div>
+            
+            <div class="context-card">
+                <h3>Recent Decisions</h3>
+                <div style="margin-top: 16px;">
+                    <div style="background: #f6ffed; padding: 12px; border-radius: 6px; border: 1px solid #52c41a;">
+                        <strong>Authentication Required</strong>
+                        <div style="font-size: 14px; color: #666; margin-top: 4px;">User login for personalized access</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="context-card">
+                <h3>Active Agent</h3>
+                <div style="margin-top: 16px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div>🧠</div>
+                        <div>
+                            <strong>PM Agent</strong>
+                            <div style="font-size: 14px; color: #666;">Requirements Discovery</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Direction 4: Mobile-First Stacked -->
+    <div class="direction direction-4" id="direction-4">
+        <div class="mobile-header">
+            <h2>bmadServer</h2>
+            <button style="background: none; border: none; font-size: 20px;">⚙️</button>
+        </div>
+        
+        <div class="mobile-progress">
+            <div style="text-align: center; margin-bottom: 12px; font-size: 14px; color: #666;">
+                Phase 2: Requirements Planning
+            </div>
+            <div class="progress-dots">
+                <div class="progress-dot completed"></div>
+                <div class="progress-dot active"></div>
+                <div class="progress-dot"></div>
+                <div class="progress-dot"></div>
+            </div>
+        </div>
+        
+        <div class="mobile-chat">
+            <div class="message user" style="max-width: 85%;">
+                <div>I need users to be able to login to access their personalized dashboard</div>
+            </div>
+            
+            <div class="message agent" style="max-width: 95%;">
+                <div class="agent-name">🧠 PM Agent</div>
+                <div>I understand you need authentication for personalized dashboards. Let me help you think through this systematically.</div>
+                
+                <div class="decision-output">
+                    <strong>✅ Authentication Requirements</strong>
+                    <ul style="margin-top: 8px; font-size: 14px;">
+                        <li>User authentication required</li>
+                        <li>Personalized dashboard access</li>
+                        <li>User session management needed</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div style="position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 16px 20px; border-top: 1px solid #e5e5e5;">
+            <div class="input-container">
+                <textarea class="chat-input-field" placeholder="Continue the conversation..." style="min-height: 40px;"></textarea>
+                <button class="send-btn">Send</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Direction 5: Dashboard Style -->
+    <div class="direction direction-5" id="direction-5">
+        <div class="dashboard-sidebar">
+            <h3 style="color: white; margin-bottom: 24px;">bmadServer</h3>
+            
+            <div style="margin-bottom: 32px;">
+                <div style="color: #8c8c8c; font-size: 12px; text-transform: uppercase; margin-bottom: 12px;">Workflow</div>
+                <div style="color: #52c41a; margin-bottom: 8px;">✓ Analysis</div>
+                <div style="color: #1677ff; margin-bottom: 8px; font-weight: 500;">▶ Planning</div>
+                <div style="color: #595959; margin-bottom: 8px;">○ Architecture</div>
+                <div style="color: #595959;">○ Implementation</div>
+            </div>
+            
+            <div>
+                <div style="color: #8c8c8c; font-size: 12px; text-transform: uppercase; margin-bottom: 12px;">Agents</div>
+                <div style="color: white;">🧠 PM Agent</div>
+            </div>
+        </div>
+        
+        <div class="dashboard-main">
+            <div style="margin-bottom: 24px;">
+                <h2>Product Formation Session</h2>
+                <p style="color: #666;">Authentication requirements discovery in progress</p>
+            </div>
+            
+            <div class="message user">
+                <div>I need users to be able to login to access their personalized dashboard</div>
+            </div>
+            
+            <div class="message agent">
+                <div class="agent-name">🧠 PM Agent</div>
+                <div>I understand you need authentication for personalized dashboards. Let me help you think through this systematically.</div>
+            </div>
+        </div>
+        
+        <div class="dashboard-aside">
+            <h3>Session Info</h3>
+            <div style="margin-top: 16px; font-size: 14px;">
+                <div style="margin-bottom: 12px;">
+                    <strong>Project:</strong> bmadServer
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <strong>Phase:</strong> Requirements Planning
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <strong>Started:</strong> 2 hours ago
+                </div>
+                <div>
+                    <strong>Decisions:</strong> 3 captured
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Direction 6: Minimalist Clean -->
+    <div class="direction direction-6" id="direction-6">
+        <div class="minimal-header">
+            <h1 style="font-weight: 300; font-size: 32px;">bmadServer</h1>
+            <p style="color: #666; margin-top: 8px;">Product Formation Session</p>
+            
+            <div class="minimal-progress">
+                <div class="minimal-progress-fill"></div>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: #666; font-size: 14px;">Requirements Planning</span>
+                <span style="color: #1677ff; font-size: 14px;">🧠 PM Agent Active</span>
+            </div>
+        </div>
+        
+        <div class="minimal-chat">
+            <div class="message user" style="border: none; background: none; text-align: right; padding: 20px 0;">
+                <div style="display: inline-block; background: #1677ff; color: white; padding: 16px 20px; border-radius: 20px; max-width: 70%;">
+                    I need users to be able to login to access their personalized dashboard
+                </div>
+            </div>
+            
+            <div class="message agent" style="border: none; background: none; padding: 20px 0;">
+                <div class="agent-name" style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #999;">PM Agent</div>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 20px; max-width: 85%; margin-top: 8px;">
+                    I understand you need authentication for personalized dashboards. Let me help you think through this systematically.
+                    
+                    <div style="background: white; border-left: 4px solid #52c41a; padding: 16px; margin: 16px 0; border-radius: 0 8px 8px 0;">
+                        <strong>✅ Authentication Requirements Captured</strong>
+                        <ul style="margin-top: 8px; color: #666;">
+                            <li>User authentication required</li>
+                            <li>Personalized dashboard access</li>
+                            <li>User session management needed</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function showDirection(num) {
+            // Hide all directions
+            document.querySelectorAll('.direction').forEach(d => {
+                d.classList.remove('active');
+            });
+            
+            // Remove active class from all buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected direction
+            document.getElementById('direction-' + num).classList.add('active');
+            
+            // Add active class to clicked button
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>
