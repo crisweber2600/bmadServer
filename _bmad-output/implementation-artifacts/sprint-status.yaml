@@ -1,8 +1,9 @@
-# generated: 2026-01-23
-# project: bmadServer
-# project_key: bmadserver
-# tracking_system: file-system
-# story_location: _bmad-output/implementation-artifacts
+# Sprint Status File
+# Generated: 2026-01-23
+# Project: bmadServer
+# Project Key: N/A
+# Tracking System: file-system
+# Story Location: /Users/cris/bmadServer/_bmad-output/implementation-artifacts
 
 # STATUS DEFINITIONS:
 # ==================
@@ -11,15 +12,11 @@
 #   - in-progress: Epic actively being worked on
 #   - done: All stories in epic completed
 #
-# Epic Status Transitions:
-#   - backlog → in-progress: Automatically when first story is created (via create-story)
-#   - in-progress → done: Manually when all stories reach 'done' status
-#
 # Story Status:
 #   - backlog: Story only exists in epic file
-#   - ready-for-dev: Story file created in stories folder
+#   - ready-for-dev: Story file created, ready for development
 #   - in-progress: Developer actively working on implementation
-#   - review: Ready for code review (via Dev's code-review workflow)
+#   - review: Implementation complete, ready for code review
 #   - done: Story completed
 #
 # Retrospective Status:
@@ -29,71 +26,163 @@
 # WORKFLOW NOTES:
 # ===============
 # - Epic transitions to 'in-progress' automatically when first story is created
-# - Stories can be worked in parallel if team capacity allows
-# - SM typically creates next story after previous one is 'done' to incorporate learnings
-# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+# - SM typically creates next story ONLY after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then Dev runs code-review (fresh context)
 
 generated: 2026-01-23
 project: bmadServer
-project_key: bmadserver
+project_key: N/A
 tracking_system: file-system
-story_location: _bmad-output/implementation-artifacts
+story_location: /Users/cris/bmadServer/_bmad-output/implementation-artifacts
 
 development_status:
-  # Epic 1: Aspire Foundation & Project Setup
-  epic-1: backlog
-  1-1-initialize-bmadserver-from-net-aspire-starter-template: backlog
-  1-2-configure-postgresql-database: backlog
-  1-3-docker-compose-multi-container-orchestration: backlog
-  1-4-github-actions-ci-cd-pipeline: backlog
-  1-5-prometheus-grafana-monitoring-stack: backlog
-  1-6-documentation: backlog
+  # ==========================================
+  # EPIC 1: Aspire Foundation & Project Setup
+  # ==========================================
+  epic-1: in-progress
+  1-1-initialize-aspire-template: ready-for-dev
+  1-2-configure-postgresql: ready-for-dev
+  1-3-docker-compose-orchestration: ready-for-dev
+  1-4-github-actions-cicd: ready-for-dev
+  1-5-prometheus-grafana-monitoring: ready-for-dev
+  1-6-project-documentation: ready-for-dev
   epic-1-retrospective: optional
 
-  # Epic 2: User Authentication & Session Management
-  epic-2: backlog
+  # =========================================================
+  # EPIC 2: User Authentication & Session Management
+  # =========================================================
+  epic-2: in-progress
+  2-1-user-registration-auth: ready-for-dev
+  2-2-jwt-token-generation: ready-for-dev
+  2-3-refresh-token-flow: ready-for-dev
+  2-4-session-persistence-recovery: ready-for-dev
+  2-5-rbac-implementation: ready-for-dev
+  2-6-idle-timeout-security: ready-for-dev
   epic-2-retrospective: optional
 
-  # Epic 3: Real-Time Chat Interface
+  # ===================================
+  # EPIC 3: Real-Time Chat Interface
+  # ===================================
   epic-3: backlog
+  3-1-signalr-websocket-setup: backlog
+  3-2-chat-message-component: backlog
+  3-3-chat-input-component: backlog
+  3-4-message-streaming: backlog
+  3-5-chat-history-scroll: backlog
+  3-6-mobile-responsive-chat: backlog
   epic-3-retrospective: optional
 
-  # Epic 4: Workflow Orchestration Engine
+  # =========================================
+  # EPIC 4: Workflow Orchestration Engine
+  # =========================================
   epic-4: backlog
+  4-1-workflow-definition-registry: backlog
+  4-2-workflow-instance-state-machine: backlog
+  4-3-step-execution-agent-routing: backlog
+  4-4-workflow-pause-resume: backlog
+  4-5-workflow-exit-cancellation: backlog
+  4-6-workflow-step-navigation: backlog
+  4-7-workflow-status-progress-api: backlog
   epic-4-retrospective: optional
 
-  # Epic 5: Multi-Agent Collaboration
+  # ====================================
+  # EPIC 5: Multi-Agent Collaboration
+  # ====================================
   epic-5: backlog
+  5-1-agent-registry-configuration: backlog
+  5-2-agent-to-agent-messaging: backlog
+  5-3-shared-workflow-context: backlog
+  5-4-agent-handoff-attribution: backlog
+  5-5-human-approval-low-confidence: backlog
   epic-5-retrospective: optional
 
-  # Epic 6: Decision Management & Locking
+  # ============================================
+  # EPIC 6: Decision Management & Locking
+  # ============================================
   epic-6: backlog
+  6-1-decision-capture-storage: backlog
+  6-2-decision-version-history: backlog
+  6-3-decision-locking-mechanism: backlog
+  6-4-decision-review-workflow: backlog
+  6-5-conflict-detection-resolution: backlog
   epic-6-retrospective: optional
 
-  # Epic 7: Collaboration & Multi-User Support
+  # =============================================
+  # EPIC 7: Collaboration & Multi-User Support
+  # =============================================
   epic-7: backlog
+  7-1-multi-user-workflow-participation: backlog
+  7-2-safe-checkpoint-system: backlog
+  7-3-input-attribution-history: backlog
+  7-4-conflict-detection-buffering: backlog
+  7-5-real-time-collaboration-updates: backlog
   epic-7-retrospective: optional
 
-  # Epic 8: Persona Translation & Language Adaptation
+  # ==================================================
+  # EPIC 8: Persona Translation & Language Adaptation
+  # ==================================================
   epic-8: backlog
+  8-1-persona-profile-configuration: backlog
+  8-2-business-language-translation: backlog
+  8-3-technical-language-mode: backlog
+  8-4-in-session-persona-switching: backlog
+  8-5-context-aware-response-adaptation: backlog
   epic-8-retrospective: optional
 
-  # Epic 9: Data Persistence & State Management
+  # ===============================================
+  # EPIC 9: Data Persistence & State Management
+  # ===============================================
   epic-9: backlog
+  9-1-event-log-architecture: backlog
+  9-2-jsonb-state-storage-concurrency: backlog
+  9-3-artifact-storage-management: backlog
+  9-4-workflow-export-import: backlog
+  9-5-checkpoint-restoration: backlog
+  9-6-audit-log-retention-compliance: backlog
   epic-9-retrospective: optional
 
-  # Epic 10: Error Handling & Recovery
+  # ====================================
+  # EPIC 10: Error Handling & Recovery
+  # ====================================
   epic-10: backlog
+  10-1-graceful-error-handling: backlog
+  10-2-connection-recovery-retry: backlog
+  10-3-workflow-recovery-after-failure: backlog
+  10-4-conversation-stall-recovery: backlog
+  10-5-fallback-degradation-strategies: backlog
   epic-10-retrospective: optional
 
-  # Epic 11: Security & Access Control
+  # =====================================
+  # EPIC 11: Security & Access Control
+  # =====================================
   epic-11: backlog
+  11-1-per-user-rate-limiting: backlog
+  11-2-tls-encryption-transit: backlog
+  11-3-encryption-at-rest: backlog
+  11-4-api-security-headers: backlog
+  11-5-audit-logging-compliance: backlog
+  11-6-workflow-access-permissions: backlog
   epic-11-retrospective: optional
 
-  # Epic 12: Admin Dashboard & Operations
+  # =========================================
+  # EPIC 12: Admin Dashboard & Operations
+  # =========================================
   epic-12: backlog
+  12-1-health-monitoring-dashboard: backlog
+  12-2-user-management-interface: backlog
+  12-3-provider-configuration: backlog
+  12-4-workflow-activity-audit: backlog
+  12-5-system-configuration-management: backlog
+  12-6-audit-workflow-activity: backlog
   epic-12-retrospective: optional
 
-  # Epic 13: Integrations & Webhooks
+  # ==============================
+  # EPIC 13: Integrations & Webhooks
+  # ==============================
   epic-13: backlog
+  13-1-webhook-configuration: backlog
+  13-2-event-serialization: backlog
+  13-3-webhook-delivery-retry: backlog
+  13-4-notification-system: backlog
+  13-5-external-tool-integration: backlog
   epic-13-retrospective: optional
