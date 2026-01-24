@@ -1,5 +1,21 @@
 # Story 1.3: Set Up Docker Compose Multi-Container Orchestration
 
+**Status:** cancelled
+
+## Cancellation Reason
+
+This story has been **superseded by .NET Aspire orchestration** implemented in Stories 1.1 and 1.2.
+
+**Why?**
+- .NET Aspire (Story 1.1) already provides unified service orchestration via `aspire run`
+- PostgreSQL is now orchestrated via Aspire (Story 1.2) with integrated health checks and monitoring
+- Docker Compose orchestration is redundant and adds maintenance burden
+- The Aspire dashboard provides superior visibility and developer experience compared to manual Docker Compose setup
+
+**Future Consideration:**
+- For **production deployments** (beyond MVP), Docker Compose *may* be reconsidered if Aspire cloud deployment patterns prove insufficient
+- For **MVP development**, all orchestration needs are met by Aspire
+
 **Status:** ready-for-dev
 
 ## Story
