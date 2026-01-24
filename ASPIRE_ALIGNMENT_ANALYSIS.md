@@ -25,9 +25,9 @@
 
 **Infrastructure Components Found:**
 - ✅ PostgreSQL (Epic 1, 2, 4, 6, 7, 8, 9, 11, 12, 13)
-- ❌ Redis/Caching (Epic 10 mentions but no Aspire component defined)
-- ❌ RabbitMQ/Messaging (Epics 2, 3, 4, 7, 10 mention but no Aspire integration)
-- ❌ SignalR (Epic 3 uses manual package, should use Aspire integration if available)
+- ✅ SignalR - **VERIFIED**: `Aspire.Hosting.Azure.SignalR` available with local emulator support
+- ⏳ Redis/Caching (Epic 10 - `Aspire.Hosting.Redis` available, implement when needed)
+- ⏳ RabbitMQ/Messaging (Epics 5, 7, 13 - `Aspire.Hosting.RabbitMq` available, post-MVP)
 
 ---
 
@@ -91,7 +91,7 @@
 
 ### EPIC 3: Real-Time Chat Interface
 
-#### Status: ⚠️ REQUIRES UPDATE
+#### Status: ✅ VERIFIED - Aspire SignalR Component Available
 
 **Stories:** 6 stories (3-1 through 3-6)
 
@@ -100,25 +100,69 @@
 - All stories reference PostgreSQL and message persistence
 - No explicit service orchestration
 
+**🎉 SIGNALR ASPIRE COMPONENT VERIFIED (2026-01-24):**
+
+| Package | NuGet | Mode | Local Dev |
+|---------|-------|------|-----------|
+| `Aspire.Hosting.Azure.SignalR` | v13.1.0+ | Default/Serverless | ✅ Emulator available |
+
+**Two Deployment Options:**
+
+**Option A: Azure SignalR Service (Default Mode) - RECOMMENDED for Production**
+```csharp
+// AppHost/Program.cs
+var signalR = builder.AddAzureSignalR("signalr");
+var api = builder.AddProject<Projects.ApiService>("api")
+    .WithReference(signalR)
+    .WaitFor(signalR);
+```
+- Full hub support with `Microsoft.Azure.SignalR` package
+- Uses `AddNamedAzureSignalR("signalr")` in consuming project
+- Requires Azure subscription for production
+
+**Option B: Azure SignalR Emulator (Serverless Mode) - For Local Development**
+```csharp
+// AppHost/Program.cs
+using Aspire.Hosting.Azure;
+var signalR = builder.AddAzureSignalR("signalr", AzureSignalRServiceMode.Serverless)
+    .RunAsEmulator();
+```
+- Runs locally without Azure subscription
+- Requires `Microsoft.Azure.SignalR.Management` package
+- Uses `/negotiate` endpoint pattern instead of traditional hubs
+
+**Option C: Self-Hosted SignalR (No Azure) - SIMPLEST for MVP**
+```csharp
+// No Aspire component needed - SignalR built into ASP.NET Core
+// ApiService/Program.cs
+builder.Services.AddSignalR();
+app.MapHub<ChatHub>("/chat");
+```
+- Uses built-in ASP.NET Core SignalR
+- No external dependency required
+- Scales via sticky sessions or Redis backplane (future)
+
+**RECOMMENDATION FOR bmadServer MVP:**
+Use **Option C (Self-Hosted SignalR)** for MVP simplicity:
+- No Azure dependency
+- No additional Aspire configuration
+- Built-in to ASP.NET Core
+- Add Redis backplane later if horizontal scaling needed (Epic 10)
+
 **Aspire Integration Analysis:**
 
-| Component | Current | Aspire Option | Recommendation |
-|-----------|---------|---------------|-----------------|
-| PostgreSQL | Implicit | ✅ Aspire.Hosting.PostgreSQL | Use from Epic 1 ✅ |
-| SignalR | `dotnet add` | Check aspire.dev for component | ⚠️ Need to verify |
-| Real-time Messaging | Not specified | Possible Redis caching | Defer to Epic 10 |
+| Component | Current | Aspire Option | Status |
+|-----------|---------|---------------|--------|
+| PostgreSQL | Implicit | ✅ Aspire.Hosting.PostgreSQL | ✅ Use from Epic 1 |
+| SignalR | `dotnet add` | ✅ Self-hosted (ASP.NET Core) | ✅ **MVP: Use built-in** |
+| Azure SignalR | Not needed | ✅ Aspire.Hosting.Azure.SignalR | ⏳ Future: Production scaling |
+| Real-time Messaging | Not specified | Possible Redis backplane | ⏳ Defer to Epic 10 |
 
-**Key Finding:**
-- SignalR in Story 3.1 uses manual `dotnet add package` pattern
-- Should check https://aspire.dev for Aspire.Hosting.SignalR component
-- If no official component, document manual SignalR pattern (inherits from AppHost)
-
-**Recommendations:**
-- [ ] Verify if Aspire.Hosting.SignalR component exists on aspire.dev
-- [ ] Update Story 3.1 Task 1 to follow Aspire-first pattern:
-  - First check aspire.dev for SignalR component
-  - If exists: use `aspire add SignalR`
-  - If not: use `dotnet add package` with clear comment why manual
+**Recommendations (UPDATED):**
+- [x] ~~Verify if Aspire.Hosting.SignalR component exists on aspire.dev~~ **DONE: Yes, Azure.SignalR available**
+- [x] Update Story 3.1 to document MVP approach:
+  - **MVP:** Use built-in ASP.NET Core SignalR (no Aspire component needed)
+  - **Future (Production scaling):** Use `Aspire.Hosting.Azure.SignalR` with emulator for local dev
 - [ ] Add reference section to all stories linking to PROJECT-WIDE-RULES.md
 - [ ] Clarify that database connections use Aspire from Epic 1
 
@@ -439,9 +483,10 @@
 
 | Component | Aspire Pattern | Would be used in | Status | Priority |
 |-----------|----------------|-----------------|--------|----------|
-| Redis | `Aspire.Hosting.Redis` | Epic 10 (caching) | ⚠️ Identified | Medium |
-| RabbitMQ | `Aspire.Hosting.RabbitMq` | Epics 5, 7, 13 (future messaging) | ⏳ Future | Low |
-| SignalR | Check aspire.dev | Epic 3 | ⚠️ Verify | High |
+| SignalR | `ASP.NET Core built-in` | Epic 3 (MVP) | ✅ **VERIFIED** | MVP |
+| SignalR (Azure) | `Aspire.Hosting.Azure.SignalR` | Epic 3 (Production) | ✅ **Available** | Post-MVP |
+| Redis | `Aspire.Hosting.Redis` | Epic 10 (caching/backplane) | ✅ Available | Post-MVP |
+| RabbitMQ | `Aspire.Hosting.RabbitMq` | Epics 5, 7, 13 (messaging) | ✅ Available | Post-MVP |
 | Health Checks | `Aspire built-in` | All epics (inherited) | ✅ OK | - |
 | Structured Logging | `OpenTelemetry` | All epics (inherited) | ✅ OK | - |
 | Observability | `Aspire Dashboard` | All epics (inherited) | ✅ OK | - |
@@ -477,17 +522,18 @@ Epic 1 (Foundation)
 
 ### 🔴 HIGH PRIORITY (Must do before any coding)
 
-1. **Verify SignalR Aspire Component (Epic 3)**
-   - [ ] Check https://aspire.dev for `Aspire.Hosting.SignalR` or similar
-   - [ ] If exists: Update Story 3.1 to use `aspire add`
-   - [ ] If not exists: Document manual SignalR pattern with clear note
+1. **~~Verify SignalR Aspire Component (Epic 3)~~** ✅ **COMPLETED 2026-01-24**
+   - [x] Check https://aspire.dev for `Aspire.Hosting.SignalR` → **FOUND: `Aspire.Hosting.Azure.SignalR`**
+   - [x] Document MVP approach: Use built-in ASP.NET Core SignalR (no Azure dependency)
+   - [x] Document production approach: Use Azure SignalR with Aspire emulator for local dev
+   - **Decision:** MVP uses self-hosted SignalR; Azure SignalR available for production scaling
 
-2. **Add PROJECT-WIDE-RULES.md References (All Epics)**
+2. **Add PROJECT-WIDE-RULES.md References (All Epics)** ⏳ IN PROGRESS
    - [ ] Add reference section to Stories 2.1-13.5
    - [ ] Link to aspire.dev for any Aspire components
    - [ ] Document Aspire-first decision pattern
 
-3. **Clarify PostgreSQL Connection Pattern (All Epics)**
+3. **Clarify PostgreSQL Connection Pattern (All Epics)** ⏳ IN PROGRESS
    - [ ] Document that all PostgreSQL uses Aspire.Hosting.PostgreSQL
    - [ ] Show IConnectionStringProvider injection pattern
    - [ ] Reference Story 1.2 as template
@@ -564,10 +610,10 @@ Each story implementation should verify:
 - ⚠️ **Epics 2-13**: Infrastructure correctly identified; need explicit Aspire documentation and references
 
 **Key Actions Required:**
-1. Verify SignalR Aspire component (Epic 3)
-2. Add PROJECT-WIDE-RULES.md references to all stories
-3. Document Aspire connection string pattern for PostgreSQL (inherited)
-4. Plan Redis/RabbitMQ integration when needed
+1. ~~Verify SignalR Aspire component (Epic 3)~~ ✅ **DONE** - Use built-in ASP.NET Core SignalR for MVP
+2. Add PROJECT-WIDE-RULES.md references to all stories ⏳ IN PROGRESS
+3. Document Aspire connection string pattern for PostgreSQL (inherited) ⏳ IN PROGRESS
+4. Plan Redis/RabbitMQ integration when needed ⏳ PENDING
 
 **No Major Refactoring Needed:** All stories are designed with Aspire-compatible patterns. They inherit from Aspire foundation (Epic 1) and only need documentation updates to explicitly reference Aspire decisions.
 

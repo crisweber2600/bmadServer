@@ -317,8 +317,37 @@ Per architecture.md requirements:
 - `bmadServer.ApiService/DTOs/LoginResponse.cs` - Note: access token only (refresh in cookie)
 - `bmadServer.ApiService/Program.cs` - Register RefreshTokenService
 
+---
+
+## Aspire Development Standards
+
+### PostgreSQL Connection Pattern
+
+This story uses PostgreSQL configured in Story 1.2 via Aspire:
+- Connection string automatically injected from Aspire AppHost
+- RefreshTokens table created via EF Core migrations against Aspire-managed PostgreSQL
+- Pattern: `builder.AddServiceDefaults();` (inherits PostgreSQL reference)
+- See Story 1.2 for AppHost configuration pattern
+
+### Project-Wide Standards
+
+This story follows the Aspire-first development pattern:
+- **Reference:** [PROJECT-WIDE-RULES.md](../../../PROJECT-WIDE-RULES.md)
+- **Primary Documentation:** https://aspire.dev
+- **GitHub:** https://github.com/microsoft/aspire
+
+### Aspire-Specific Notes
+
+- Database transactions handled by Aspire-managed PostgreSQL
+- Health checks inherited from `ServiceDefaults`
+- Structured logging for security events via OpenTelemetry
+
+---
+
 ## References
 
-- Source: [epics.md - Story 2.3](../_bmad-output/planning-artifacts/epics.md)
-- Architecture: [architecture.md](../_bmad-output/planning-artifacts/architecture.md) - Token management section
-- PRD: [prd.md](../_bmad-output/planning-artifacts/prd.md) - Security requirements
+- Source: [epics.md - Story 2.3](../planning-artifacts/epics.md)
+- Architecture: [architecture.md](../planning-artifacts/architecture.md) - Token management section
+- PRD: [prd.md](../planning-artifacts/prd.md) - Security requirements
+- **Aspire Rules:** [PROJECT-WIDE-RULES.md](../../../PROJECT-WIDE-RULES.md)
+- **Aspire Docs:** https://aspire.dev

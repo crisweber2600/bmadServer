@@ -78,7 +78,38 @@ Files will be determined during implementation based on:
 - Database migrations
 - Test files
 
+
+---
+
+## Aspire Development Standards
+
+### PostgreSQL Connection Pattern
+
+This story uses PostgreSQL configured in Story 1.2 via Aspire:
+- Connection string automatically injected from Aspire AppHost
+- Pattern: `builder.AddServiceDefaults();` (inherits PostgreSQL reference)
+- See Story 1.2 for AppHost configuration pattern
+
+### Project-Wide Standards
+
+This story follows the Aspire-first development pattern:
+- **Reference:** [PROJECT-WIDE-RULES.md](../../../PROJECT-WIDE-RULES.md)
+- **Primary Documentation:** https://aspire.dev
+- **GitHub:** https://github.com/microsoft/aspire
+
+---
+
+
+### Future: Distributed Messaging Pattern
+
+When distributed agents needed in Phase 2:
+- Check: https://aspire.dev for messaging components
+- Options: RabbitMQ (`aspire add RabbitMq.Aspire`) or Kafka
+- Current MVP: In-process messaging via Service Collection DI
+
 ## References
+- **Aspire Rules:** [PROJECT-WIDE-RULES.md](../../../PROJECT-WIDE-RULES.md)
+- **Aspire Docs:** https://aspire.dev
 
 - Source: [epics.md - Story 5.3](../planning-artifacts/epics.md)
 - Architecture: [architecture.md](../planning-artifacts/architecture.md)

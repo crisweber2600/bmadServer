@@ -78,8 +78,30 @@ Files will be determined during implementation based on:
 - Database migrations
 - Test files
 
+---
+
+## Aspire Development Standards
+
+### SignalR Integration Pattern
+
+This story uses SignalR configured in Story 3.1:
+- **MVP:** Built-in ASP.NET Core SignalR (no external dependency)
+- Message sending via SignalR hub connection
+- See Story 3.1 for SignalR configuration pattern
+
+### Project-Wide Standards
+
+This story follows the Aspire-first development pattern:
+- **Reference:** [PROJECT-WIDE-RULES.md](../../../PROJECT-WIDE-RULES.md)
+- **Primary Documentation:** https://aspire.dev
+- **GitHub:** https://github.com/microsoft/aspire
+
+---
+
 ## References
 
 - Source: [epics.md - Story 3.3](../planning-artifacts/epics.md)
 - Architecture: [architecture.md](../planning-artifacts/architecture.md)
 - PRD: [prd.md](../planning-artifacts/prd.md)
+- **Aspire Rules:** [PROJECT-WIDE-RULES.md](../../../PROJECT-WIDE-RULES.md)
+- **Aspire Docs:** https://aspire.dev

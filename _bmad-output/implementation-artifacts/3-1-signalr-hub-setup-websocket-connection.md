@@ -84,8 +84,69 @@ Files will be determined during implementation based on:
 - Database migrations
 - Test files
 
+---
+
+## Aspire Development Standards
+
+### SignalR Implementation Pattern (VERIFIED 2026-01-24)
+
+**MVP Approach: Self-Hosted SignalR (RECOMMENDED)**
+
+For bmadServer MVP, use the built-in ASP.NET Core SignalR which requires no external dependencies:
+
+```csharp
+// In bmadServer.ApiService/Program.cs
+builder.Services.AddSignalR();
+
+var app = builder.Build();
+app.MapHub<ChatHub>("/hubs/chat");
+```
+
+**Why Self-Hosted for MVP:**
+- ✅ No Azure subscription required
+- ✅ No additional Aspire configuration
+- ✅ Built into ASP.NET Core (no extra packages)
+- ✅ Simple to implement and test
+- ✅ Scales vertically (single server handles many connections)
+
+**Future: Azure SignalR Service (Production Scaling)**
+
+When horizontal scaling is needed, Aspire provides `Aspire.Hosting.Azure.SignalR`:
+
+```csharp
+// AppHost/Program.cs (future - not for MVP)
+var signalR = builder.AddAzureSignalR("signalr");
+// Or with local emulator:
+var signalR = builder.AddAzureSignalR("signalr", AzureSignalRServiceMode.Serverless)
+    .RunAsEmulator();
+```
+
+**Scaling Path:**
+1. **MVP (Now):** Self-hosted SignalR - handles thousands of connections per server
+2. **Scale-Out (Future):** Add Redis backplane via `aspire add Redis.Distributed` (see Epic 10)
+3. **Enterprise (Future):** Use Azure SignalR Service for unlimited horizontal scaling
+
+### PostgreSQL Connection Pattern
+
+This story uses PostgreSQL configured in Story 1.2 via Aspire:
+- Connection string automatically injected from Aspire AppHost
+- Pattern: `builder.AddServiceDefaults();` (inherits PostgreSQL reference)
+- See Story 1.2 for AppHost configuration pattern
+
+### Project-Wide Standards
+
+This story follows the Aspire-first development pattern:
+- **Reference:** [PROJECT-WIDE-RULES.md](../../../PROJECT-WIDE-RULES.md)
+- **Primary Documentation:** https://aspire.dev
+- **GitHub:** https://github.com/microsoft/aspire
+
+---
+
 ## References
 
 - Source: [epics.md - Story 3.1](../planning-artifacts/epics.md)
 - Architecture: [architecture.md](../planning-artifacts/architecture.md)
 - PRD: [prd.md](../planning-artifacts/prd.md)
+- **Aspire Rules:** [PROJECT-WIDE-RULES.md](../../../PROJECT-WIDE-RULES.md)
+- **Aspire Docs:** https://aspire.dev
+- **SignalR Analysis:** [ASPIRE_ALIGNMENT_ANALYSIS.md](../../../ASPIRE_ALIGNMENT_ANALYSIS.md#epic-3-real-time-chat-interface)
