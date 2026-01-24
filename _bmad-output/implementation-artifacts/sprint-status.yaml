@@ -63,126 +63,125 @@ development_status:
   # ===================================
   # EPIC 3: Real-Time Chat Interface
   # ===================================
-  epic-3: backlog
-  3-1-signalr-websocket-setup: backlog
-  3-2-chat-message-component: backlog
-  3-3-chat-input-component: backlog
-  3-4-message-streaming: backlog
-  3-5-chat-history-scroll: backlog
-  3-6-mobile-responsive-chat: backlog
+  epic-3: in-progress
+  3-1-signalr-hub-setup-websocket-connection: ready-for-dev
+  3-2-chat-message-component-with-ant-design: ready-for-dev
+  3-3-chat-input-component-with-rich-interactions: ready-for-dev
+  3-4-real-time-message-streaming: ready-for-dev
+  3-5-chat-history-scroll-management: ready-for-dev
+  3-6-mobile-responsive-chat-interface: ready-for-dev
   epic-3-retrospective: optional
 
   # =========================================
   # EPIC 4: Workflow Orchestration Engine
   # =========================================
-  epic-4: backlog
-  4-1-workflow-definition-registry: backlog
-  4-2-workflow-instance-state-machine: backlog
-  4-3-step-execution-agent-routing: backlog
-  4-4-workflow-pause-resume: backlog
-  4-5-workflow-exit-cancellation: backlog
-  4-6-workflow-step-navigation: backlog
-  4-7-workflow-status-progress-api: backlog
+  epic-4: in-progress
+  4-1-workflow-definition-registry: ready-for-dev
+  4-2-workflow-instance-creation-state-machine: ready-for-dev
+  4-3-step-execution-agent-routing: ready-for-dev
+  4-4-workflow-pause-resume: ready-for-dev
+  4-5-workflow-exit-cancellation: ready-for-dev
+  4-6-workflow-step-navigation-skip: ready-for-dev
+  4-7-workflow-status-progress-api: ready-for-dev
   epic-4-retrospective: optional
 
   # ====================================
   # EPIC 5: Multi-Agent Collaboration
   # ====================================
-  epic-5: backlog
-  5-1-agent-registry-configuration: backlog
-  5-2-agent-to-agent-messaging: backlog
-  5-3-shared-workflow-context: backlog
-  5-4-agent-handoff-attribution: backlog
-  5-5-human-approval-low-confidence: backlog
+  epic-5: in-progress
+  5-1-agent-registry-configuration: ready-for-dev
+  5-2-agent-to-agent-messaging: ready-for-dev
+  5-3-shared-workflow-context: ready-for-dev
+  5-4-agent-handoff-attribution: ready-for-dev
+  5-5-human-approval-for-low-confidence-decisions: ready-for-dev
   epic-5-retrospective: optional
 
   # ============================================
   # EPIC 6: Decision Management & Locking
   # ============================================
-  epic-6: backlog
-  6-1-decision-capture-storage: backlog
-  6-2-decision-version-history: backlog
-  6-3-decision-locking-mechanism: backlog
-  6-4-decision-review-workflow: backlog
-  6-5-conflict-detection-resolution: backlog
+  epic-6: in-progress
+  6-1-decision-capture-storage: ready-for-dev
+  6-2-decision-version-history: ready-for-dev
+  6-3-decision-locking-mechanism: ready-for-dev
+  6-4-decision-review-workflow: ready-for-dev
+  6-5-conflict-detection-resolution: ready-for-dev
   epic-6-retrospective: optional
 
   # =============================================
   # EPIC 7: Collaboration & Multi-User Support
   # =============================================
-  epic-7: backlog
-  7-1-multi-user-workflow-participation: backlog
-  7-2-safe-checkpoint-system: backlog
-  7-3-input-attribution-history: backlog
-  7-4-conflict-detection-buffering: backlog
-  7-5-real-time-collaboration-updates: backlog
+  epic-7: in-progress
+  7-1-multi-user-workflow-participation: ready-for-dev
+  7-2-safe-checkpoint-system: ready-for-dev
+  7-3-input-attribution-history: ready-for-dev
+  7-4-conflict-detection-buffering: ready-for-dev
+  7-5-real-time-collaboration-updates: ready-for-dev
   epic-7-retrospective: optional
 
   # ==================================================
   # EPIC 8: Persona Translation & Language Adaptation
   # ==================================================
-  epic-8: backlog
-  8-1-persona-profile-configuration: backlog
-  8-2-business-language-translation: backlog
-  8-3-technical-language-mode: backlog
-  8-4-in-session-persona-switching: backlog
-  8-5-context-aware-response-adaptation: backlog
+  epic-8: in-progress
+  8-1-persona-profile-configuration: ready-for-dev
+  8-2-business-language-translation: ready-for-dev
+  8-3-technical-language-mode: ready-for-dev
+  8-4-in-session-persona-switching: ready-for-dev
+  8-5-context-aware-response-adaptation: ready-for-dev
   epic-8-retrospective: optional
 
   # ===============================================
   # EPIC 9: Data Persistence & State Management
   # ===============================================
-  epic-9: backlog
-  9-1-event-log-architecture: backlog
-  9-2-jsonb-state-storage-concurrency: backlog
-  9-3-artifact-storage-management: backlog
-  9-4-workflow-export-import: backlog
-  9-5-checkpoint-restoration: backlog
-  9-6-audit-log-retention-compliance: backlog
+  epic-9: in-progress
+  9-1-event-log-architecture: ready-for-dev
+  9-2-jsonb-state-storage-with-concurrency-control: ready-for-dev
+  9-3-artifact-storage-management: ready-for-dev
+  9-4-workflow-export-import: ready-for-dev
+  9-5-checkpoint-restoration: ready-for-dev
+  9-6-audit-log-retention-compliance: ready-for-dev
   epic-9-retrospective: optional
 
   # ====================================
   # EPIC 10: Error Handling & Recovery
   # ====================================
-  epic-10: backlog
-  10-1-graceful-error-handling: backlog
-  10-2-connection-recovery-retry: backlog
-  10-3-workflow-recovery-after-failure: backlog
-  10-4-conversation-stall-recovery: backlog
-  10-5-fallback-degradation-strategies: backlog
+  epic-10: in-progress
+  10-1-graceful-error-handling: ready-for-dev
+  10-2-connection-recovery-retry: ready-for-dev
+  10-3-workflow-recovery-after-failure: ready-for-dev
+  10-4-conversation-stall-recovery: ready-for-dev
+  10-5-graceful-degradation-under-load: ready-for-dev
   epic-10-retrospective: optional
 
   # =====================================
   # EPIC 11: Security & Access Control
   # =====================================
-  epic-11: backlog
-  11-1-per-user-rate-limiting: backlog
-  11-2-tls-encryption-transit: backlog
-  11-3-encryption-at-rest: backlog
-  11-4-api-security-headers: backlog
-  11-5-audit-logging-compliance: backlog
-  11-6-workflow-access-permissions: backlog
+  epic-11: in-progress
+  11-1-per-user-rate-limiting: ready-for-dev
+  11-2-security-headers-https-enforcement: ready-for-dev
+  11-3-input-validation-sanitization: ready-for-dev
+  11-4-encryption-at-rest: ready-for-dev
+  11-5-security-audit-logging: ready-for-dev
   epic-11-retrospective: optional
 
   # =========================================
   # EPIC 12: Admin Dashboard & Operations
   # =========================================
-  epic-12: backlog
-  12-1-health-monitoring-dashboard: backlog
-  12-2-user-management-interface: backlog
-  12-3-provider-configuration: backlog
-  12-4-workflow-activity-audit: backlog
-  12-5-system-configuration-management: backlog
-  12-6-audit-workflow-activity: backlog
+  epic-12: in-progress
+  12-1-system-health-dashboard: ready-for-dev
+  12-2-active-session-monitoring: ready-for-dev
+  12-3-user-management: ready-for-dev
+  12-4-provider-configuration: ready-for-dev
+  12-5-workflow-activity-audit: ready-for-dev
+  12-6-system-configuration-management: ready-for-dev
   epic-12-retrospective: optional
 
   # ==============================
   # EPIC 13: Integrations & Webhooks
   # ==============================
-  epic-13: backlog
-  13-1-webhook-configuration: backlog
-  13-2-event-serialization: backlog
-  13-3-webhook-delivery-retry: backlog
-  13-4-notification-system: backlog
-  13-5-external-tool-integration: backlog
+  epic-13: in-progress
+  13-1-webhook-configuration: ready-for-dev
+  13-2-webhook-event-delivery: ready-for-dev
+  13-3-event-ordering-idempotency: ready-for-dev
+  13-4-notification-integrations: ready-for-dev
+  13-5-webhook-management-api: ready-for-dev
   epic-13-retrospective: optional
