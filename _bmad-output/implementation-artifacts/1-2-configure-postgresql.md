@@ -64,10 +64,12 @@ so that I can persist workflow state, session data, and audit logs locally with 
 ## Tasks / Subtasks
 
 - [ ] **Task 1: Add Aspire PostgreSQL integration to AppHost** (AC: #1)
+  - [ ] **CRITICAL**: Per PROJECT-WIDE-RULES.md, use `aspire add` for Aspire components
+  - [ ] Check https://aspire.dev for PostgreSQL component documentation
+  - [ ] Run: `aspire add PostgreSQL.Server` (from src directory)
   - [ ] Open bmadServer.AppHost/Program.cs
-  - [ ] Add PostgreSQL resource: `var postgres = builder.AddPostgres("postgres").WithPgAdmin();`
+  - [ ] Add PostgreSQL resource: `var postgres = builder.AddPostgres("postgres");`
   - [ ] Configure database: `postgres.AddDatabase("bmadserver", "bmadserver_dev");`
-  - [ ] Add health check configuration in Aspire
   - [ ] Verify .csproj includes Aspire.Hosting.PostgreSQL package
 
 - [ ] **Task 2: Configure ApiService to use Aspire PostgreSQL** (AC: #2)
@@ -174,7 +176,10 @@ Initial entities are placeholders - full schemas defined in later epics:
 
 ### References
 
-- [.NET Aspire PostgreSQL Integration](https://learn.microsoft.com/en-us/dotnet/aspire/reference/aspire-hosting-postgresql)
+- **🥇 PRIMARY**: [aspire.dev](https://aspire.dev) - Official Microsoft Aspire documentation
+- **🥈 SECONDARY**: [GitHub: microsoft/aspire](https://github.com/microsoft/aspire) - Source code and samples
+- [PROJECT-WIDE-RULES.md](../../PROJECT-WIDE-RULES.md) - Universal Aspire-first development rules
+- [Aspire PostgreSQL Component Docs](https://aspire.dev/components/)
 - [EF Core PostgreSQL Provider](https://www.npgsql.org/efcore/)
 - [EF Core Migrations](https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/)
 - [Epic 1 Story 1.2](../../planning-artifacts/epics.md#story-12-configure-postgresql-database-for-local-development)

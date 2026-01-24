@@ -49,10 +49,11 @@ so that I have a cloud-native project structure with service orchestration built
   - [ ] Run dotnet restore to ensure all dependencies install
 
 - [ ] **Task 2: Build and verify baseline project** (AC: All AC #1-2)
-  - [ ] Run dotnet build in solution root
+  - [ ] **CRITICAL**: Use `aspire run` (NOT `dotnet run`) per PROJECT-WIDE-RULES.md
+  - [ ] Run dotnet build in solution root (build only, don't run)
   - [ ] Verify no compilation errors
   - [ ] Verify no warnings (if any appear, document them)
-  - [ ] Run aspire run to start the development environment
+  - [ ] Run `aspire run` to start the development environment
   - [ ] Verify Aspire dashboard appears at https://localhost:17360
   - [ ] Verify bmadServer.ApiService shows as "running"
 
@@ -115,7 +116,10 @@ Per architecture.md requirements:
 
 ### References
 
-- [Aspire Starter Template Docs](https://learn.microsoft.com/en-us/dotnet/aspire/get-started/aspire-setup)
+- **🥇 PRIMARY**: [aspire.dev](https://aspire.dev) - Official Microsoft documentation
+- **🥈 SECONDARY**: [GitHub: microsoft/aspire](https://github.com/microsoft/aspire) - Source and samples
+- [PROJECT-WIDE-RULES.md](../../PROJECT-WIDE-RULES.md) - Universal Aspire-first development rules
+- [ASPIRE_SETUP_GUIDE.md](../../ASPIRE_SETUP_GUIDE.md) - Development environment setup
 - [Epic 1: Aspire Foundation & Project Setup](../../planning-artifacts/epics.md#epic-1-aspire-foundation--project-setup)
 - [Architecture: Starter Template & Project Setup](../../planning-artifacts/architecture.md#starter-template--project-setup)
 - [Architecture: Aspire Orchestration](../../planning-artifacts/architecture.md#aspire-orchestration)

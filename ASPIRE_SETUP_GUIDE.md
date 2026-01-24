@@ -1,5 +1,17 @@
 # .NET Aspire Setup Guide for bmadServer
 
+## ⚠️ UNIVERSAL PROJECT RULES (READ FIRST)
+
+**These rules apply to ALL development on bmadServer:**
+
+1. **Aspire CLI BEFORE dotnet Commands**: Always use `aspire` commands before `dotnet` commands
+2. **Aspire Add-ons FIRST**: Use Aspire components before manual configuration
+3. **Documentation Source**: Reference https://aspire.dev as primary documentation source
+
+📋 **See PROJECT-WIDE-RULES.md for complete details and decision trees.**
+
+---
+
 ## Overview
 
 bmadServer uses **.NET Aspire** for cloud-native application orchestration and local development. Aspire provides:
@@ -60,9 +72,10 @@ bmadServer/
 **Command:**
 ```bash
 cd /Users/cris/bmadServer/src
-dotnet build                          # Build all projects
-aspire run                            # Start Aspire orchestration
+aspire run                            # Aspire builds and starts all services
 ```
+
+**Important:** Always use `aspire run` first. Aspire CLI handles building and orchestration automatically.
 
 **Expected Output:**
 ```
@@ -131,29 +144,53 @@ The current implementation covers:
 
 ## Working with Aspire
 
-### Adding a New Service
+### Adding a New Service - ASPIRE-FIRST WORKFLOW
 
-**In `bmadServer.AppHost/Program.cs`:**
-```csharp
-var redis = builder.AddRedis("redis")
-    .WithImage("redis")
-    .WithImageTag("latest");
+**ALWAYS follow this pattern:**
 
-var api = builder.AddProject<Projects.bmadServer_ApiService>("api")
-    .WithReference(redis)
-    .WithEnvironment("REDIS_CONNECTION", redis);
+1. **Check https://aspire.dev for the Aspire component**
+   - Search: "Component Name" (e.g., "PostgreSQL", "Redis")
+   - Find the official `Aspire.Hosting.*` package
 
-builder.Build().Run();
-```
+2. **Use Aspire add command**
+   ```bash
+   cd /Users/cris/bmadServer/src
+   aspire add PostgreSQL.Server
+   ```
 
-### Accessing Service Connection Strings
+3. **Configure in AppHost**
+   ```csharp
+   // In bmadServer.AppHost/Program.cs
+   var postgres = builder.AddPostgres("postgres");
+   var db = postgres.AddDatabase("bmadserver", "bmadserver_dev");
+   ```
 
-**In `bmadServer.ApiService/Program.cs`:**
-```csharp
-builder.AddServiceDefaults();  // Adds Aspire configuration
+4. **Wire service into your project**
+   ```csharp
+   // In bmadServer.ApiService/Program.cs
+   var api = builder.AddProject<Projects.bmadServer_ApiService>("api")
+       .WithReference(postgres);
+   ```
 
-var connectionString = builder.Configuration.GetConnectionString("postgres")
-    ?? throw new InvalidOperationException("Connection string not found");
+5. **Run with Aspire**
+   ```bash
+   aspire run
+   ```
+
+---
+
+### Adding a NuGet Package
+
+**Check for Aspire component FIRST:**
+
+```bash
+# Step 1: Visit https://aspire.dev and search for component
+# Step 2: If found as Aspire component, use:
+aspire add ComponentName
+
+# Step 3: If NOT found as Aspire component, then use dotnet:
+cd src/bmadServer.ApiService
+dotnet add package PackageName
 ```
 
 ### Debugging Aspire Issues
@@ -243,10 +280,23 @@ kill -9 <PID>
 
 ## References
 
-- [Microsoft .NET Aspire Documentation](https://learn.microsoft.com/en-us/dotnet/aspire/)
-- [Aspire GitHub Repository](https://github.com/dotnet/aspire)
-- [bmadServer Epic 1: Aspire Foundation](./\_bmad-output/planning-artifacts/epics.md#epic-1-aspire-foundation--project-setup)
-- [bmadServer Architecture](./\_bmad-output/planning-artifacts/architecture.md)
+**🥇 PRIMARY DOCUMENTATION SOURCES (Official Microsoft):**
+- **Aspire Official Docs**: https://aspire.dev
+- **Aspire GitHub**: https://github.com/microsoft/aspire
+- **Aspire Samples**: https://github.com/microsoft/aspire-samples
+- **Aspire Components**: https://github.com/microsoft/aspire#components
+
+**📚 SECONDARY REFERENCES:**
+- [Microsoft Learn: .NET Aspire](https://learn.microsoft.com/en-us/dotnet/aspire/)
+- [Aspire Dashboard Docs](https://aspire.dev/dashboard/)
+- [Aspire Components Reference](https://aspire.dev/components/)
+
+**📋 PROJECT DOCUMENTATION:**
+- [PROJECT-WIDE-RULES.md](./PROJECT-WIDE-RULES.md) - Universal Aspire-first rules
+- [bmadServer Epic 1: Aspire Foundation](./_bmad-output/planning-artifacts/epics.md#epic-1-aspire-foundation--project-setup)
+- [bmadServer Architecture](./_bmad-output/planning-artifacts/architecture.md)
+
+**⚠️ CRITICAL: Always check aspire.dev FIRST before searching elsewhere**
 
 ---
 
