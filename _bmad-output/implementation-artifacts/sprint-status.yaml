@@ -39,8 +39,8 @@ development_status:
   # EPIC 1: Aspire Foundation & Project Setup
   # ==========================================
   epic-1: in-progress
-  1-1-initialize-aspire-template: ready-for-dev
-  1-2-configure-postgresql: ready-for-dev
+  1-1-initialize-aspire-template: review
+  1-2-configure-postgresql: review
   1-3-docker-compose-orchestration: cancelled
   1-4-github-actions-cicd: backlog
   1-5-prometheus-grafana-monitoring: cancelled

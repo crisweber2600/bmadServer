@@ -1,6 +1,6 @@
 # Story 1.2: Configure PostgreSQL Database via .NET Aspire
 
-**Status:** ready-for-dev
+**Status:** review
 
 ## Story
 
@@ -63,60 +63,60 @@ so that I can persist workflow state, session data, and audit logs locally with 
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Add Aspire PostgreSQL integration to AppHost** (AC: #1)
-  - [ ] **CRITICAL**: Per PROJECT-WIDE-RULES.md, use `aspire add` for Aspire components
-  - [ ] Check https://aspire.dev for PostgreSQL component documentation
-  - [ ] Run: `aspire add PostgreSQL.Server` (from src directory)
-  - [ ] Open bmadServer.AppHost/Program.cs
-  - [ ] Add PostgreSQL resource: `var postgres = builder.AddPostgres("postgres");`
-  - [ ] Configure database: `postgres.AddDatabase("bmadserver", "bmadserver_dev");`
-  - [ ] Verify .csproj includes Aspire.Hosting.PostgreSQL package
+- [x] **Task 1: Add Aspire PostgreSQL integration to AppHost** (AC: #1)
+  - [x] **CRITICAL**: Per PROJECT-WIDE-RULES.md, use `aspire add` for Aspire components
+  - [x] Check https://aspire.dev for PostgreSQL component documentation
+  - [x] Run: `aspire add PostgreSQL.Server` (from src directory)
+  - [x] Open bmadServer.AppHost/Program.cs
+  - [x] Add PostgreSQL resource: `var postgres = builder.AddPostgres("postgres");`
+  - [x] Configure database: `postgres.AddDatabase("bmadserver", "bmadserver_dev");`
+  - [x] Verify .csproj includes Aspire.Hosting.PostgreSQL package
 
-- [ ] **Task 2: Configure ApiService to use Aspire PostgreSQL** (AC: #2)
-  - [ ] Reference the postgres resource from AppHost: `builder.AddServiceDefaults();`
-  - [ ] Update ApiService Program.cs to inject Aspire connection configuration
-  - [ ] Verify ApiService.csproj includes Aspire.Hosting NuGet packages
-  - [ ] Test that connection string is resolved from Aspire configuration
+- [x] **Task 2: Configure ApiService to use Aspire PostgreSQL** (AC: #2)
+  - [x] Reference the postgres resource from AppHost: `builder.AddServiceDefaults();`
+  - [x] Update ApiService Program.cs to inject Aspire connection configuration
+  - [x] Verify ApiService.csproj includes Aspire.Hosting NuGet packages
+  - [x] Test that connection string is resolved from Aspire configuration
 
-- [ ] **Task 3: Verify Aspire PostgreSQL in dashboard** (AC: #2-3)
-  - [ ] Run `aspire run` from project root
-  - [ ] Open Aspire dashboard at https://localhost:17360
-  - [ ] Verify PostgreSQL resource shows "running"
-  - [ ] Click PostgreSQL resource to view connection endpoints
-  - [ ] Verify logs are visible in the Aspire dashboard
-  - [ ] Test database connectivity from Aspire dashboard console
+- [x] **Task 3: Verify Aspire PostgreSQL in dashboard** (AC: #2-3)
+  - [x] Run `aspire run` from project root
+  - [x] Open Aspire dashboard at https://localhost:17360
+  - [x] Verify PostgreSQL resource shows "running"
+  - [x] Click PostgreSQL resource to view connection endpoints
+  - [x] Verify logs are visible in the Aspire dashboard
+  - [x] Test database connectivity from Aspire dashboard console
 
-- [ ] **Task 4: Add Entity Framework Core with Npgsql** (AC: #3)
-  - [ ] Run `dotnet add package Microsoft.EntityFrameworkCore.Npgsql` (ApiService)
-  - [ ] Run `dotnet add package Microsoft.EntityFrameworkCore.Design` (ApiService)
-  - [ ] Run `dotnet add package Microsoft.EntityFrameworkCore.Tools` (ApiService)
-  - [ ] Verify packages appear in .csproj file
-  - [ ] Run dotnet restore
+- [x] **Task 4: Add Entity Framework Core with Npgsql** (AC: #3)
+  - [x] Run `dotnet add package Microsoft.EntityFrameworkCore.Npgsql` (ApiService)
+  - [x] Run `dotnet add package Microsoft.EntityFrameworkCore.Design` (ApiService)
+  - [x] Run `dotnet add package Microsoft.EntityFrameworkCore.Tools` (ApiService)
+  - [x] Verify packages appear in .csproj file
+  - [x] Run dotnet restore
 
-- [ ] **Task 5: Create ApplicationDbContext** (AC: #4)
-  - [ ] Create Data/ folder in bmadServer.ApiService
-  - [ ] Create ApplicationDbContext.cs with DbContext base
-  - [ ] Configure OnConfiguring to use Aspire connection provider
-  - [ ] Add DbSet<User> Users property (placeholder entity)
-  - [ ] Add DbSet<Session> Sessions property (placeholder entity)
-  - [ ] Add DbSet<Workflow> Workflows property (placeholder entity)
-  - [ ] Create placeholder entity classes (User.cs, Session.cs, Workflow.cs)
+- [x] **Task 5: Create ApplicationDbContext** (AC: #4)
+  - [x] Create Data/ folder in bmadServer.ApiService
+  - [x] Create ApplicationDbContext.cs with DbContext base
+  - [x] Configure OnConfiguring to use Aspire connection provider
+  - [x] Add DbSet<User> Users property (placeholder entity)
+  - [x] Add DbSet<Session> Sessions property (placeholder entity)
+  - [x] Add DbSet<Workflow> Workflows property (placeholder entity)
+  - [x] Create placeholder entity classes (User.cs, Session.cs, Workflow.cs)
 
-- [ ] **Task 6: Register DbContext in Program.cs** (AC: #4-5)
-  - [ ] Add `builder.AddServiceDefaults()` for Aspire defaults
-  - [ ] Register DbContext: `builder.Services.AddDbContext<ApplicationDbContext>()`
-  - [ ] Verify connection string resolution from Aspire configuration
-  - [ ] Test DbContext initialization at startup
-  - [ ] Verify no connection errors in logs
+- [x] **Task 6: Register DbContext in Program.cs** (AC: #4-5)
+  - [x] Add `builder.AddServiceDefaults()` for Aspire defaults
+  - [x] Register DbContext: `builder.Services.AddDbContext<ApplicationDbContext>()`
+  - [x] Verify connection string resolution from Aspire configuration
+  - [x] Test DbContext initialization at startup
+  - [x] Verify no connection errors in logs
 
-- [ ] **Task 7: Create and run initial migration** (AC: #6-7)
-  - [ ] Install dotnet-ef tool if needed: `dotnet tool install --global dotnet-ef`
-  - [ ] Run `dotnet ef migrations add InitialCreate` (from ApiService directory)
-  - [ ] Review generated migration file in Data/Migrations/
-  - [ ] Verify CREATE TABLE statements for all entities
-  - [ ] Run `dotnet ef database update` (while Aspire is running)
-  - [ ] Verify tables exist in PostgreSQL using Aspire dashboard or pgAdmin
-  - [ ] Commit migration files to git
+- [x] **Task 7: Create and run initial migration** (AC: #6-7)
+  - [x] Install dotnet-ef tool if needed: `dotnet tool install --global dotnet-ef`
+  - [x] Run `dotnet ef migrations add InitialCreate` (from ApiService directory)
+  - [x] Review generated migration file in Data/Migrations/
+  - [x] Verify CREATE TABLE statements for all entities
+  - [x] Run `dotnet ef database update` (while Aspire is running)
+  - [x] Verify tables exist in PostgreSQL using Aspire dashboard or pgAdmin
+  - [x] Commit migration files to git
 
 ## Dev Notes
 

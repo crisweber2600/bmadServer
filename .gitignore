@@ -1,0 +1,73 @@
+# Build Output
+bin/
+obj/
+out/
+*.dll
+*.exe
+*.so
+*.dylib
+
+# IDE Configuration
+.vscode/
+.idea/
+*.sln.iml
+*.swp
+*.swo
+*~
+
+# User Settings
+*.user
+*.userprefs
+
+# Build Directories
+target/
+dist/
+
+# Aspire Configuration
+.aspire/
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+
+# Node modules (for Web)
+node_modules/
+
+# Environment Files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Test Results
+TestResults/
+coverage/
+
+# Temporary Files
+tmp/
+temp/
+
+# Application Insights
+ApplicationInsights.config
+
+# User Secrets
+*/Properties/launchSettings.json
+secrets.json
+
+# Visual Studio Cache
+.vs/
+
+# GitHub Actions
+.github/workflows/temp/
+
+# Miscellaneous
+*.bak
+*.backup
