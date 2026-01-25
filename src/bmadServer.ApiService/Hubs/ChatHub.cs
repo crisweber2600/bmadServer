@@ -62,6 +62,10 @@ public class ChatHub : Hub
                 session.Id, userId);
         }
 
+        _logger.LogInformation(
+            "Connection established successfully for user {UserId} with connection ID {ConnectionId}",
+            userId, connectionId);
+
         await base.OnConnectedAsync();
     }
 
@@ -106,6 +110,7 @@ public class ChatHub : Hub
     /// </summary>
     public async Task SendMessage(string message)
     {
+        var receiveTime = DateTime.UtcNow;
         var userId = GetUserIdFromClaims();
         
         // Get active session
@@ -137,8 +142,10 @@ public class ChatHub : Hub
             }
         });
 
-        _logger.LogInformation("User {UserId} sent message in session {SessionId}", 
-            userId, session.Id);
+        var processTime = (DateTime.UtcNow - receiveTime).TotalMilliseconds;
+        _logger.LogInformation(
+            "User {UserId} sent message in session {SessionId}. Processing time: {ProcessTimeMs}ms", 
+            userId, session.Id, processTime);
 
         // Echo message back (placeholder - real implementation would invoke workflow/agent)
         await Clients.Caller.SendAsync("ReceiveMessage", new
@@ -147,5 +154,31 @@ public class ChatHub : Hub
             Content = message,
             Timestamp = DateTime.UtcNow
         });
+    }
+
+    /// <summary>
+    /// Joins a workflow group for targeted messaging.
+    /// </summary>
+    public async Task JoinWorkflow(string workflowName)
+    {
+        var userId = GetUserIdFromClaims();
+        await Groups.AddToGroupAsync(Context.ConnectionId, workflowName);
+        
+        _logger.LogInformation(
+            "User {UserId} joined workflow group {WorkflowName}",
+            userId, workflowName);
+    }
+
+    /// <summary>
+    /// Leaves a workflow group.
+    /// </summary>
+    public async Task LeaveWorkflow(string workflowName)
+    {
+        var userId = GetUserIdFromClaims();
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, workflowName);
+        
+        _logger.LogInformation(
+            "User {UserId} left workflow group {WorkflowName}",
+            userId, workflowName);
     }
 }
