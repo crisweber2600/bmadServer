@@ -62,6 +62,9 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.IRefreshTokenService, 
 // Register session service
 builder.Services.AddScoped<bmadServer.ApiService.Services.ISessionService, bmadServer.ApiService.Services.SessionService>();
 
+// Register message streaming service
+builder.Services.AddSingleton<bmadServer.ApiService.Services.IMessageStreamingService, bmadServer.ApiService.Services.MessageStreamingService>();
+
 // Register role service
 builder.Services.AddScoped<bmadServer.ApiService.Services.IRoleService, bmadServer.ApiService.Services.RoleService>();
 

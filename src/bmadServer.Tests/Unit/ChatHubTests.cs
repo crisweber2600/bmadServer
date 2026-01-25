@@ -17,6 +17,7 @@ namespace bmadServer.Tests.Unit;
 public class ChatHubTests
 {
     private readonly Mock<ISessionService> _sessionServiceMock;
+    private readonly Mock<IMessageStreamingService> _streamingServiceMock;
     private readonly Mock<ILogger<ChatHub>> _loggerMock;
     private readonly Mock<HubCallerContext> _contextMock;
     private readonly Mock<IHubCallerClients> _clientsMock;
@@ -27,13 +28,17 @@ public class ChatHubTests
     public ChatHubTests()
     {
         _sessionServiceMock = new Mock<ISessionService>();
+        _streamingServiceMock = new Mock<IMessageStreamingService>();
         _loggerMock = new Mock<ILogger<ChatHub>>();
         _contextMock = new Mock<HubCallerContext>();
         _clientsMock = new Mock<IHubCallerClients>();
         _callerMock = new Mock<ISingleClientProxy>();
         _groupsMock = new Mock<IGroupManager>();
 
-        _chatHub = new ChatHub(_sessionServiceMock.Object, _loggerMock.Object)
+        _chatHub = new ChatHub(
+            _sessionServiceMock.Object, 
+            _streamingServiceMock.Object,
+            _loggerMock.Object)
         {
             Context = _contextMock.Object,
             Clients = _clientsMock.Object,
@@ -167,7 +172,10 @@ public class ChatHubTests
         var contextWithoutClaims = new Mock<HubCallerContext>();
         contextWithoutClaims.Setup(c => c.User).Returns((ClaimsPrincipal?)null);
         
-        var chatHub = new ChatHub(_sessionServiceMock.Object, _loggerMock.Object)
+        var chatHub = new ChatHub(
+            _sessionServiceMock.Object, 
+            _streamingServiceMock.Object,
+            _loggerMock.Object)
         {
             Context = contextWithoutClaims.Object
         };
