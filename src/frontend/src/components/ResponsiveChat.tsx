@@ -129,11 +129,21 @@ export const ResponsiveChat: React.FC<ResponsiveChatProps> = ({
     [handleSend]
   );
 
+  useEffect(() => {
+    let activeStreamingId: string | null = null;
+    streamingMessages.forEach((streamingMsg) => {
+      if (!streamingMsg.isComplete) {
+        activeStreamingId = streamingMsg.messageId;
+      }
+    });
+    if (activeStreamingId !== currentStreamingMessageId) {
+      setCurrentStreamingMessageId(activeStreamingId);
+    }
+  }, [streamingMessages, currentStreamingMessageId]);
+
   const renderMessages = () => {
     const allMessages = [...messages];
-    let streamingMessageId: string | null = null;
 
-    // Add streaming messages
     streamingMessages.forEach((streamingMsg) => {
       allMessages.push({
         id: streamingMsg.messageId,
@@ -142,15 +152,7 @@ export const ResponsiveChat: React.FC<ResponsiveChatProps> = ({
         timestamp: streamingMsg.timestamp,
         agentName: 'BMAD Agent',
       });
-      if (!streamingMsg.isComplete) {
-        streamingMessageId = streamingMsg.messageId;
-      }
     });
-
-    // Update current streaming message ID outside of render
-    if (streamingMessageId !== currentStreamingMessageId) {
-      setCurrentStreamingMessageId(streamingMessageId);
-    }
 
     return allMessages.map((msg) => (
       <ChatMessage

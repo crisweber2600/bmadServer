@@ -49,8 +49,7 @@ public class ChatController : ControllerBase
 
         try
         {
-            // Get active session - use any connection ID for lookup (session is user-specific)
-            var session = await _sessionService.GetActiveSessionAsync(userId, connectionId: null!);
+            var session = await _sessionService.GetMostRecentActiveSessionAsync(userId);
 
             if (session?.WorkflowState == null)
             {
@@ -110,7 +109,7 @@ public class ChatController : ControllerBase
 
         try
         {
-            var session = await _sessionService.GetActiveSessionAsync(userId, connectionId: null!);
+            var session = await _sessionService.GetMostRecentActiveSessionAsync(userId);
 
             if (session?.WorkflowState == null)
             {

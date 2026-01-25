@@ -6,28 +6,26 @@ using System.Security.Claims;
 
 namespace bmadServer.ApiService.Hubs;
 
-/// <summary>
-/// SignalR hub for real-time chat communication.
-/// Manages session lifecycle: connection, disconnection, and recovery.
-/// </summary>
 [Authorize]
 public class ChatHub : Hub
 {
     private readonly ISessionService _sessionService;
     private readonly ILogger<ChatHub> _logger;
     private readonly IConfiguration _configuration;
+    private readonly int _maxHistoryMessages;
+    private readonly int _partialSaveThrottleMs;
+    private readonly int _partialSaveChunkInterval;
 
     public ChatHub(ISessionService sessionService, ILogger<ChatHub> logger, IConfiguration configuration)
     {
         _sessionService = sessionService;
         _logger = logger;
         _configuration = configuration;
+        _maxHistoryMessages = configuration.GetValue<int>("Chat:MaxHistoryMessages", 10);
+        _partialSaveThrottleMs = configuration.GetValue<int>("Streaming:PartialSaveThrottleMs", 500);
+        _partialSaveChunkInterval = configuration.GetValue<int>("Streaming:PartialSaveChunkInterval", 5);
     }
 
-    /// <summary>
-    /// Called when a client connects to the hub.
-    /// Creates or recovers session based on NFR6 requirements.
-    /// </summary>
     public override async Task OnConnectedAsync()
     {
         var userId = GetUserIdFromClaims();
@@ -36,12 +34,10 @@ public class ChatHub : Hub
         _logger.LogInformation("User {UserId} connecting with connection {ConnectionId}", 
             userId, connectionId);
 
-        // Attempt to recover existing session or create new one
         var (session, isRecovered) = await _sessionService.RecoverSessionAsync(userId, connectionId);
 
         if (isRecovered && session.WorkflowState != null)
         {
-            // Send recovery message to client
             await Clients.Caller.SendAsync("SESSION_RESTORED", new
             {
                 session.Id,
@@ -72,11 +68,6 @@ public class ChatHub : Hub
         await base.OnConnectedAsync();
     }
 
-    /// <summary>
-    /// Called when a client disconnects from the hub.
-    /// Session is NOT immediately expired to allow for reconnection within 60s window.
-    /// Cleanup service will expire sessions after idle timeout.
-    /// </summary>
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         var userId = GetUserIdFromClaims();
@@ -86,15 +77,9 @@ public class ChatHub : Hub
             "User {UserId} disconnected from connection {ConnectionId}. Exception: {Exception}", 
             userId, connectionId, exception?.Message);
 
-        // Don't expire session immediately - allow reconnection within 60s
-        // Session cleanup service will handle expiration after idle timeout
-
         await base.OnDisconnectedAsync(exception);
     }
 
-    /// <summary>
-    /// Extracts user ID from JWT claims.
-    /// </summary>
     private Guid GetUserIdFromClaims()
     {
         var userIdClaim = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
@@ -108,15 +93,11 @@ public class ChatHub : Hub
         return userId;
     }
 
-    /// <summary>
-    /// Sends a chat message and updates session activity.
-    /// </summary>
     public async Task SendMessage(string message)
     {
         var receiveTime = DateTime.UtcNow;
         var userId = GetUserIdFromClaims();
         
-        // Get active session
         var session = await _sessionService.GetActiveSessionAsync(userId, Context.ConnectionId);
         if (session == null)
         {
@@ -125,7 +106,6 @@ public class ChatHub : Hub
 
         var userMessageId = Guid.NewGuid().ToString();
 
-        // Update session state with new message
         await _sessionService.UpdateSessionStateAsync(session.Id, userId, s =>
         {
             s.WorkflowState ??= new Models.WorkflowState();
@@ -138,11 +118,10 @@ public class ChatHub : Hub
                 Timestamp = DateTime.UtcNow
             });
 
-            // Keep only last 10 messages per AC
-            if (s.WorkflowState.ConversationHistory.Count > 10)
+            if (s.WorkflowState.ConversationHistory.Count > _maxHistoryMessages)
             {
                 s.WorkflowState.ConversationHistory = s.WorkflowState.ConversationHistory
-                    .TakeLast(10)
+                    .TakeLast(_maxHistoryMessages)
                     .ToList();
             }
         });
@@ -152,7 +131,6 @@ public class ChatHub : Hub
             "User {UserId} sent message in session {SessionId}. Processing time: {ProcessTimeMs}ms", 
             userId, session.Id, processTime);
 
-        // Echo user message back
         await Clients.Caller.SendAsync("ReceiveMessage", new
         {
             Role = "user",
@@ -161,29 +139,26 @@ public class ChatHub : Hub
             MessageId = userMessageId
         });
 
-        // Start streaming agent response (simulated for now)
         await StreamAgentResponse(userId, session.Id, message);
     }
 
-    /// <summary>
-    /// Simulates streaming an agent response with MESSAGE_CHUNK events.
-    /// In production, this would integrate with an actual AI agent/LLM.
-    /// </summary>
     private async Task StreamAgentResponse(Guid userId, Guid sessionId, string userMessage)
     {
         var messageId = Guid.NewGuid().ToString();
         var agentId = "bmad-agent-1";
         var fullResponse = GenerateSimulatedResponse(userMessage);
         
-        // Simulate token-by-token streaming
         var words = fullResponse.Split(' ');
         var streamedContent = "";
+        var lastSaveTime = DateTime.UtcNow;
+        var chunksSinceLastSave = 0;
 
         for (int i = 0; i < words.Length; i++)
         {
             var chunk = (i == 0 ? "" : " ") + words[i];
             streamedContent += chunk;
             var isComplete = i == words.Length - 1;
+            chunksSinceLastSave++;
 
             await Clients.Caller.SendAsync("MESSAGE_CHUNK", new
             {
@@ -194,19 +169,22 @@ public class ChatHub : Hub
                 Timestamp = DateTime.UtcNow
             });
 
-            // Save partial message for recovery
-            if (!isComplete)
+            var timeSinceLastSave = (DateTime.UtcNow - lastSaveTime).TotalMilliseconds;
+            var shouldSave = !isComplete && 
+                (timeSinceLastSave >= _partialSaveThrottleMs || chunksSinceLastSave >= _partialSaveChunkInterval);
+
+            if (shouldSave)
             {
                 await SavePartialMessage(sessionId, userId, messageId, streamedContent, agentId);
+                lastSaveTime = DateTime.UtcNow;
+                chunksSinceLastSave = 0;
             }
 
-            // Simulate streaming delay (configurable via appsettings)
             var minDelay = _configuration.GetValue<int>("Streaming:MinDelayMs", 50);
             var maxDelay = _configuration.GetValue<int>("Streaming:MaxDelayMs", 100);
-            await Task.Delay(Random.Shared.Next(minDelay, maxDelay));
+            await Task.Delay(Random.Shared.Next(minDelay, maxDelay + 1));
         }
 
-        // Save complete message to session history
         await _sessionService.UpdateSessionStateAsync(sessionId, userId, s =>
         {
             s.WorkflowState ??= new Models.WorkflowState();
@@ -218,12 +196,10 @@ public class ChatHub : Hub
                 Timestamp = DateTime.UtcNow,
                 AgentId = agentId
             });
+            s.WorkflowState.PendingInput = null;
         });
     }
 
-    /// <summary>
-    /// Saves partial message for interruption recovery.
-    /// </summary>
     private async Task SavePartialMessage(Guid sessionId, Guid userId, string messageId, 
         string partialContent, string agentId)
     {
@@ -240,15 +216,11 @@ public class ChatHub : Hub
         });
     }
 
-    /// <summary>
-    /// Stops message generation mid-stream.
-    /// </summary>
     public async Task StopGenerating(string messageId)
     {
         var userId = GetUserIdFromClaims();
         _logger.LogInformation("User {UserId} requested to stop message {MessageId}", userId, messageId);
 
-        // Signal client that generation stopped
         await Clients.Caller.SendAsync("GENERATION_STOPPED", new
         {
             MessageId = messageId,
@@ -273,9 +245,6 @@ public class ChatHub : Hub
         return $"You said: \"{userMessage}\"\n\nThat's interesting! I can help you with various tasks. Try asking about help, code, or links.";
     }
 
-    /// <summary>
-    /// Joins a workflow group for targeted messaging.
-    /// </summary>
     public async Task JoinWorkflow(string workflowName)
     {
         var userId = GetUserIdFromClaims();
@@ -286,9 +255,6 @@ public class ChatHub : Hub
             userId, workflowName);
     }
 
-    /// <summary>
-    /// Leaves a workflow group.
-    /// </summary>
     public async Task LeaveWorkflow(string workflowName)
     {
         var userId = GetUserIdFromClaims();

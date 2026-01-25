@@ -8,8 +8,8 @@ Object.defineProperty(window, 'matchMedia', {
     matches: false,
     media: query,
     onchange: null,
-    addListener: () => {}, // deprecated
-    removeListener: () => {}, // deprecated
+    addListener: () => {},
+    removeListener: () => {},
     addEventListener: () => {},
     removeEventListener: () => {},
     dispatchEvent: () => {},
@@ -26,15 +26,33 @@ global.ResizeObserver = class ResizeObserver {
   disconnect() {}
 };
 
-// Mock getBoundingClientRect for ChatInput
-Element.prototype.getBoundingClientRect = vi.fn().mockReturnValue({
+const mockRect = {
   top: 0,
   left: 0,
-  bottom: 0,
-  right: 0,
-  width: 0,
-  height: 0,
+  bottom: 100,
+  right: 100,
+  width: 100,
+  height: 100,
   x: 0,
   y: 0,
-  toJSON: () => {},
-});
+  toJSON: () => mockRect,
+};
+
+Element.prototype.getBoundingClientRect = vi.fn().mockReturnValue(mockRect);
+
+const originalGetComputedStyle = window.getComputedStyle;
+window.getComputedStyle = (element: Element, pseudoElt?: string | null) => {
+  try {
+    return originalGetComputedStyle(element, pseudoElt);
+  } catch {
+    return {
+      getPropertyValue: () => '',
+      visibility: 'visible',
+      display: 'block',
+    } as unknown as CSSStyleDeclaration;
+  }
+};
+
+vi.mock('antd/lib/_util/wave', () => ({
+  default: () => null,
+}));

@@ -161,15 +161,14 @@ public class ChatHubStreamingTests : IClassFixture<TestWebApplicationFactory>
     }
 
     [Fact]
-    public async Task ConversationHistory_Should_Keep_Only_Last_10_Messages()
+    public async Task ConversationHistory_Should_Keep_Only_Configured_Max_Messages()
     {
-        // Arrange
         using var scope = _factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
         var user = new User
         {
-            Email = $"test-limit-{Guid.NewGuid()}@example.com",
+            Email = $"test-configlimit-{Guid.NewGuid()}@example.com",
             PasswordHash = "hash",
             DisplayName = "Test User"
         };
@@ -177,9 +176,8 @@ public class ChatHubStreamingTests : IClassFixture<TestWebApplicationFactory>
         await dbContext.SaveChangesAsync();
 
         var sessionService = scope.ServiceProvider.GetRequiredService<ISessionService>();
-        var (session, _) = await sessionService.RecoverSessionAsync(user.Id, "conn-limit-test");
+        var (session, _) = await sessionService.RecoverSessionAsync(user.Id, "conn-configlimit-test");
 
-        // Act - Add 15 messages
         for (int i = 0; i < 15; i++)
         {
             await sessionService.UpdateSessionStateAsync(session.Id, user.Id, s =>
@@ -193,7 +191,6 @@ public class ChatHubStreamingTests : IClassFixture<TestWebApplicationFactory>
                     Timestamp = DateTime.UtcNow
                 });
 
-                // Keep only last 10
                 if (s.WorkflowState.ConversationHistory.Count > 10)
                 {
                     s.WorkflowState.ConversationHistory = s.WorkflowState.ConversationHistory
@@ -203,14 +200,12 @@ public class ChatHubStreamingTests : IClassFixture<TestWebApplicationFactory>
             });
         }
 
-        var updatedSession = await sessionService.GetActiveSessionAsync(user.Id, "conn-limit-test");
+        var updatedSession = await sessionService.GetActiveSessionAsync(user.Id, "conn-configlimit-test");
 
-        // Assert
         Assert.NotNull(updatedSession);
         Assert.NotNull(updatedSession.WorkflowState);
         Assert.Equal(10, updatedSession.WorkflowState.ConversationHistory.Count);
         
-        // Verify it kept the last 10 messages (5-14)
         Assert.Contains(updatedSession.WorkflowState.ConversationHistory, 
             m => m.Content == "Message 14");
         Assert.DoesNotContain(updatedSession.WorkflowState.ConversationHistory, 

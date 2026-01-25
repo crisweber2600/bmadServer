@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 export interface StreamingMessage {
   messageId: string;
@@ -26,6 +26,38 @@ export function useStreamingMessage(options?: UseStreamingMessageOptions) {
   );
   const [isStreaming, setIsStreaming] = useState(false);
   const stoppedMessagesRef = useRef<Set<string>>(new Set());
+  const cleanupTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      cleanupTimeoutsRef.current.forEach((timeout) => clearTimeout(timeout));
+      cleanupTimeoutsRef.current.clear();
+    };
+  }, []);
+
+  const scheduleCleanup = useCallback((messageId: string, cleanupStopped: boolean = false) => {
+    // Clear any existing timeout for this message
+    const existingTimeout = cleanupTimeoutsRef.current.get(messageId);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+    }
+
+    const timeout = setTimeout(() => {
+      setStreamingMessages((current) => {
+        const cleaned = new Map(current);
+        cleaned.delete(messageId);
+        return cleaned;
+      });
+      setIsStreaming(false);
+      if (cleanupStopped) {
+        stoppedMessagesRef.current.delete(messageId);
+      }
+      cleanupTimeoutsRef.current.delete(messageId);
+    }, 100);
+
+    cleanupTimeoutsRef.current.set(messageId, timeout);
+  }, []);
 
   const handleMessageChunk = useCallback(
     (data: {
@@ -60,15 +92,8 @@ export function useStreamingMessage(options?: UseStreamingMessageOptions) {
         onChunk?.(data.Chunk);
         if (data.IsComplete) {
           onComplete?.(updated);
-          // Clean up completed message after callback
-          setTimeout(() => {
-            setStreamingMessages((current) => {
-              const cleaned = new Map(current);
-              cleaned.delete(messageId);
-              return cleaned;
-            });
-            setIsStreaming(false);
-          }, 100);
+          // Schedule cleanup for completed message
+          scheduleCleanup(messageId);
         } else {
           setIsStreaming(true);
         }
@@ -76,7 +101,7 @@ export function useStreamingMessage(options?: UseStreamingMessageOptions) {
         return newMap;
       });
     },
-    [onComplete, onChunk]
+    [onComplete, onChunk, scheduleCleanup]
   );
 
   const handleGenerationStopped = useCallback((data: { MessageId: string }) => {
@@ -98,23 +123,19 @@ export function useStreamingMessage(options?: UseStreamingMessageOptions) {
         // Call onComplete callback
         onComplete?.(stopped);
 
-        // Clean up stopped message
-        setTimeout(() => {
-          setStreamingMessages((current) => {
-            const cleaned = new Map(current);
-            cleaned.delete(messageId);
-            return cleaned;
-          });
-          setIsStreaming(false);
-          stoppedMessagesRef.current.delete(messageId);
-        }, 100);
+        // Schedule cleanup for stopped message
+        scheduleCleanup(messageId, true);
       }
 
       return newMap;
     });
-  }, [onComplete, stoppedMessageSuffix]);
+  }, [onComplete, stoppedMessageSuffix, scheduleCleanup]);
 
   const clearStreaming = useCallback(() => {
+    // Clear all pending timeouts
+    cleanupTimeoutsRef.current.forEach((timeout) => clearTimeout(timeout));
+    cleanupTimeoutsRef.current.clear();
+    
     setStreamingMessages(new Map());
     setIsStreaming(false);
     stoppedMessagesRef.current.clear();

@@ -12,7 +12,7 @@ export function useTouchGestures(options?: TouchGestureOptions) {
   const {
     onLongPress,
     onSwipeDown,
-    longPressDuration = 500,
+    longPressDuration = 300,
     swipeThreshold = 50,
   } = options || {};
 

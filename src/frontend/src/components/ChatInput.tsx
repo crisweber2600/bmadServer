@@ -86,7 +86,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     if (newMessage.endsWith('/')) {
       const textarea = textAreaRef.current;
       if (textarea && typeof textarea.getBoundingClientRect === 'function') {
-        const { selectionStart } = textarea;
         const rect = textarea.getBoundingClientRect();
         // Simple position calculation - in a real app, you'd calculate exact caret position
         setCommandPalettePosition({
@@ -249,7 +248,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               type="secondary"
               className="keyboard-hint"
             >
-              {navigator.platform.toLowerCase().includes('mac') ? '⌘' : 'Ctrl'}+Enter to send
+              {/mac|iphone|ipad|ipod/i.test(navigator.userAgent) ? '⌘' : 'Ctrl'}+Enter to send
             </Text>
           </Space>
 
