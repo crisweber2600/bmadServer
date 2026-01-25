@@ -4,9 +4,11 @@ using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.DTOs;
 using bmadServer.ApiService.Services;
 using FluentValidation;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using System.Security.Claims;
 
 namespace bmadServer.ApiService.Controllers;
 
@@ -21,9 +23,11 @@ public class AuthController : ControllerBase
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IRefreshTokenService _refreshTokenService;
+    private readonly IRoleService _roleService;
     private readonly IValidator<RegisterRequest> _registerValidator;
     private readonly IValidator<LoginRequest> _loginValidator;
     private readonly JwtSettings _jwtSettings;
+    private readonly SessionSettings _sessionSettings;
     private readonly ILogger<AuthController> _logger;
     
     // Pre-computed dummy hash to prevent timing attacks without performance penalty
@@ -34,18 +38,22 @@ public class AuthController : ControllerBase
         IPasswordHasher passwordHasher,
         IJwtTokenService jwtTokenService,
         IRefreshTokenService refreshTokenService,
+        IRoleService roleService,
         IValidator<RegisterRequest> registerValidator,
         IValidator<LoginRequest> loginValidator,
         IOptions<JwtSettings> jwtSettings,
+        IOptions<SessionSettings> sessionSettings,
         ILogger<AuthController> logger)
     {
         _dbContext = dbContext;
         _passwordHasher = passwordHasher;
         _jwtTokenService = jwtTokenService;
         _refreshTokenService = refreshTokenService;
+        _roleService = roleService;
         _registerValidator = registerValidator;
         _loginValidator = loginValidator;
         _jwtSettings = jwtSettings.Value;
+        _sessionSettings = sessionSettings.Value;
         _logger = logger;
     }
 
@@ -84,9 +92,9 @@ public class AuthController : ControllerBase
                 });
         }
 
-        // Check for existing user
+        // Check for existing user (case-insensitive to prevent duplicate accounts)
         var existingUser = await _dbContext.Users
-            .FirstOrDefaultAsync(u => u.Email == request.Email);
+            .FirstOrDefaultAsync(u => u.Email.ToLower() == request.Email.ToLower());
 
         if (existingUser != null)
         {
@@ -114,6 +122,9 @@ public class AuthController : ControllerBase
         // Save to database
         _dbContext.Users.Add(user);
         await _dbContext.SaveChangesAsync();
+
+        // Assign default role (Participant)
+        await _roleService.AssignDefaultRoleAsync(user.Id);
 
         _logger.LogInformation("User registered successfully: {Email}", user.Email);
 
@@ -185,8 +196,11 @@ public class AuthController : ControllerBase
             });
         }
 
-        // Generate JWT token
-        var token = _jwtTokenService.GenerateAccessToken(user);
+        // Get user roles for JWT claims
+        var roles = await _roleService.GetUserRolesAsync(user.Id);
+        
+        // Generate JWT token with roles
+        var token = _jwtTokenService.GenerateAccessToken(user, roles);
 
         // Generate and store refresh token
         var (refreshToken, plainRefreshToken) = await _refreshTokenService.CreateRefreshTokenAsync(user);
@@ -247,9 +261,9 @@ public class AuthController : ControllerBase
         }
 
         // Validate and rotate refresh token
-        var (newToken, error) = await _refreshTokenService.ValidateAndRotateAsync(refreshToken);
+        var (newToken, newPlainToken, error) = await _refreshTokenService.ValidateAndRotateAsync(refreshToken);
 
-        if (error != null || newToken == null)
+        if (error != null || newToken == null || newPlainToken == null)
         {
             return Unauthorized(new ProblemDetails
             {
@@ -260,11 +274,12 @@ public class AuthController : ControllerBase
             });
         }
 
-        // Generate new access token
-        var accessToken = _jwtTokenService.GenerateAccessToken(newToken.User);
+        // Get user roles and generate new access token
+        var roles = await _roleService.GetUserRolesAsync(newToken.UserId);
+        var accessToken = _jwtTokenService.GenerateAccessToken(newToken.User, roles);
 
-        // Set new refresh token cookie (plain token is in TokenHash temporarily)
-        Response.Cookies.Append("refreshToken", newToken.TokenHash, GetRefreshTokenCookieOptions());
+        // Set new refresh token cookie with the plain token
+        Response.Cookies.Append("refreshToken", newPlainToken, GetRefreshTokenCookieOptions());
 
         _logger.LogInformation("Token refreshed successfully for user: {UserId}", newToken.UserId);
 
@@ -289,17 +304,36 @@ public class AuthController : ControllerBase
     /// <summary>
     /// Logout and revoke refresh token
     /// </summary>
+    /// <param name="reason">Optional reason for logout (e.g., "idle_timeout", "manual")</param>
     /// <returns>No content on successful logout</returns>
     /// <response code="204">Logout successful</response>
     [HttpPost("logout")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> Logout()
+    public async Task<IActionResult> Logout([FromQuery] string? reason = null)
     {
+        var userId = GetUserIdFromClaims();
+
         // Extract refresh token from cookie
         if (Request.Cookies.TryGetValue("refreshToken", out var refreshToken) && !string.IsNullOrEmpty(refreshToken))
         {
             var tokenHash = _refreshTokenService.HashToken(refreshToken);
-            await _refreshTokenService.RevokeRefreshTokenAsync(tokenHash, "logout");
+            await _refreshTokenService.RevokeRefreshTokenAsync(tokenHash, reason ?? "logout");
+        }
+
+        // Mark active session as inactive if authenticated
+        if (userId.HasValue)
+        {
+            var session = await _dbContext.Sessions
+                .Where(s => s.UserId == userId.Value && s.IsActive)
+                .OrderByDescending(s => s.LastActivityAt)
+                .FirstOrDefaultAsync();
+
+            if (session != null)
+            {
+                session.IsActive = false;
+                session.ConnectionId = null;
+                await _dbContext.SaveChangesAsync();
+            }
         }
 
         // Clear refresh token cookie
@@ -311,8 +345,74 @@ public class AuthController : ControllerBase
             Path = "/api/v1/auth/refresh"
         });
 
-        _logger.LogInformation("User logged out successfully");
+        _logger.LogInformation("User logged out successfully. Reason: {Reason}", reason ?? "manual");
 
         return NoContent();
+    }
+
+    /// <summary>
+    /// Extend session to prevent idle timeout
+    /// </summary>
+    /// <returns>No content on successful session extension</returns>
+    /// <response code="204">Session extended successfully</response>
+    /// <response code="401">User not authenticated</response>
+    /// <response code="404">No active session found</response>
+    [HttpPost("extend-session")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ExtendSession()
+    {
+        var userId = GetUserIdFromClaims();
+
+        if (!userId.HasValue)
+        {
+            return Unauthorized(new ProblemDetails
+            {
+                Type = "https://bmadserver.dev/errors/invalid-token",
+                Title = "Invalid Token",
+                Status = StatusCodes.Status401Unauthorized,
+                Detail = "Unable to extract user information from token"
+            });
+        }
+
+        var session = await _dbContext.Sessions
+            .Where(s => s.UserId == userId.Value && s.IsActive)
+            .OrderByDescending(s => s.LastActivityAt)
+            .FirstOrDefaultAsync();
+
+        if (session == null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Type = "https://bmadserver.dev/errors/no-active-session",
+                Title = "No Active Session",
+                Status = StatusCodes.Status404NotFound,
+                Detail = "No active session found for this user"
+            });
+        }
+
+        session.LastActivityAt = DateTime.UtcNow;
+        session.ExpiresAt = DateTime.UtcNow.AddMinutes(_sessionSettings.IdleTimeoutMinutes);
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogDebug("Session extended for user {UserId}", userId.Value);
+
+        return NoContent();
+    }
+
+    private Guid? GetUserIdFromClaims()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("sub")?.Value;
+
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        {
+            return null;
+        }
+
+        return userId;
     }
 }

@@ -2,6 +2,7 @@ using FluentValidation;
 using System.Reflection;
 using System.Text;
 using bmadServer.ApiService.Configuration;
+using bmadServer.ApiService.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -45,6 +46,10 @@ builder.Services.AddProblemDetails();
 // Configure JWT settings from appsettings.json
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.SectionName));
 
+// Configure session settings from appsettings.json
+builder.Services.Configure<bmadServer.ApiService.Configuration.SessionSettings>(
+    builder.Configuration.GetSection(bmadServer.ApiService.Configuration.SessionSettings.SectionName));
+
 // Register JWT token service
 builder.Services.AddScoped<bmadServer.ApiService.Services.IJwtTokenService, bmadServer.ApiService.Services.JwtTokenService>();
 
@@ -56,6 +61,9 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.IRefreshTokenService, 
 
 // Register session service
 builder.Services.AddScoped<bmadServer.ApiService.Services.ISessionService, bmadServer.ApiService.Services.SessionService>();
+
+// Register role service
+builder.Services.AddScoped<bmadServer.ApiService.Services.IRoleService, bmadServer.ApiService.Services.RoleService>();
 
 // Register session cleanup background service
 builder.Services.AddHostedService<bmadServer.ApiService.BackgroundServices.SessionCleanupService>();
@@ -157,6 +165,9 @@ app.UseExceptionHandler();
 // Add authentication and authorization middleware (order matters!)
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Track user activity for session idle timeout
+app.UseActivityTracking();
 
 // Map OpenAPI documentation endpoints (development only)
 if (app.Environment.IsDevelopment())

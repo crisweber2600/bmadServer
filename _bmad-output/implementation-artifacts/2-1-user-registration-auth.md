@@ -1,6 +1,6 @@
 # Story 2.1: User Registration & Local Database Authentication
 
-**Status:** review
+**Status:** done
 
 ## Story
 

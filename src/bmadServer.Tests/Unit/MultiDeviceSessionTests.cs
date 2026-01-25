@@ -1,25 +1,30 @@
+using bmadServer.ApiService.Configuration;
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.Models;
 using bmadServer.ApiService.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
 namespace bmadServer.Tests.Unit;
 
-/// <summary>
-/// Tests for multi-device session scenarios.
-/// Validates that users can have multiple active sessions and workflow state synchronization.
-/// </summary>
 public class MultiDeviceSessionTests
 {
     private readonly Mock<ILogger<SessionService>> _loggerMock;
+    private readonly IOptions<SessionSettings> _sessionSettings;
 
     public MultiDeviceSessionTests()
     {
         _loggerMock = new Mock<ILogger<SessionService>>();
+        _sessionSettings = Options.Create(new SessionSettings
+        {
+            RecoveryWindowSeconds = 60,
+            IdleTimeoutMinutes = 30,
+            WarningTimeoutMinutes = 28
+        });
     }
 
     private ApplicationDbContext CreateInMemoryDbContext()
@@ -36,7 +41,7 @@ public class MultiDeviceSessionTests
     {
         // Arrange
         await using var dbContext = CreateInMemoryDbContext();
-        var service = new SessionService(dbContext, _loggerMock.Object);
+        var service = new SessionService(dbContext, _loggerMock.Object, _sessionSettings);
 
         var user = new User
         {
@@ -82,7 +87,7 @@ public class MultiDeviceSessionTests
     {
         // Arrange
         await using var dbContext = CreateInMemoryDbContext();
-        var service = new SessionService(dbContext, _loggerMock.Object);
+        var service = new SessionService(dbContext, _loggerMock.Object, _sessionSettings);
 
         var user = new User
         {
@@ -128,7 +133,7 @@ public class MultiDeviceSessionTests
     {
         // Arrange
         await using var dbContext = CreateInMemoryDbContext();
-        var service = new SessionService(dbContext, _loggerMock.Object);
+        var service = new SessionService(dbContext, _loggerMock.Object, _sessionSettings);
 
         var user = new User
         {
@@ -175,7 +180,7 @@ public class MultiDeviceSessionTests
     {
         // Arrange
         await using var dbContext = CreateInMemoryDbContext();
-        var service = new SessionService(dbContext, _loggerMock.Object);
+        var service = new SessionService(dbContext, _loggerMock.Object, _sessionSettings);
 
         var user = new User
         {
@@ -201,9 +206,9 @@ public class MultiDeviceSessionTests
             s.WorkflowState = new WorkflowState { WorkflowName = "recent-workflow", CurrentStep = 5 };
         });
 
-        // Both sessions are outside recovery window
+        // Both sessions are outside recovery window, but recentSession has later LastActivityAt
         var s1 = await dbContext.Sessions.FindAsync(oldSession.Id);
-        s1!.LastActivityAt = DateTime.UtcNow.AddSeconds(-65);
+        s1!.LastActivityAt = DateTime.UtcNow.AddSeconds(-70);
         var s2 = await dbContext.Sessions.FindAsync(recentSession.Id);
         s2!.LastActivityAt = DateTime.UtcNow.AddSeconds(-65);
         await dbContext.SaveChangesAsync();

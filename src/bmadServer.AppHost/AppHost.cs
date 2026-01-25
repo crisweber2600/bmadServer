@@ -24,16 +24,17 @@ var apiService = builder.AddProject<Projects.bmadServer_ApiService>("apiservice"
     .WithReference(db)
     .WaitFor(db);
 
-// Configure the Web frontend (bmadServer.Web)
-// - WithExternalHttpEndpoints() exposes the frontend to the host machine
-// - WithHttpHealthCheck("/health") enables health monitoring
-// - WithReference(apiService) injects API service endpoint for client calls
+// Configure the React Web frontend (Vite-based)
+// - AddViteApp() creates a Node.js/Vite development server for the React app
+// - WithReference(apiService) injects API service endpoint via environment variables (APISERVICE_HTTP/HTTPS)
 // - WaitFor(apiService) ensures frontend starts after API is healthy
-var webfrontend = builder.AddProject<Projects.bmadServer_Web>("webfrontend")
-    .WithExternalHttpEndpoints()
-    .WithHttpHealthCheck("/health")
+// - Vite proxy configured in vite.config.ts routes /api/* to the API service
+var webfrontend = builder.AddViteApp("webfrontend", "../frontend")
     .WithReference(apiService)
     .WaitFor(apiService);
+
+// For production deployment, publish the static frontend with the API service
+apiService.PublishWithContainerFiles(webfrontend, "wwwroot");
 
 // Build and run the distributed application
 // This starts all services in dependency order:

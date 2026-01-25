@@ -15,6 +15,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Session> Sessions { get; set; }
     public DbSet<Workflow> Workflows { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
+    public DbSet<UserRole> UserRoles { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -92,6 +93,20 @@ public class ApplicationDbContext : DbContext
             
             entity.HasOne(e => e.User)
                 .WithMany(u => u.RefreshTokens)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserRole>(entity =>
+        {
+            entity.ToTable("user_roles");
+            entity.HasKey(e => new { e.UserId, e.Role });
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.AssignedBy);
+            entity.Property(e => e.Role).HasConversion<string>();
+            
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.UserRoles)
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });

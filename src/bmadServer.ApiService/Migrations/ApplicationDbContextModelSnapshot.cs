@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using bmadServer.ApiService.Data;
-using bmadServer.ApiService.Models;
 
 #nullable disable
 
@@ -87,7 +86,7 @@ namespace bmadServer.ApiService.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
-                    b.Property<WorkflowState>("WorkflowState")
+                    b.Property<string>("WorkflowState")
                         .HasColumnType("jsonb");
 
                     b.Property<uint>("xmin")
@@ -149,6 +148,27 @@ namespace bmadServer.ApiService.Migrations
                     b.ToTable("users", (string)null);
                 });
 
+            modelBuilder.Entity("bmadServer.ApiService.Data.Entities.UserRole", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Role")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("AssignedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("AssignedBy")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("UserId", "Role");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("user_roles", (string)null);
+                });
+
             modelBuilder.Entity("bmadServer.ApiService.Data.Entities.Workflow", b =>
                 {
                     b.Property<Guid>("Id")
@@ -196,11 +216,24 @@ namespace bmadServer.ApiService.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("bmadServer.ApiService.Data.Entities.UserRole", b =>
+                {
+                    b.HasOne("bmadServer.ApiService.Data.Entities.User", "User")
+                        .WithMany("UserRoles")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("bmadServer.ApiService.Data.Entities.User", b =>
                 {
                     b.Navigation("RefreshTokens");
 
                     b.Navigation("Sessions");
+
+                    b.Navigation("UserRoles");
                 });
 #pragma warning restore 612, 618
         }

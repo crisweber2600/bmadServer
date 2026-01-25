@@ -24,4 +24,9 @@ public class UserResponse
     /// Account creation timestamp (UTC)
     /// </summary>
     public DateTime CreatedAt { get; set; }
+    
+    /// <summary>
+    /// User roles (Admin, Participant, Viewer)
+    /// </summary>
+    public List<string> Roles { get; set; } = new();
 }

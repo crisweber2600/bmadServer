@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.8.0.0
@@ -9,7 +9,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "bmadServer.ServiceDefaults"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "bmadServer.ApiService", "bmadServer.ApiService\bmadServer.ApiService.csproj", "{0FC70485-34A7-41C9-B91A-FC675989FB31}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "bmadServer.Web", "bmadServer.Web\bmadServer.Web.csproj", "{86683004-3FC6-4D1B-AF11-0842FB98FDCB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "frontend", "frontend\frontend.esproj", "{86683004-3FC6-4D1B-AF11-0842FB98FDCB}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "bmadServer.ApiService.IntegrationTests", "bmadServer.ApiService.IntegrationTests\bmadServer.ApiService.IntegrationTests.csproj", "{45ABE8CC-8CA9-4472-844A-E98A2E32C762}"
 EndProject

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.DTOs;
+using bmadServer.ApiService.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,13 +16,16 @@ namespace bmadServer.ApiService.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly ApplicationDbContext _dbContext;
+    private readonly IRoleService _roleService;
     private readonly ILogger<UsersController> _logger;
 
     public UsersController(
         ApplicationDbContext dbContext,
+        IRoleService roleService,
         ILogger<UsersController> logger)
     {
         _dbContext = dbContext;
+        _roleService = roleService;
         _logger = logger;
     }
 
@@ -70,13 +74,15 @@ public class UsersController : ControllerBase
             });
         }
 
-        // Return user profile
+        var roles = await _roleService.GetUserRolesAsync(userId);
+
         var response = new UserResponse
         {
             Id = user.Id,
             Email = user.Email,
             DisplayName = user.DisplayName,
-            CreatedAt = user.CreatedAt
+            CreatedAt = user.CreatedAt,
+            Roles = roles.Select(r => r.ToString()).ToList()
         };
 
         return Ok(response);

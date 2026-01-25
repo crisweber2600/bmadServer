@@ -2,15 +2,15 @@
   "version": 3,
   "targets": {
     "net10.0": {
-      "Aspire.Dashboard.Sdk.osx-arm64/13.1.0": {
+      "Aspire.Dashboard.Sdk.linux-x64/13.1.0": {
         "type": "package",
         "build": {
-          "buildTransitive/Aspire.Dashboard.Sdk.osx-arm64.props": {},
-          "buildTransitive/Aspire.Dashboard.Sdk.osx-arm64.targets": {}
+          "buildTransitive/Aspire.Dashboard.Sdk.linux-x64.props": {},
+          "buildTransitive/Aspire.Dashboard.Sdk.linux-x64.targets": {}
         },
         "buildMultiTargeting": {
-          "buildMultiTargeting/Aspire.Dashboard.Sdk.osx-arm64.props": {},
-          "buildMultiTargeting/Aspire.Dashboard.Sdk.osx-arm64.targets": {}
+          "buildMultiTargeting/Aspire.Dashboard.Sdk.linux-x64.props": {},
+          "buildMultiTargeting/Aspire.Dashboard.Sdk.linux-x64.targets": {}
         }
       },
       "Aspire.Hosting/13.1.0": {
@@ -141,13 +141,53 @@
           "buildMultiTargeting/Aspire.Hosting.AppHost.targets": {}
         }
       },
-      "Aspire.Hosting.Orchestration.osx-arm64/13.1.0": {
+      "Aspire.Hosting.JavaScript/13.1.0": {
+        "type": "package",
+        "dependencies": {
+          "AspNetCore.HealthChecks.Uris": "9.0.0",
+          "Aspire.Hosting": "13.1.0",
+          "Google.Protobuf": "3.33.0",
+          "Grpc.AspNetCore": "2.71.0",
+          "Grpc.Net.ClientFactory": "2.71.0",
+          "Grpc.Tools": "2.72.0",
+          "Humanizer.Core": "2.14.1",
+          "JsonPatch.Net": "3.3.0",
+          "KubernetesClient": "18.0.5",
+          "Microsoft.Extensions.Configuration.Abstractions": "8.0.0",
+          "Microsoft.Extensions.Configuration.Binder": "8.0.2",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.2",
+          "Microsoft.Extensions.Diagnostics.HealthChecks": "8.0.22",
+          "Microsoft.Extensions.FileSystemGlobbing": "10.0.1",
+          "Microsoft.Extensions.Hosting": "8.0.1",
+          "Microsoft.Extensions.Hosting.Abstractions": "8.0.1",
+          "Microsoft.Extensions.Http": "8.0.1",
+          "Microsoft.Extensions.Logging.Abstractions": "8.0.3",
+          "Microsoft.Extensions.Options": "8.0.2",
+          "Microsoft.Extensions.Primitives": "8.0.0",
+          "Newtonsoft.Json": "13.0.4",
+          "Polly.Core": "8.6.4",
+          "Semver": "3.0.0",
+          "StreamJsonRpc": "2.22.23",
+          "System.IO.Hashing": "9.0.10"
+        },
+        "compile": {
+          "lib/net8.0/Aspire.Hosting.JavaScript.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/Aspire.Hosting.JavaScript.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "Aspire.Hosting.Orchestration.linux-x64/13.1.0": {
         "type": "package",
         "build": {
-          "buildTransitive/Aspire.Hosting.Orchestration.osx-arm64.targets": {}
+          "buildTransitive/Aspire.Hosting.Orchestration.linux-x64.targets": {}
         },
         "buildMultiTargeting": {
-          "buildMultiTargeting/Aspire.Hosting.Orchestration.osx-arm64.targets": {}
+          "buildMultiTargeting/Aspire.Hosting.Orchestration.linux-x64.targets": {}
         }
       },
       "Aspire.Hosting.PostgreSQL/13.1.0": {
@@ -1430,24 +1470,24 @@
     }
   },
   "libraries": {
-    "Aspire.Dashboard.Sdk.osx-arm64/13.1.0": {
-      "sha512": "gPPoB34mZokO4NY4oBv4Mk3yPS9L4kFOkK9o1yLL0Tgu3T7eVQFtzsCercPk9yHcxJr66IGeEOrpiYDJedE1uQ==",
+    "Aspire.Dashboard.Sdk.linux-x64/13.1.0": {
+      "sha512": "gIvMR7NdVGw+mUpK9qZsGuuYfDp4CHvBDLlykSSP9pCh5XGlMgDNR3uOMfvKVlqH1hAsOuecvxEcfQ9kjufrWw==",
       "type": "package",
-      "path": "aspire.dashboard.sdk.osx-arm64/13.1.0",
+      "path": "aspire.dashboard.sdk.linux-x64/13.1.0",
       "hasTools": true,
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "Icon.png",
         "THIRD-PARTY-NOTICES.TXT",
-        "aspire.dashboard.sdk.osx-arm64.13.1.0.nupkg.sha512",
-        "aspire.dashboard.sdk.osx-arm64.nuspec",
-        "build/Aspire.Dashboard.Sdk.osx-arm64.props",
-        "build/Aspire.Dashboard.Sdk.osx-arm64.targets",
-        "buildMultiTargeting/Aspire.Dashboard.Sdk.osx-arm64.props",
-        "buildMultiTargeting/Aspire.Dashboard.Sdk.osx-arm64.targets",
-        "buildTransitive/Aspire.Dashboard.Sdk.osx-arm64.props",
-        "buildTransitive/Aspire.Dashboard.Sdk.osx-arm64.targets",
+        "aspire.dashboard.sdk.linux-x64.13.1.0.nupkg.sha512",
+        "aspire.dashboard.sdk.linux-x64.nuspec",
+        "build/Aspire.Dashboard.Sdk.linux-x64.props",
+        "build/Aspire.Dashboard.Sdk.linux-x64.targets",
+        "buildMultiTargeting/Aspire.Dashboard.Sdk.linux-x64.props",
+        "buildMultiTargeting/Aspire.Dashboard.Sdk.linux-x64.targets",
+        "buildTransitive/Aspire.Dashboard.Sdk.linux-x64.props",
+        "buildTransitive/Aspire.Dashboard.Sdk.linux-x64.targets",
         "data/UnixFilePermissions.xml",
         "tools/Aspire.Dashboard",
         "tools/Aspire.Dashboard.deps.json",
@@ -1637,25 +1677,41 @@
         "tools/net8.0/Aspire.Hosting.Tasks.dll"
       ]
     },
-    "Aspire.Hosting.Orchestration.osx-arm64/13.1.0": {
-      "sha512": "Odw4PC2fvcC0QyG8C9OO9npGZznNZ9o86OhL7nSsc3MCv34n4zVFhp1OLKy/r6JNdiLoU1hdqF5ge8vzjdR++w==",
+    "Aspire.Hosting.JavaScript/13.1.0": {
+      "sha512": "NGCcm6BBVwAhY1gcPh5XdO3kT291jeqoO8oa+82n4EVmHOGudxUNE652jo19LdSB8eJnxC1oYvB49gcU7KaTew==",
       "type": "package",
-      "path": "aspire.hosting.orchestration.osx-arm64/13.1.0",
+      "path": "aspire.hosting.javascript/13.1.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "README.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "aspire.hosting.javascript.13.1.0.nupkg.sha512",
+        "aspire.hosting.javascript.nuspec",
+        "lib/net8.0/Aspire.Hosting.JavaScript.dll",
+        "lib/net8.0/Aspire.Hosting.JavaScript.xml"
+      ]
+    },
+    "Aspire.Hosting.Orchestration.linux-x64/13.1.0": {
+      "sha512": "V8u8ukncoflImciXeHG03x1pWbOiR4z1bIl2lwOKgdy7/JshFrlEaabaNuGmAIZFdWEM/fsc/hVDjecQyHF2aQ==",
+      "type": "package",
+      "path": "aspire.hosting.orchestration.linux-x64/13.1.0",
       "hasTools": true,
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "Icon.png",
         "THIRD-PARTY-NOTICES.TXT",
-        "aspire.hosting.orchestration.osx-arm64.13.1.0.nupkg.sha512",
-        "aspire.hosting.orchestration.osx-arm64.nuspec",
-        "build/Aspire.Hosting.Orchestration.osx-arm64.targets",
-        "buildMultiTargeting/Aspire.Hosting.Orchestration.osx-arm64.targets",
-        "buildTransitive/Aspire.Hosting.Orchestration.osx-arm64.targets",
+        "aspire.hosting.orchestration.linux-x64.13.1.0.nupkg.sha512",
+        "aspire.hosting.orchestration.linux-x64.nuspec",
+        "build/Aspire.Hosting.Orchestration.linux-x64.targets",
+        "buildMultiTargeting/Aspire.Hosting.Orchestration.linux-x64.targets",
+        "buildTransitive/Aspire.Hosting.Orchestration.linux-x64.targets",
         "data/UnixFilePermissions.xml",
         "tools/EULA.rtf",
         "tools/NOTICE",
-        "tools/_manifest/spdx_2.2/ESRPClientLogs1212224139564.json",
+        "tools/_manifest/spdx_2.2/ESRPClientLogs1212223249949.json",
         "tools/_manifest/spdx_2.2/bsi.cose",
         "tools/_manifest/spdx_2.2/bsi.json",
         "tools/_manifest/spdx_2.2/manifest.cat",
@@ -3462,32 +3518,32 @@
   },
   "projectFileDependencyGroups": {
     "net10.0": [
-      "Aspire.Dashboard.Sdk.osx-arm64 >= 13.1.0",
+      "Aspire.Dashboard.Sdk.linux-x64 >= 13.1.0",
       "Aspire.Hosting.AppHost >= 13.1.0",
-      "Aspire.Hosting.Orchestration.osx-arm64 >= 13.1.0",
+      "Aspire.Hosting.JavaScript >= 13.1.0",
+      "Aspire.Hosting.Orchestration.linux-x64 >= 13.1.0",
       "Aspire.Hosting.PostgreSQL >= 13.1.0"
     ]
   },
   "packageFolders": {
-    "/Users/cris/.nuget/packages/": {}
+    "/home/runner/.nuget/packages/": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/cris/bmadServer/src/bmadServer.AppHost/bmadServer.AppHost.csproj",
+      "projectUniqueName": "/home/runner/work/bmadServer/bmadServer/src/bmadServer.AppHost/bmadServer.AppHost.csproj",
       "projectName": "bmadServer.AppHost",
-      "projectPath": "/Users/cris/bmadServer/src/bmadServer.AppHost/bmadServer.AppHost.csproj",
-      "packagesPath": "/Users/cris/.nuget/packages/",
-      "outputPath": "/Users/cris/bmadServer/src/bmadServer.AppHost/obj/",
+      "projectPath": "/home/runner/work/bmadServer/bmadServer/src/bmadServer.AppHost/bmadServer.AppHost.csproj",
+      "packagesPath": "/home/runner/.nuget/packages/",
+      "outputPath": "/home/runner/work/bmadServer/bmadServer/src/bmadServer.AppHost/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/Users/cris/.nuget/NuGet/NuGet.Config"
+        "/home/runner/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net10.0"
       ],
       "sources": {
-        "/opt/homebrew/Cellar/dotnet/10.0.102/libexec/library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -3512,7 +3568,7 @@
       "net10.0": {
         "targetAlias": "net10.0",
         "dependencies": {
-          "Aspire.Dashboard.Sdk.osx-arm64": {
+          "Aspire.Dashboard.Sdk.linux-x64": {
             "target": "Package",
             "version": "[13.1.0, )",
             "autoReferenced": true
@@ -3522,7 +3578,11 @@
             "version": "[13.1.0, )",
             "autoReferenced": true
           },
-          "Aspire.Hosting.Orchestration.osx-arm64": {
+          "Aspire.Hosting.JavaScript": {
+            "target": "Package",
+            "version": "[13.1.0, )"
+          },
+          "Aspire.Hosting.Orchestration.linux-x64": {
             "target": "Package",
             "version": "[13.1.0, )",
             "autoReferenced": true
@@ -3548,7 +3608,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/opt/homebrew/Cellar/dotnet/10.0.102/libexec/sdk/10.0.102/PortableRuntimeIdentifierGraph.json",
+        "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/10.0.102/PortableRuntimeIdentifierGraph.json",
         "packagesToPrune": {
           "Microsoft.CSharp": "(,4.7.32767]",
           "Microsoft.VisualBasic": "(,10.4.32767]",
