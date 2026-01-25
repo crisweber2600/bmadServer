@@ -53,7 +53,7 @@ public class RefreshTokenService : IRefreshTokenService
         return (refreshToken, plainToken);
     }
 
-    public async Task<(RefreshToken? token, string? plainToken, string? error)> ValidateAndRotateAsync(string plainToken)
+    public async Task<RefreshTokenResult> ValidateAndRotateAsync(string plainToken)
     {
         var tokenHash = HashToken(plainToken);
         
@@ -69,7 +69,7 @@ public class RefreshTokenService : IRefreshTokenService
             if (token == null)
             {
                 _logger.LogWarning("Invalid refresh token attempt");
-                return (null, null, "Invalid refresh token");
+                return new RefreshTokenResult { Error = "Invalid refresh token" };
             }
             
             if (token.IsRevoked)
@@ -78,7 +78,7 @@ public class RefreshTokenService : IRefreshTokenService
                 await RevokeAllUserTokensAsync(token.UserId, "breach");
                 await _dbContext.SaveChangesAsync();
                 await transaction.CommitAsync();
-                return (null, null, "Refresh token has been revoked. All sessions terminated.");
+                return new RefreshTokenResult { Error = "Refresh token has been revoked. All sessions terminated." };
             }
             
             if (token.IsExpired)
@@ -88,7 +88,7 @@ public class RefreshTokenService : IRefreshTokenService
                 token.RevokedReason = "expired";
                 await _dbContext.SaveChangesAsync();
                 await transaction.CommitAsync();
-                return (null, null, "Refresh token expired. Please login again.");
+                return new RefreshTokenResult { Error = "Refresh token expired. Please login again." };
             }
             
             // Revoke old token and create new one (rotation)
@@ -103,13 +103,13 @@ public class RefreshTokenService : IRefreshTokenService
             
             _logger.LogInformation("Refresh token rotated for user: {UserId}", token.UserId);
             
-            return (newToken, newPlainToken, null);
+            return new RefreshTokenResult { Token = newToken, PlainToken = newPlainToken };
         }
         catch (DbUpdateConcurrencyException)
         {
             await transaction.RollbackAsync();
             _logger.LogWarning("Concurrent refresh token request detected");
-            return (null, null, "Token already refreshed. Please retry.");
+            return new RefreshTokenResult { Error = "Token already refreshed. Please retry." };
         }
         catch (Exception ex)
         {

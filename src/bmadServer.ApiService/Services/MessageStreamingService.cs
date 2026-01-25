@@ -65,7 +65,7 @@ public class MessageStreamingService : IMessageStreamingService
                 // Send chunk to client
                 await onChunk(chunk, messageId, isComplete, agentId);
 
-                // Simulate token delay (replace with actual streaming delay)
+                // Simulated token/streaming delay (50ms) - placeholder for actual AI integration timing
                 if (!isComplete)
                 {
                     await Task.Delay(50, context.CancellationTokenSource.Token);

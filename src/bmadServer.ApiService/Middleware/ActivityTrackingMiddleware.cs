@@ -16,16 +16,16 @@ public class ActivityTrackingMiddleware
 
     public async Task InvokeAsync(HttpContext context, ApplicationDbContext dbContext)
     {
+        if (context.User.Identity?.IsAuthenticated == true)
+        {
+            var userId = GetUserIdFromClaims(context.User);
+            if (userId.HasValue)
+            {
+                await UpdateLastActivityAsync(dbContext, userId.Value);
+            }
+        }
+
         await _next(context);
-
-        if (context.User.Identity?.IsAuthenticated != true)
-            return;
-
-        var userId = GetUserIdFromClaims(context.User);
-        if (!userId.HasValue)
-            return;
-
-        await UpdateLastActivityAsync(dbContext, userId.Value);
     }
 
     private static Guid? GetUserIdFromClaims(ClaimsPrincipal user)

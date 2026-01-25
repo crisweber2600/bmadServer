@@ -16,15 +16,18 @@ public class ChatHub : Hub
 {
     private readonly ISessionService _sessionService;
     private readonly IMessageStreamingService _streamingService;
+    private readonly IChatHistoryService _chatHistoryService;
     private readonly ILogger<ChatHub> _logger;
 
     public ChatHub(
         ISessionService sessionService, 
         IMessageStreamingService streamingService,
+        IChatHistoryService chatHistoryService,
         ILogger<ChatHub> logger)
     {
         _sessionService = sessionService;
         _streamingService = streamingService;
+        _chatHistoryService = chatHistoryService;
         _logger = logger;
     }
 
@@ -253,15 +256,7 @@ public class ChatHub : Hub
             throw new HubException("No active session found");
         }
 
-        var chatHistoryService = Context.GetHttpContext()
-            ?.RequestServices.GetRequiredService<IChatHistoryService>();
-        
-        if (chatHistoryService == null)
-        {
-            throw new HubException("Chat history service not available");
-        }
-
-        return await chatHistoryService.GetChatHistoryAsync(userId, session.Id, pageSize, offset);
+        return await _chatHistoryService.GetChatHistoryAsync(userId, session.Id, pageSize, offset);
     }
 
     /// <summary>

@@ -14,6 +14,7 @@ public class ChatHubStreamingTests
 {
     private readonly Mock<ISessionService> _mockSessionService;
     private readonly Mock<IMessageStreamingService> _mockStreamingService;
+    private readonly Mock<IChatHistoryService> _mockChatHistoryService;
     private readonly Mock<ILogger<ChatHub>> _mockLogger;
     private readonly Mock<IHubCallerClients> _mockClients;
     private readonly Mock<ISingleClientProxy> _mockCaller;
@@ -23,11 +24,12 @@ public class ChatHubStreamingTests
     {
         _mockSessionService = new Mock<ISessionService>();
         _mockStreamingService = new Mock<IMessageStreamingService>();
+        _mockChatHistoryService = new Mock<IChatHistoryService>();
         _mockLogger = new Mock<ILogger<ChatHub>>();
         _mockClients = new Mock<IHubCallerClients>();
         _mockCaller = new Mock<ISingleClientProxy>();
 
-        _hub = new ChatHub(_mockSessionService.Object, _mockStreamingService.Object, _mockLogger.Object);
+        _hub = new ChatHub(_mockSessionService.Object, _mockStreamingService.Object, _mockChatHistoryService.Object, _mockLogger.Object);
 
         // Setup hub context
         _mockClients.Setup(c => c.Caller).Returns(_mockCaller.Object);

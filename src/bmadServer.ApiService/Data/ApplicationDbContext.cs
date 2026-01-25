@@ -102,7 +102,6 @@ public class ApplicationDbContext : DbContext
             entity.ToTable("user_roles");
             entity.HasKey(e => new { e.UserId, e.Role });
             entity.HasIndex(e => e.UserId);
-            entity.HasIndex(e => e.AssignedBy);
             entity.Property(e => e.Role).HasConversion<string>();
             
             entity.HasOne(e => e.User)

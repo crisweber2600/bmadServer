@@ -261,27 +261,27 @@ public class AuthController : ControllerBase
         }
 
         // Validate and rotate refresh token
-        var (newToken, newPlainToken, error) = await _refreshTokenService.ValidateAndRotateAsync(refreshToken);
+        var result = await _refreshTokenService.ValidateAndRotateAsync(refreshToken);
 
-        if (error != null || newToken == null || newPlainToken == null)
+        if (!result.IsSuccess)
         {
             return Unauthorized(new ProblemDetails
             {
                 Type = "https://bmadserver.dev/errors/invalid-refresh-token",
                 Title = "Invalid Refresh Token",
                 Status = StatusCodes.Status401Unauthorized,
-                Detail = error ?? "Invalid refresh token"
+                Detail = result.Error ?? "Invalid refresh token"
             });
         }
 
         // Get user roles and generate new access token
-        var roles = await _roleService.GetUserRolesAsync(newToken.UserId);
-        var accessToken = _jwtTokenService.GenerateAccessToken(newToken.User, roles);
+        var roles = await _roleService.GetUserRolesAsync(result.Token!.UserId);
+        var accessToken = _jwtTokenService.GenerateAccessToken(result.Token.User, roles);
 
         // Set new refresh token cookie with the plain token
-        Response.Cookies.Append("refreshToken", newPlainToken, GetRefreshTokenCookieOptions());
+        Response.Cookies.Append("refreshToken", result.PlainToken!, GetRefreshTokenCookieOptions());
 
-        _logger.LogInformation("Token refreshed successfully for user: {UserId}", newToken.UserId);
+        _logger.LogInformation("Token refreshed successfully for user: {UserId}", result.Token.UserId);
 
         // Return new access token
         var response = new LoginResponse
@@ -291,10 +291,10 @@ public class AuthController : ControllerBase
             ExpiresIn = _jwtSettings.AccessTokenExpirationMinutes * 60,
             User = new UserResponse
             {
-                Id = newToken.User.Id,
-                Email = newToken.User.Email,
-                DisplayName = newToken.User.DisplayName,
-                CreatedAt = newToken.User.CreatedAt
+                Id = result.Token!.User.Id,
+                Email = result.Token.User.Email,
+                DisplayName = result.Token.User.DisplayName,
+                CreatedAt = result.Token.User.CreatedAt
             }
         };
 

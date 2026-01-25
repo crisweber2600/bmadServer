@@ -70,12 +70,9 @@ test.describe('Real-Time Message Streaming (Story 3-4)', () => {
     await input.fill('Complete message test');
     await page.click('button:has-text("Send")');
 
-    // Wait for streaming to complete (mock or wait for actual completion)
-    await page.waitForTimeout(3000);
-
-    // Typing indicator should disappear
+    // Typing indicator should disappear once streaming is complete
     const typingIndicator = page.locator('.typing-indicator');
-    await expect(typingIndicator).not.toBeVisible();
+    await expect(typingIndicator).not.toBeVisible({ timeout: 5000 });
   });
 
   test('should allow canceling streaming with Stop button', async ({ page }) => {

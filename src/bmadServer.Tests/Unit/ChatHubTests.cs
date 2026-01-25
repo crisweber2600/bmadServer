@@ -18,6 +18,7 @@ public class ChatHubTests
 {
     private readonly Mock<ISessionService> _sessionServiceMock;
     private readonly Mock<IMessageStreamingService> _streamingServiceMock;
+    private readonly Mock<IChatHistoryService> _chatHistoryServiceMock;
     private readonly Mock<ILogger<ChatHub>> _loggerMock;
     private readonly Mock<HubCallerContext> _contextMock;
     private readonly Mock<IHubCallerClients> _clientsMock;
@@ -29,6 +30,7 @@ public class ChatHubTests
     {
         _sessionServiceMock = new Mock<ISessionService>();
         _streamingServiceMock = new Mock<IMessageStreamingService>();
+        _chatHistoryServiceMock = new Mock<IChatHistoryService>();
         _loggerMock = new Mock<ILogger<ChatHub>>();
         _contextMock = new Mock<HubCallerContext>();
         _clientsMock = new Mock<IHubCallerClients>();
@@ -38,6 +40,7 @@ public class ChatHubTests
         _chatHub = new ChatHub(
             _sessionServiceMock.Object, 
             _streamingServiceMock.Object,
+            _chatHistoryServiceMock.Object,
             _loggerMock.Object)
         {
             Context = _contextMock.Object,
@@ -175,6 +178,7 @@ public class ChatHubTests
         var chatHub = new ChatHub(
             _sessionServiceMock.Object, 
             _streamingServiceMock.Object,
+            _chatHistoryServiceMock.Object,
             _loggerMock.Object)
         {
             Context = contextWithoutClaims.Object
