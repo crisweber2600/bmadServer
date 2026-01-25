@@ -20,6 +20,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<WorkflowInstance> WorkflowInstances { get; set; }
     public DbSet<WorkflowEvent> WorkflowEvents { get; set; }
     public DbSet<WorkflowStepHistory> WorkflowStepHistories { get; set; }
+    public DbSet<Decision> Decisions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -212,6 +213,60 @@ public class ApplicationDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.WorkflowInstanceId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Decision>(entity =>
+        {
+            entity.ToTable("decisions");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.StepId).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.DecisionType).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Question).HasMaxLength(1000);
+            entity.Property(e => e.Reasoning).HasMaxLength(4000);
+            
+            // JSONB columns for PostgreSQL with JSON value converters for compatibility
+            entity.Property(e => e.Value)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => v == null ? null : v.RootElement.GetRawText(),
+                    v => v == null ? null : JsonDocument.Parse(v));
+            entity.Property(e => e.Options)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => v == null ? null : v.RootElement.GetRawText(),
+                    v => v == null ? null : JsonDocument.Parse(v));
+            entity.Property(e => e.Context)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => v == null ? null : v.RootElement.GetRawText(),
+                    v => v == null ? null : JsonDocument.Parse(v));
+            
+            // Indexes for fast lookups
+            entity.HasIndex(e => e.WorkflowInstanceId);
+            entity.HasIndex(e => e.StepId);
+            entity.HasIndex(e => e.DecidedBy);
+            entity.HasIndex(e => e.DecidedAt);
+            entity.HasIndex(e => e.DecisionType);
+            
+            // GIN indexes for JSONB columns (PostgreSQL only)
+            entity.HasIndex(e => e.Value)
+                .HasMethod("gin");
+            entity.HasIndex(e => e.Options)
+                .HasMethod("gin");
+            entity.HasIndex(e => e.Context)
+                .HasMethod("gin");
+            
+            // Foreign key to WorkflowInstance
+            entity.HasOne(e => e.WorkflowInstance)
+                .WithMany()
+                .HasForeignKey(e => e.WorkflowInstanceId)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            // Foreign key to User (DecisionMaker)
+            entity.HasOne(e => e.DecisionMaker)
+                .WithMany()
+                .HasForeignKey(e => e.DecidedBy)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

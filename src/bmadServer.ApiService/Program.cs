@@ -72,6 +72,9 @@ builder.Services.AddSingleton<bmadServer.ApiService.Services.Workflows.IAgentRou
 // Register step executor
 builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IStepExecutor, bmadServer.ApiService.Services.Workflows.StepExecutor>();
 
+// Register decision service
+builder.Services.AddScoped<bmadServer.ApiService.Services.Decisions.IDecisionService, bmadServer.ApiService.Services.Decisions.DecisionService>();
+
 // Register FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<bmadServer.ApiService.Validators.RegisterRequestValidator>();
 
