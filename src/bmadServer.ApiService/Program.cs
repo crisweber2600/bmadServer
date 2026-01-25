@@ -66,6 +66,9 @@ builder.Services.AddScoped<bmadServer.ApiService.Agents.IAgentMessaging, bmadSer
 // Register agent handoff service as scoped (needs database context)
 builder.Services.AddScoped<bmadServer.ApiService.Agents.IAgentHandoffService, bmadServer.ApiService.Agents.AgentHandoffService>();
 
+// Register approval service as scoped (needs database context)
+builder.Services.AddScoped<bmadServer.ApiService.Agents.IApprovalService, bmadServer.ApiService.Agents.ApprovalService>();
+
 // Register session cleanup background service
 builder.Services.AddHostedService<bmadServer.ApiService.BackgroundServices.SessionCleanupService>();
 

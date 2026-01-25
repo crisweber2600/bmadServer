@@ -17,6 +17,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<WorkflowContextEntity> WorkflowContexts { get; set; }
     public DbSet<AgentHandoff> AgentHandoffs { get; set; }
+    public DbSet<ApprovalRequest> ApprovalRequests { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -117,6 +118,15 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.WorkflowInstanceId);
             entity.HasIndex(e => e.Timestamp);
             entity.HasIndex(e => new { e.WorkflowInstanceId, e.Timestamp });
+        });
+
+        modelBuilder.Entity<ApprovalRequest>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.WorkflowInstanceId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => new { e.Status, e.CreatedAt });
         });
     }
 }
