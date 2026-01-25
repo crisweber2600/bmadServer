@@ -114,12 +114,12 @@ development_status:
   # =============================================
   # EPIC 7: Collaboration & Multi-User Support
   # =============================================
-  epic-7: backlog
-  7-1-multi-user-workflow-participation: backlog
-  7-2-safe-checkpoint-system: backlog
-  7-3-input-attribution-history: backlog
-  7-4-conflict-detection-buffering: backlog
-  7-5-real-time-collaboration-updates: backlog
+  epic-7: in-progress
+  7-1-multi-user-workflow-participation: ready-for-dev
+  7-2-safe-checkpoint-system: ready-for-dev
+  7-3-input-attribution-history: ready-for-dev
+  7-4-conflict-detection-buffering: ready-for-dev
+  7-5-real-time-collaboration-updates: ready-for-dev
   epic-7-retrospective: optional
 
   # ==================================================
