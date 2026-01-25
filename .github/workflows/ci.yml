@@ -72,8 +72,10 @@ jobs:
       # Step 4: Run unit tests with TRX logger
       # TRX format allows GitHub to parse and display test results
       # Tests will fail the job if any tests fail (default behavior)
+      # Timeout is set to 5 minutes to prevent hanging tests
       - name: Run tests
-        run: dotnet test --configuration Release --no-restore --logger trx --results-directory TestResults
+        run: timeout 300 dotnet test --configuration Release --no-restore --logger trx --results-directory TestResults
+        timeout-minutes: 5
 
       # Step 5: Upload test results as artifacts (runs even if tests fail)
       # This allows developers to download and analyze test results from the UI
