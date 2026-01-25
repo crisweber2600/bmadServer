@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Button, Badge, Empty } from 'antd';
+import { Button, Empty } from 'antd';
 import { MenuOutlined, StopOutlined, DownOutlined } from '@ant-design/icons';
 import { ChatMessage } from './ChatMessage';
 import { TypingIndicator } from './TypingIndicator';
@@ -40,8 +40,8 @@ export const ResponsiveChat: React.FC<ResponsiveChatProps> = ({
   const {
     streamingMessages,
     isStreaming,
-    handleMessageChunk,
-    handleGenerationStopped,
+    handleMessageChunk: _handleMessageChunk,
+    handleGenerationStopped: _handleGenerationStopped,
   } = useStreamingMessage({
     onComplete: (message) => {
       console.log('Message complete:', message);
@@ -131,6 +131,7 @@ export const ResponsiveChat: React.FC<ResponsiveChatProps> = ({
 
   const renderMessages = () => {
     const allMessages = [...messages];
+    let streamingMessageId: string | null = null;
 
     // Add streaming messages
     streamingMessages.forEach((streamingMsg) => {
@@ -142,9 +143,14 @@ export const ResponsiveChat: React.FC<ResponsiveChatProps> = ({
         agentName: 'BMAD Agent',
       });
       if (!streamingMsg.isComplete) {
-        setCurrentStreamingMessageId(streamingMsg.messageId);
+        streamingMessageId = streamingMsg.messageId;
       }
     });
+
+    // Update current streaming message ID outside of render
+    if (streamingMessageId !== currentStreamingMessageId) {
+      setCurrentStreamingMessageId(streamingMessageId);
+    }
 
     return allMessages.map((msg) => (
       <ChatMessage
