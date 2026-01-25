@@ -64,7 +64,7 @@ development_status:
   # ===================================
   epic-3: in-progress
   3-1-signalr-hub-setup-websocket-connection: review
-  3-2-chat-message-component-with-ant-design: ready-for-dev
+  3-2-chat-message-component-with-ant-design: review
   3-3-chat-input-component-with-rich-interactions: ready-for-dev
   3-4-real-time-message-streaming: ready-for-dev
   3-5-chat-history-scroll-management: ready-for-dev
