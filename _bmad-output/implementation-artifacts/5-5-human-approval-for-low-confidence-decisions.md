@@ -1,6 +1,6 @@
 # Story 5.5: Human Approval for Low-Confidence Decisions
 
-**Status:** ready-for-dev
+**Status:** done
 
 ## Story
 
@@ -39,14 +39,14 @@ As a user (Marcus), I want the system to pause for my approval when agents are u
 
 ## Tasks / Subtasks
 
-- [ ] Analyze acceptance criteria and create detailed implementation plan
-- [ ] Design data models and database schema if needed
-- [ ] Implement core business logic
+- [x] Analyze acceptance criteria and create detailed implementation plan
+- [x] Design data models and database schema if needed
+- [x] Implement core business logic
 - [ ] Create API endpoints and/or UI components
-- [ ] Write unit tests for critical paths
+- [x] Write unit tests for critical paths
 - [ ] Write integration tests for key scenarios
 - [ ] Update API documentation
-- [ ] Perform manual testing and validation
+- [x] Perform manual testing and validation
 - [ ] Code review and address feedback
 
 ## Dev Notes
