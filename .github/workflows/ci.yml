@@ -37,11 +37,13 @@ jobs:
       # Step 3: Restore NuGet dependencies
       - name: Restore dependencies
         run: dotnet restore
+        working-directory: src
 
       # Step 4: Build the solution in Release configuration
       # Using --no-restore to skip restore (already done in step 3)
       - name: Build
         run: dotnet build --configuration Release --no-restore
+        working-directory: src
 
   # ============================================================================
   # TEST JOB: Run all unit tests and report results
@@ -68,6 +70,7 @@ jobs:
       # Step 3: Restore NuGet dependencies
       - name: Restore dependencies
         run: dotnet restore
+        working-directory: src
 
       # Step 4: Run unit tests with TRX logger
       # TRX format allows GitHub to parse and display test results
@@ -75,6 +78,7 @@ jobs:
       # Timeout is set to 5 minutes to prevent hanging tests
       - name: Run tests
         run: timeout 300 dotnet test --configuration Release --no-restore --logger trx --results-directory TestResults
+        working-directory: src
         timeout-minutes: 5
 
       # Step 5: Upload test results as artifacts (runs even if tests fail)
@@ -87,52 +91,15 @@ jobs:
           path: TestResults/*.trx
 
   # ============================================================================
-  # DOCKER BUILD JOB (OPTIONAL): Build and tag Docker image on main branch
+  # NOTE: Docker orchestration handled by .NET Aspire
   # ============================================================================
-  # This job only runs on the main branch after both build and test succeed.
-  # It builds a Docker image tagged with the commit SHA and 'latest'.
-  # 
-  # To enable Docker push to a container registry, uncomment the docker-push
-  # step below and configure your Docker registry credentials in GitHub Secrets.
+  # .NET Aspire manages all container orchestration via AppHost.cs:
+  # - PostgreSQL container orchestrated automatically via AppHost
+  # - API and Web services run within Aspire's orchestration
+  # - No separate Docker build needed for local development or CI/CD
+  # - Future deployment (prod) may use Aspire Container Deployment
+  # See: https://learn.microsoft.com/en-us/dotnet/aspire/deployment/overview
   # ============================================================================
-  docker:
-    name: Docker Build
-    runs-on: ubuntu-latest
-    needs: [build, test]
-    # Only run this job on main branch to avoid building unnecessary images
-    if: github.ref == 'refs/heads/main'
-    steps:
-      # Step 1: Checkout the repository code
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      # Step 2: Build Docker image
-      # Tags the image with both the commit SHA (for traceability)
-      # and 'latest' (for convenient reference to the latest build)
-      - name: Build Docker image
-        run: |
-          docker build -t bmadserver:${{ github.sha }} -f src/bmadServer.ApiService/Dockerfile .
-          docker tag bmadserver:${{ github.sha }} bmadserver:latest
-
-      # Step 3 (OPTIONAL): Push Docker image to container registry
-      # Uncomment the code below to enable pushing to a registry like Docker Hub
-      # or GitHub Container Registry. You'll need to configure:
-      # - DOCKER_REGISTRY_URL (e.g., ghcr.io/your-org)
-      # - DOCKER_USERNAME (GitHub Actions secret)
-      # - DOCKER_PASSWORD (GitHub Actions secret)
-      #
-      # - name: Log in to Docker Registry
-      #   env:
-      #     REGISTRY_URL: ${{ secrets.DOCKER_REGISTRY_URL }}
-      #     REGISTRY_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-      #     REGISTRY_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      #   run: |
-      #     echo "${{ env.REGISTRY_PASSWORD }}" | docker login -u "${{ env.REGISTRY_USERNAME }}" --password-stdin "${{ env.REGISTRY_URL }}"
-      #
-      # - name: Push Docker image
-      #   run: |
-      #     docker push bmadserver:${{ github.sha }}
-      #     docker push bmadserver:latest
 
 # ============================================================================
 # WORKFLOW EXTENSION GUIDE
@@ -157,6 +124,13 @@ jobs:
 # For more information, see:
 # - https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions
 # - https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows
+#
+# BRANCHING STRATEGY:
+# - Feature branches: feature/* or fix/* → create PR to main
+# - Pull requests: All CI checks (build, test) must pass before merge
+# - Main branch: Only merged PRs; protected branch with required checks
+# - Hotfixes: hotfix/* → create PR to main
+# - Releases: Tag with semver (v1.0.0) for automated release workflows
 # ============================================================================
 
 # ============================================================================
