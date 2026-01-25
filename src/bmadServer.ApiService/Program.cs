@@ -57,6 +57,9 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.IRefreshTokenService, 
 // Register session service
 builder.Services.AddScoped<bmadServer.ApiService.Services.ISessionService, bmadServer.ApiService.Services.SessionService>();
 
+// Register agent registry as singleton (agent definitions don't change)
+builder.Services.AddSingleton<bmadServer.ApiService.Agents.IAgentRegistry, bmadServer.ApiService.Agents.AgentRegistry>();
+
 // Register session cleanup background service
 builder.Services.AddHostedService<bmadServer.ApiService.BackgroundServices.SessionCleanupService>();
 
