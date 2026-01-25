@@ -86,6 +86,100 @@ docker run -d postgres:17 -e POSTGRES_PASSWORD=...
 
 ---
 
+## 🔬 OBSERVABILITY: TRACING & LOGGING AS DEFAULT
+
+### Rule 4: OpenTelemetry Tracing from Day 1
+
+**EVERY story must include OpenTelemetry tracing and structured logging. This is NOT optional.**
+
+**Why?**
+- Distributed tracing is required for multi-service debugging
+- Structured logging (JSON) enables log aggregation
+- Aspire Dashboard displays traces automatically
+- Finding bugs in production requires observability
+- Early implementation is far easier than retrofitting later
+
+**Implementation (Standard Pattern):**
+
+```csharp
+// ServiceDefaults/Extensions.cs - Shared pattern for ALL services
+public static IServiceCollection AddServiceDefaults(
+    this IServiceCollection services) =>
+    services
+        .AddOpenTelemetry()
+        .WithMetrics(metrics => metrics
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddRuntimeInstrumentation())
+        .WithTracing(tracing => tracing
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddEntityFrameworkCoreInstrumentation())
+        .Build();
+```
+
+**What this provides:**
+- ✅ Automatic request tracing (W3C Trace Context)
+- ✅ Structured JSON logging
+- ✅ HTTP client timing
+- ✅ Database query tracking
+- ✅ Visible in Aspire Dashboard
+
+### Rule 5: Health Checks for Every Service
+
+**Every service MUST have a /health endpoint configured in AppHost and responding properly.**
+
+```csharp
+// AppHost.cs
+var api = builder.AddProject<Projects.ApiService>("api")
+    .WithHttpHealthCheck("/health")        // ← REQUIRED
+    .WithReference(db)
+    .WaitFor(db);
+```
+
+```csharp
+// ApiService/Program.cs
+builder.MapDefaultEndpoints();  // Maps /health and /alive
+
+// Or manually:
+[HttpGet("/health")]
+public IActionResult Health()
+{
+    return Ok(new { status = "healthy" });
+}
+```
+
+**Requirements:**
+- [ ] /health endpoint configured
+- [ ] Returns 200 OK when healthy
+- [ ] Includes database connectivity check
+- [ ] Visible in Aspire Dashboard
+- [ ] Used in startup ordering (WaitFor)
+
+### Rule 6: Research Before Implementing Observability Features
+
+**If you need observability features, check Aspire packages FIRST.**
+
+Available Aspire observability packages:
+- `Aspire.Hosting.OpenTelemetry` - Distributed tracing
+- `Aspire.Hosting.Prometheus` - Metrics collection
+- `Aspire.Hosting.Grafana` - Metrics visualization
+- `Aspire.Hosting.Seq` - Log aggregation
+- `Aspire.Hosting.Jaeger` - Trace visualization
+
+**Pattern:**
+```bash
+# ✅ CORRECT: Use Aspire components
+aspire add Seq.Aspire      # Add logging aggregation
+aspire add Prometheus.Aspire  # Add metrics collection
+
+# ❌ WRONG: Manual implementation
+# Trying to implement your own structured logging library
+# when Aspire components already exist
+```
+
+---
+
 ## 📋 PRACTICAL WORKFLOW
 
 ### When Adding a New Service
@@ -311,7 +405,37 @@ aspire run
 
 ---
 
-## 📞 QUESTIONS?
+## 📚 BEST PRACTICES & ADDITIONAL RESOURCES
+
+### Complete Aspire Best Practices Guide
+See: [ASPIRE-BEST-PRACTICES.md](./ASPIRE-BEST-PRACTICES.md)
+
+This comprehensive guide covers:
+- Research-first approach (check official docs)
+- All available Aspire components
+- Observability patterns
+- Testing strategies
+- Story checklist
+- Anti-patterns to avoid
+
+### Official Documentation Priority
+
+1. **🥇 PRIMARY**: https://aspire.dev (official Microsoft docs)
+2. **🥈 SECONDARY**: https://github.com/microsoft/aspire (source code + samples)
+3. **🥉 TERTIARY**: https://learn.microsoft.com/en-us/dotnet/aspire
+4. **NO**: Generic Docker tutorials (don't apply to Aspire)
+
+### Key Learning from Epic 1
+
+**Don't assume framework capabilities—always research:**
+- .NET 10 exists (it's the current stable LTS)
+- Aspire has packages for most patterns
+- Official docs are always authoritative
+- When in doubt, look it up!
+
+---
+
+## 📞 REFERENCES
 
 When in doubt:
 1. Check https://aspire.dev for official docs
