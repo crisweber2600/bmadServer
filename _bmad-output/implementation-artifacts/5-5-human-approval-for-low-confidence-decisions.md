@@ -62,7 +62,7 @@ so that I maintain control over important decisions.
 - [ ] Task 2: Extend AgentResult to include confidence score (AC: 1)
   - [ ] Add ConfidenceScore property (double, 0-1 range) to AgentResult class
   - [ ] Add Reasoning property (string) to explain confidence level
-  - [ ] Add RequiresHumanApproval property (bool) as computed field (ConfidenceScore < 0.7)
+  - [ ] Ensure human-approval decisions are made in the workflow/approval layer (e.g., StepExecutor/ApprovalService) using a configurable threshold, not in AgentResult
   - [ ] Update all existing AgentHandler implementations to set ConfidenceScore (default 1.0 for backward compatibility)
   - [ ] Document confidence scoring guidelines for future agent implementations
 
@@ -706,7 +706,7 @@ src/bmadServer.ApiService/
 └── Migrations/
     └── YYYYMMDDHHMMSS_AddApprovalRequests.cs [NEW - Task 1]
 
-src/bmadServer.Web/
+src/frontend/
 └── src/
     └── components/
         └── ApprovalPrompt.tsx          [NEW - Tasks 12-14]

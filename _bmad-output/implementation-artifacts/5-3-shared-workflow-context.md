@@ -501,7 +501,7 @@ src/bmadServer.ApiService/
 ├── Services/Workflows/Agents/IAgentHandler.cs # Add SharedContext to AgentContext
 ├── Services/Workflows/StepExecutor.cs         # Load/persist SharedContext
 ├── Data/ApplicationDbContext.cs               # Configure SharedContext column
-├── Extensions/ServiceCollectionExtensions.cs  # Register ISharedContextService
+├── Program.cs                                 # Register ISharedContextService
 ```
 
 ---
@@ -591,7 +591,7 @@ This story extends the existing WorkflowInstance table configured in Story 1.2:
 #### Aspire Service Registration
 
 ```csharp
-// In ServiceCollectionExtensions.cs
+// In Program.cs
 builder.Services.AddScoped<ISharedContextService, SharedContextService>();
 ```
 
@@ -605,7 +605,7 @@ builder.Services.AddScoped<ISharedContextService, SharedContextService>();
 
 ### Performance Considerations
 
-1. **Context Size:** Monitor SharedContext JSON size; implement summarization when > 50KB
+1. **Context Size:** Monitor SharedContext size and implement summarization as it approaches the 50,000-token context limit (roughly a few hundred KB of JSON, depending on content)
 2. **Indexing:** GIN index on SharedContext JSONB for efficient queries
 3. **Caching:** Consider IMemoryCache for frequently accessed contexts (future optimization)
 4. **Serialization:** Use System.Text.Json for fast serialization/deserialization

@@ -99,7 +99,7 @@ so that I understand who is responsible for each part of the workflow.
   - [ ] Display agent avatar (use placeholder or Ant Design Avatar)
   - [ ] Display agent name and timestamp
   - [ ] Add hover tooltip showing: agent description, capabilities, current step responsibility
-  - [ ] Style with Tailwind CSS for consistency
+  - [ ] Style using the existing component-level CSS / Ant Design theming for consistency with the current UI
   - [ ] Make component reusable for chat messages and handoff indicators
   
 - [ ] Task 10: Frontend - Integrate AgentAttribution into ChatMessage (AC: 2)
@@ -121,7 +121,7 @@ so that I understand who is responsible for each part of the workflow.
   - [ ] Add AGENT_HANDOFF event handler in SignalR connection setup
   - [ ] Parse handoff payload from backend
   - [ ] Insert AgentHandoffIndicator component into chat message stream
-  - [ ] Update current agent state in frontend (Zustand store)
+  - [ ] Update current agent state in frontend (using existing React state/props)
   - [ ] Trigger notification sound/animation (optional, subtle)
   
 - [ ] Task 13: Frontend - Display decision attribution (AC: 3)
@@ -373,7 +373,7 @@ src/frontend/src/
 
 ### Performance Considerations
 
-- Handoff recording is non-blocking (fire-and-forget with background task)
+- Handoff recording is persisted synchronously before the new agent starts (ensuring UI/audit have reliable data), but failures are treated as non-fatal (logged and workflow continues)
 - Audit log queries use pagination (default 20 per page, max 100)
 - Frontend caches agent metadata to avoid repeated lookups
 - SignalR event payload kept minimal (<1KB)

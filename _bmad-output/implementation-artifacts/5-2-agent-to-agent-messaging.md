@@ -1,8 +1,6 @@
 # Story 5.2: Agent-to-Agent Messaging
 
-Status: ready-for-dev
-
-<!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
+**Status:** ready-for-dev
 
 ## Story
 
