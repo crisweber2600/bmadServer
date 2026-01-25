@@ -12,4 +12,6 @@ public interface IWorkflowInstanceService
     Task<(bool Success, string? Message)> ResumeWorkflowAsync(Guid instanceId, Guid userId);
     Task<(bool Success, string? Message)> CancelWorkflowAsync(Guid instanceId, Guid userId);
     Task<List<WorkflowInstance>> GetWorkflowInstancesAsync(Guid userId, bool showCancelled = false);
+    Task<(bool Success, string? Message)> SkipCurrentStepAsync(Guid instanceId, Guid userId, string? skipReason = null);
+    Task<(bool Success, string? Message)> GoToStepAsync(Guid instanceId, string stepId, Guid userId);
 }

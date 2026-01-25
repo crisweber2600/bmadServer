@@ -1,6 +1,6 @@
 # Story 4.6: Workflow Step Navigation & Skip
 
-**Status:** ready-for-dev
+**Status:** done
 
 ## Story
 
@@ -35,15 +35,15 @@ As a user (Sarah), I want to skip optional steps or jump to specific steps, so t
 
 ## Tasks / Subtasks
 
-- [ ] Analyze acceptance criteria and create detailed implementation plan
-- [ ] Design data models and database schema if needed
-- [ ] Implement core business logic
-- [ ] Create API endpoints and/or UI components
-- [ ] Write unit tests for critical paths
-- [ ] Write integration tests for key scenarios
-- [ ] Update API documentation
-- [ ] Perform manual testing and validation
-- [ ] Code review and address feedback
+- [x] Analyze acceptance criteria and create detailed implementation plan
+- [x] Design data models and database schema if needed
+- [x] Implement core business logic
+- [x] Create API endpoints and/or UI components
+- [x] Write unit tests for critical paths
+- [x] Write integration tests for key scenarios
+- [x] Update API documentation
+- [x] Perform manual testing and validation
+- [x] Code review and address feedback
 
 ## Dev Notes
 

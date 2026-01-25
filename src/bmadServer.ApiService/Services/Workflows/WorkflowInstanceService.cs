@@ -358,4 +358,176 @@ public class WorkflowInstanceService : IWorkflowInstanceService
 
         return workflows;
     }
+
+    public async Task<(bool Success, string? Message)> SkipCurrentStepAsync(Guid instanceId, Guid userId, string? skipReason = null)
+    {
+        var instance = await _context.WorkflowInstances.FindAsync(instanceId);
+        if (instance == null)
+        {
+            _logger.LogWarning("Workflow instance {InstanceId} not found", instanceId);
+            return (false, "Workflow instance not found");
+        }
+
+        // Workflow must be running to skip a step
+        if (instance.Status != WorkflowStatus.Running)
+        {
+            _logger.LogWarning(
+                "Cannot skip step for workflow {InstanceId} in {Status} state",
+                instanceId, instance.Status);
+            return (false, $"Cannot skip step when workflow is in {instance.Status} state");
+        }
+
+        // Get the workflow definition to check step properties
+        var workflowDef = _workflowRegistry.GetWorkflow(instance.WorkflowDefinitionId);
+        if (workflowDef == null)
+        {
+            _logger.LogWarning(
+                "Workflow definition {WorkflowId} not found for instance {InstanceId}",
+                instance.WorkflowDefinitionId, instanceId);
+            return (false, "Workflow definition not found");
+        }
+
+        // Check if current step exists (CurrentStep is 1-based)
+        if (instance.CurrentStep < 1 || instance.CurrentStep > workflowDef.Steps.Count)
+        {
+            _logger.LogWarning(
+                "Invalid current step {CurrentStep} for workflow {InstanceId}",
+                instance.CurrentStep, instanceId);
+            return (false, "Invalid current step");
+        }
+
+        var currentStep = workflowDef.Steps[instance.CurrentStep - 1];
+
+        // Validate step can be skipped
+        if (!currentStep.IsOptional)
+        {
+            _logger.LogWarning(
+                "Cannot skip required step {StepId} in workflow {InstanceId}",
+                currentStep.StepId, instanceId);
+            return (false, "This step is required and cannot be skipped");
+        }
+
+        if (!currentStep.CanSkip)
+        {
+            _logger.LogWarning(
+                "Cannot skip step {StepId} (CanSkip=false) in workflow {InstanceId}",
+                currentStep.StepId, instanceId);
+            return (false, "This step cannot be skipped despite being optional");
+        }
+
+        // Create step history entry with Skipped status
+        var stepHistory = new WorkflowStepHistory
+        {
+            Id = Guid.NewGuid(),
+            WorkflowInstanceId = instanceId,
+            StepId = currentStep.StepId,
+            StepName = currentStep.Name,
+            StartedAt = DateTime.UtcNow,
+            CompletedAt = DateTime.UtcNow,
+            Status = StepExecutionStatus.Skipped,
+            ErrorMessage = skipReason
+        };
+
+        _context.WorkflowStepHistories.Add(stepHistory);
+
+        // Log the skip event
+        var workflowEvent = new WorkflowEvent
+        {
+            Id = Guid.NewGuid(),
+            WorkflowInstanceId = instanceId,
+            EventType = "StepSkipped",
+            Timestamp = DateTime.UtcNow,
+            UserId = userId
+        };
+
+        _context.WorkflowEvents.Add(workflowEvent);
+
+        // Advance to next step
+        instance.CurrentStep++;
+        instance.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Skipped step {StepId} for workflow instance {InstanceId} by user {UserId}",
+            currentStep.StepId, instanceId, userId);
+
+        return (true, null);
+    }
+
+    public async Task<(bool Success, string? Message)> GoToStepAsync(Guid instanceId, string stepId, Guid userId)
+    {
+        var instance = await _context.WorkflowInstances.FindAsync(instanceId);
+        if (instance == null)
+        {
+            _logger.LogWarning("Workflow instance {InstanceId} not found", instanceId);
+            return (false, "Workflow instance not found");
+        }
+
+        // Workflow must be running to navigate steps
+        if (instance.Status != WorkflowStatus.Running)
+        {
+            _logger.LogWarning(
+                "Cannot navigate to step for workflow {InstanceId} in {Status} state",
+                instanceId, instance.Status);
+            return (false, $"Cannot navigate to step when workflow is in {instance.Status} state");
+        }
+
+        // Get the workflow definition
+        var workflowDef = _workflowRegistry.GetWorkflow(instance.WorkflowDefinitionId);
+        if (workflowDef == null)
+        {
+            _logger.LogWarning(
+                "Workflow definition {WorkflowId} not found for instance {InstanceId}",
+                instance.WorkflowDefinitionId, instanceId);
+            return (false, "Workflow definition not found");
+        }
+
+        // Find the target step in the workflow definition
+        var targetStepIndex = workflowDef.Steps.ToList().FindIndex(s => s.StepId == stepId);
+        if (targetStepIndex == -1)
+        {
+            _logger.LogWarning(
+                "Step {StepId} not found in workflow definition {WorkflowId}",
+                stepId, instance.WorkflowDefinitionId);
+            return (false, $"Step '{stepId}' not found in workflow definition");
+        }
+
+        // Check if step is in the workflow history (must have been visited before)
+        var stepHistory = await _context.WorkflowStepHistories
+            .Where(h => h.WorkflowInstanceId == instanceId && h.StepId == stepId)
+            .FirstOrDefaultAsync();
+
+        if (stepHistory == null)
+        {
+            _logger.LogWarning(
+                "Step {StepId} has not been visited in workflow {InstanceId}",
+                stepId, instanceId);
+            return (false, "Can only navigate to previously visited steps");
+        }
+
+        // Log the step revisit event
+        var workflowEvent = new WorkflowEvent
+        {
+            Id = Guid.NewGuid(),
+            WorkflowInstanceId = instanceId,
+            EventType = "StepRevisit",
+            Timestamp = DateTime.UtcNow,
+            UserId = userId
+        };
+
+        _context.WorkflowEvents.Add(workflowEvent);
+
+        // Set current step to target step (convert to 1-based index)
+        instance.CurrentStep = targetStepIndex + 1;
+        instance.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Navigated to step {StepId} (index {StepIndex}) for workflow instance {InstanceId} by user {UserId}",
+            stepId, instance.CurrentStep, instanceId, userId);
+
+        return (true, null);
+    }
 }

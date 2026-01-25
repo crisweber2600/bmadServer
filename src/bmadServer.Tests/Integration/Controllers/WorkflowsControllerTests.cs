@@ -397,6 +397,360 @@ public class WorkflowsControllerTests : IClassFixture<WebApplicationFactory<Prog
         finalInstance.CurrentStep.Should().Be(initialInstance.CurrentStep); // Step should be preserved
     }
 
+    [Fact]
+    public async Task SkipCurrentStep_WithOptionalSkippableStep_ShouldReturn200()
+    {
+        // Arrange
+        var token = await GetAuthTokenAsync();
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        // Create a workflow with an optional step (create-architecture has optional step at index 2)
+        var createRequest = new CreateWorkflowRequest
+        {
+            WorkflowId = "create-architecture"
+        };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/workflows", createRequest);
+        var createdInstance = await createResponse.Content.ReadFromJsonAsync<WorkflowInstance>();
+
+        // Start the workflow and manually set current step to 3 (arch-3, which is optional)
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var instance = await dbContext.WorkflowInstances.FindAsync(createdInstance!.Id);
+        instance!.Status = WorkflowStatus.Running;
+        instance.CurrentStep = 3;
+        await dbContext.SaveChangesAsync();
+
+        var skipRequest = new SkipStepRequest
+        {
+            Reason = "Not needed for this architecture"
+        };
+
+        // Act
+        var response = await _client.PostAsJsonAsync(
+            $"/api/v1/workflows/{createdInstance.Id}/steps/current/skip", 
+            skipRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var skippedInstance = await response.Content.ReadFromJsonAsync<WorkflowInstance>();
+        skippedInstance.Should().NotBeNull();
+        skippedInstance!.CurrentStep.Should().Be(4); // Advanced to next step
+
+        // Verify step history was created
+        var stepHistory = await dbContext.WorkflowStepHistories
+            .Where(h => h.WorkflowInstanceId == createdInstance.Id && h.StepId == "arch-3")
+            .FirstOrDefaultAsync();
+        stepHistory.Should().NotBeNull();
+        stepHistory!.Status.Should().Be(StepExecutionStatus.Skipped);
+        stepHistory.ErrorMessage.Should().Be("Not needed for this architecture");
+    }
+
+    [Fact]
+    public async Task SkipCurrentStep_WithRequiredStep_ShouldReturn400()
+    {
+        // Arrange
+        var token = await GetAuthTokenAsync();
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        // Create a workflow
+        var createRequest = new CreateWorkflowRequest
+        {
+            WorkflowId = "create-prd"
+        };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/workflows", createRequest);
+        var createdInstance = await createResponse.Content.ReadFromJsonAsync<WorkflowInstance>();
+
+        // Start the workflow (current step 1 is required)
+        await _client.PostAsync($"/api/v1/workflows/{createdInstance!.Id}/start", null);
+
+        // Act
+        var response = await _client.PostAsJsonAsync(
+            $"/api/v1/workflows/{createdInstance.Id}/steps/current/skip", 
+            new SkipStepRequest());
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problemDetails = await response.Content.ReadAsStringAsync();
+        problemDetails.Should().Contain("required and cannot be skipped");
+    }
+
+    [Fact]
+    public async Task SkipCurrentStep_WithOptionalButNonSkippableStep_ShouldReturn400()
+    {
+        // Arrange
+        var token = await GetAuthTokenAsync();
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        // Create a workflow (dev-story has optional but non-skippable step at index 3)
+        var createRequest = new CreateWorkflowRequest
+        {
+            WorkflowId = "dev-story"
+        };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/workflows", createRequest);
+        var createdInstance = await createResponse.Content.ReadFromJsonAsync<WorkflowInstance>();
+
+        // Set workflow to running on step 4 (dev-4: optional but CanSkip=false)
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var instance = await dbContext.WorkflowInstances.FindAsync(createdInstance!.Id);
+        instance!.Status = WorkflowStatus.Running;
+        instance.CurrentStep = 4;
+        await dbContext.SaveChangesAsync();
+
+        // Act
+        var response = await _client.PostAsJsonAsync(
+            $"/api/v1/workflows/{createdInstance.Id}/steps/current/skip", 
+            new SkipStepRequest());
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problemDetails = await response.Content.ReadAsStringAsync();
+        problemDetails.Should().Contain("cannot be skipped despite being optional");
+    }
+
+    [Fact]
+    public async Task SkipCurrentStep_WhenWorkflowNotRunning_ShouldReturn400()
+    {
+        // Arrange
+        var token = await GetAuthTokenAsync();
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        // Create a workflow (but don't start it)
+        var createRequest = new CreateWorkflowRequest
+        {
+            WorkflowId = "create-architecture"
+        };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/workflows", createRequest);
+        var createdInstance = await createResponse.Content.ReadFromJsonAsync<WorkflowInstance>();
+
+        // Act
+        var response = await _client.PostAsJsonAsync(
+            $"/api/v1/workflows/{createdInstance!.Id}/steps/current/skip", 
+            new SkipStepRequest());
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problemDetails = await response.Content.ReadAsStringAsync();
+        problemDetails.Should().Contain("Created state");
+    }
+
+    [Fact]
+    public async Task GoToStep_WithPreviouslyVisitedStep_ShouldReturn200()
+    {
+        // Arrange
+        var token = await GetAuthTokenAsync();
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        // Create and start a workflow
+        var createRequest = new CreateWorkflowRequest
+        {
+            WorkflowId = "create-prd"
+        };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/workflows", createRequest);
+        var createdInstance = await createResponse.Content.ReadFromJsonAsync<WorkflowInstance>();
+        await _client.PostAsync($"/api/v1/workflows/{createdInstance!.Id}/start", null);
+
+        // Manually create step history to simulate visiting step prd-1
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var stepHistory = new WorkflowStepHistory
+        {
+            Id = Guid.NewGuid(),
+            WorkflowInstanceId = createdInstance.Id,
+            StepId = "prd-1",
+            StepName = "Define Project Vision",
+            StartedAt = DateTime.UtcNow.AddHours(-1),
+            CompletedAt = DateTime.UtcNow.AddMinutes(-50),
+            Status = StepExecutionStatus.Completed
+        };
+        dbContext.WorkflowStepHistories.Add(stepHistory);
+        
+        // Set workflow to step 3
+        var instance = await dbContext.WorkflowInstances.FindAsync(createdInstance.Id);
+        instance!.CurrentStep = 3;
+        await dbContext.SaveChangesAsync();
+
+        // Act
+        var response = await _client.PostAsync(
+            $"/api/v1/workflows/{createdInstance.Id}/steps/prd-1/goto", 
+            null);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updatedInstance = await response.Content.ReadFromJsonAsync<WorkflowInstance>();
+        updatedInstance.Should().NotBeNull();
+        updatedInstance!.CurrentStep.Should().Be(1); // Should navigate to step 1
+
+        // Verify event was logged
+        var events = await dbContext.WorkflowEvents
+            .Where(e => e.WorkflowInstanceId == createdInstance.Id && e.EventType == "StepRevisit")
+            .ToListAsync();
+        events.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task GoToStep_WithNonVisitedStep_ShouldReturn400()
+    {
+        // Arrange
+        var token = await GetAuthTokenAsync();
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        // Create and start a workflow
+        var createRequest = new CreateWorkflowRequest
+        {
+            WorkflowId = "create-prd"
+        };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/workflows", createRequest);
+        var createdInstance = await createResponse.Content.ReadFromJsonAsync<WorkflowInstance>();
+        await _client.PostAsync($"/api/v1/workflows/{createdInstance!.Id}/start", null);
+
+        // Act - Try to go to step that hasn't been visited
+        var response = await _client.PostAsync(
+            $"/api/v1/workflows/{createdInstance.Id}/steps/prd-3/goto", 
+            null);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problemDetails = await response.Content.ReadAsStringAsync();
+        problemDetails.Should().Contain("previously visited steps");
+    }
+
+    [Fact]
+    public async Task GoToStep_WithInvalidStepId_ShouldReturn400()
+    {
+        // Arrange
+        var token = await GetAuthTokenAsync();
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        // Create and start a workflow
+        var createRequest = new CreateWorkflowRequest
+        {
+            WorkflowId = "create-prd"
+        };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/workflows", createRequest);
+        var createdInstance = await createResponse.Content.ReadFromJsonAsync<WorkflowInstance>();
+        await _client.PostAsync($"/api/v1/workflows/{createdInstance!.Id}/start", null);
+
+        // Act
+        var response = await _client.PostAsync(
+            $"/api/v1/workflows/{createdInstance.Id}/steps/invalid-step/goto", 
+            null);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problemDetails = await response.Content.ReadAsStringAsync();
+        problemDetails.Should().Contain("not found in workflow definition");
+    }
+
+    [Fact]
+    public async Task GoToStep_WhenWorkflowNotRunning_ShouldReturn400()
+    {
+        // Arrange
+        var token = await GetAuthTokenAsync();
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        // Create a workflow (but don't start it)
+        var createRequest = new CreateWorkflowRequest
+        {
+            WorkflowId = "create-prd"
+        };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/workflows", createRequest);
+        var createdInstance = await createResponse.Content.ReadFromJsonAsync<WorkflowInstance>();
+
+        // Act
+        var response = await _client.PostAsync(
+            $"/api/v1/workflows/{createdInstance!.Id}/steps/prd-1/goto", 
+            null);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problemDetails = await response.Content.ReadAsStringAsync();
+        problemDetails.Should().Contain("Created state");
+    }
+
+    [Fact]
+    public async Task GoToStep_PreservesPreviousOutput_WhenRevisiting()
+    {
+        // Arrange
+        var token = await GetAuthTokenAsync();
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        // Create and start a workflow
+        var createRequest = new CreateWorkflowRequest
+        {
+            WorkflowId = "create-prd"
+        };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/workflows", createRequest);
+        var createdInstance = await createResponse.Content.ReadFromJsonAsync<WorkflowInstance>();
+        await _client.PostAsync($"/api/v1/workflows/{createdInstance!.Id}/start", null);
+
+        // Create step history with output
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var stepHistory = new WorkflowStepHistory
+        {
+            Id = Guid.NewGuid(),
+            WorkflowInstanceId = createdInstance.Id,
+            StepId = "prd-2",
+            StepName = "Identify User Stories",
+            StartedAt = DateTime.UtcNow.AddHours(-1),
+            CompletedAt = DateTime.UtcNow.AddMinutes(-50),
+            Status = StepExecutionStatus.Completed,
+            Output = JsonDocument.Parse("{\"userStories\": [\"story1\", \"story2\"]}")
+        };
+        dbContext.WorkflowStepHistories.Add(stepHistory);
+        
+        var instance = await dbContext.WorkflowInstances.FindAsync(createdInstance.Id);
+        instance!.CurrentStep = 3;
+        await dbContext.SaveChangesAsync();
+
+        // Act
+        var response = await _client.PostAsync(
+            $"/api/v1/workflows/{createdInstance.Id}/steps/prd-2/goto", 
+            null);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        
+        // Verify step history output is preserved
+        var preservedHistory = await dbContext.WorkflowStepHistories
+            .Where(h => h.WorkflowInstanceId == createdInstance.Id && h.StepId == "prd-2")
+            .FirstOrDefaultAsync();
+        preservedHistory.Should().NotBeNull();
+        preservedHistory!.Output.Should().NotBeNull();
+        preservedHistory.Output!.RootElement.GetProperty("userStories").GetArrayLength().Should().Be(2);
+    }
+
+    [Fact]
+    public async Task SkipCurrentStep_WithoutAuthentication_ShouldReturn401()
+    {
+        // Arrange
+        var createRequest = new CreateWorkflowRequest
+        {
+            WorkflowId = "create-architecture"
+        };
+
+        // Act
+        var response = await _client.PostAsJsonAsync(
+            $"/api/v1/workflows/{Guid.NewGuid()}/steps/current/skip", 
+            new SkipStepRequest());
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task GoToStep_WithoutAuthentication_ShouldReturn401()
+    {
+        // Act
+        var response = await _client.PostAsync(
+            $"/api/v1/workflows/{Guid.NewGuid()}/steps/prd-1/goto", 
+            null);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
     private async Task<string> GetAuthTokenAsync()
     {
         using var scope = _factory.Services.CreateScope();

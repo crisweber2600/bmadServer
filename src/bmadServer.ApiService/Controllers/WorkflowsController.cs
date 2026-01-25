@@ -458,6 +458,139 @@ public class WorkflowsController : ControllerBase
                 detail: ex.Message);
         }
     }
+
+    /// <summary>
+    /// Skip the current workflow step (only for optional steps)
+    /// </summary>
+    /// <param name="id">Workflow instance ID</param>
+    /// <param name="request">Skip request with optional reason</param>
+    /// <returns>OK with updated workflow or error</returns>
+    [HttpPost("{id}/steps/current/skip")]
+    [ProducesResponseType(typeof(WorkflowInstance), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<WorkflowInstance>> SkipCurrentStep(Guid id, [FromBody] SkipStepRequest? request = null)
+    {
+        try
+        {
+            // Get user ID from claims
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status401Unauthorized,
+                    title: "Unauthorized",
+                    detail: "User ID not found in token");
+            }
+
+            // Attempt to skip the current step
+            var (success, message) = await _workflowInstanceService.SkipCurrentStepAsync(
+                id, 
+                userId, 
+                request?.Reason);
+            
+            if (!success)
+            {
+                // Check if it's a "not found" error or validation error
+                var instance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
+                if (instance == null)
+                {
+                    return Problem(
+                        statusCode: StatusCodes.Status404NotFound,
+                        title: "Not Found",
+                        detail: message ?? $"Workflow instance '{id}' not found");
+                }
+
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Bad Request",
+                    detail: message ?? "Unable to skip step");
+            }
+
+            // Get updated workflow instance
+            var updatedInstance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
+
+            _logger.LogInformation(
+                "Step skipped for workflow {InstanceId} by user {UserId}",
+                id, userId);
+
+            return Ok(updatedInstance);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error skipping step for workflow {InstanceId}", id);
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Go to a specific step in the workflow (step must be in history)
+    /// </summary>
+    /// <param name="id">Workflow instance ID</param>
+    /// <param name="stepId">Step ID to navigate to</param>
+    /// <returns>OK with updated workflow or error</returns>
+    [HttpPost("{id}/steps/{stepId}/goto")]
+    [ProducesResponseType(typeof(WorkflowInstance), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<WorkflowInstance>> GoToStep(Guid id, string stepId)
+    {
+        try
+        {
+            // Get user ID from claims
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status401Unauthorized,
+                    title: "Unauthorized",
+                    detail: "User ID not found in token");
+            }
+
+            // Attempt to navigate to the step
+            var (success, message) = await _workflowInstanceService.GoToStepAsync(id, stepId, userId);
+            
+            if (!success)
+            {
+                // Check if it's a "not found" error or validation error
+                var instance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
+                if (instance == null)
+                {
+                    return Problem(
+                        statusCode: StatusCodes.Status404NotFound,
+                        title: "Not Found",
+                        detail: message ?? $"Workflow instance '{id}' not found");
+                }
+
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Bad Request",
+                    detail: message ?? "Unable to navigate to step");
+            }
+
+            // Get updated workflow instance
+            var updatedInstance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
+
+            _logger.LogInformation(
+                "Navigated to step {StepId} for workflow {InstanceId} by user {UserId}",
+                stepId, id, userId);
+
+            return Ok(updatedInstance);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error navigating to step {StepId} for workflow {InstanceId}", stepId, id);
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: ex.Message);
+        }
+    }
 }
 
 /// <summary>
@@ -485,6 +618,17 @@ public class ExecuteStepRequest
     /// Optional user input for the step
     /// </summary>
     public string? UserInput { get; set; }
+}
+
+/// <summary>
+/// Request model for skipping a workflow step
+/// </summary>
+public class SkipStepRequest
+{
+    /// <summary>
+    /// Optional reason for skipping the step
+    /// </summary>
+    public string? Reason { get; set; }
 }
 
 /// <summary>
