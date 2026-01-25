@@ -206,9 +206,9 @@ public class MultiDeviceSessionTests
             s.WorkflowState = new WorkflowState { WorkflowName = "recent-workflow", CurrentStep = 5 };
         });
 
-        // Both sessions are outside recovery window
+        // Both sessions are outside recovery window, but recentSession has later LastActivityAt
         var s1 = await dbContext.Sessions.FindAsync(oldSession.Id);
-        s1!.LastActivityAt = DateTime.UtcNow.AddSeconds(-65);
+        s1!.LastActivityAt = DateTime.UtcNow.AddSeconds(-70);
         var s2 = await dbContext.Sessions.FindAsync(recentSession.Id);
         s2!.LastActivityAt = DateTime.UtcNow.AddSeconds(-65);
         await dbContext.SaveChangesAsync();
