@@ -96,7 +96,7 @@ development_status:
   5-1-agent-registry-configuration: done
   5-2-agent-to-agent-messaging: done
   5-3-shared-workflow-context: done
-  5-4-agent-handoff-attribution: backlog
+  5-4-agent-handoff-attribution: done
   5-5-human-approval-for-low-confidence-decisions: backlog
   epic-5-retrospective: optional
 

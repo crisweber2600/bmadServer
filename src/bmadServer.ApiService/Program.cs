@@ -75,6 +75,9 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.Agents.IAgen
 // Register shared context service
 builder.Services.AddSingleton<bmadServer.ApiService.Services.Workflows.Agents.ISharedContextService, bmadServer.ApiService.Services.Workflows.Agents.SharedContextService>();
 
+// Register agent handoff service
+builder.Services.AddSingleton<bmadServer.ApiService.Services.Workflows.Agents.IAgentHandoffService, bmadServer.ApiService.Services.Workflows.Agents.AgentHandoffService>();
+
 // Register agent router as singleton (shared agent handler registry)
 builder.Services.AddSingleton<bmadServer.ApiService.Services.Workflows.IAgentRouter, bmadServer.ApiService.Services.Workflows.AgentRouter>();
 
