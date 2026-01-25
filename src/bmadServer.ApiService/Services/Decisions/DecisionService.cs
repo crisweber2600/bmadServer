@@ -132,6 +132,12 @@ public class DecisionService : IDecisionService
                 throw new InvalidOperationException($"Decision {id} not found");
             }
 
+            // Check if decision is locked
+            if (decision.IsLocked)
+            {
+                throw new InvalidOperationException($"Decision {id} is locked. Unlock it before making changes.");
+            }
+
             // Create version record with current values
             var version = new DecisionVersion
             {
@@ -309,6 +315,97 @@ public class DecisionService : IDecisionService
                 "Failed to revert decision {DecisionId} to version {Version}",
                 id,
                 versionNumber);
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<Decision> LockDecisionAsync(
+        Guid id,
+        Guid userId,
+        string? reason,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var decision = await _context.Decisions
+                .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+
+            if (decision == null)
+            {
+                throw new InvalidOperationException($"Decision {id} not found");
+            }
+
+            if (decision.IsLocked)
+            {
+                throw new InvalidOperationException($"Decision {id} is already locked");
+            }
+
+            decision.IsLocked = true;
+            decision.LockedBy = userId;
+            decision.LockedAt = DateTime.UtcNow;
+            decision.LockReason = reason;
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Decision {DecisionId} locked by user {UserId}",
+                id,
+                userId
+            );
+
+            return decision;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to lock decision {DecisionId}", id);
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<Decision> UnlockDecisionAsync(
+        Guid id,
+        Guid userId,
+        string reason,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var decision = await _context.Decisions
+                .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+
+            if (decision == null)
+            {
+                throw new InvalidOperationException($"Decision {id} not found");
+            }
+
+            if (!decision.IsLocked)
+            {
+                throw new InvalidOperationException($"Decision {id} is not locked");
+            }
+
+            // Create an audit record of the unlock action
+            _logger.LogInformation(
+                "Decision {DecisionId} unlocked by user {UserId}. Reason: {Reason}. Previously locked by {LockedBy}",
+                id,
+                userId,
+                reason,
+                decision.LockedBy
+            );
+
+            decision.IsLocked = false;
+            decision.LockedBy = null;
+            decision.LockedAt = null;
+            decision.LockReason = null;
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            return decision;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to unlock decision {DecisionId}", id);
             throw;
         }
     }

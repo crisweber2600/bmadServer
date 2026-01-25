@@ -88,4 +88,32 @@ public interface IDecisionService
         Guid userId,
         string? reason,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lock a decision to prevent modifications
+    /// </summary>
+    /// <param name="id">The decision ID</param>
+    /// <param name="userId">The user locking the decision</param>
+    /// <param name="reason">Reason for locking (optional)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The locked decision</returns>
+    Task<Decision> LockDecisionAsync(
+        Guid id,
+        Guid userId,
+        string? reason,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Unlock a decision to allow modifications
+    /// </summary>
+    /// <param name="id">The decision ID</param>
+    /// <param name="userId">The user unlocking the decision</param>
+    /// <param name="reason">Reason for unlocking</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The unlocked decision</returns>
+    Task<Decision> UnlockDecisionAsync(
+        Guid id,
+        Guid userId,
+        string reason,
+        CancellationToken cancellationToken = default);
 }

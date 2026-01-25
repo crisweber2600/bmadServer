@@ -367,6 +367,154 @@ public class DecisionsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Lock a decision to prevent modifications
+    /// </summary>
+    /// <param name="id">The decision ID</param>
+    /// <param name="request">The lock request</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The locked decision</returns>
+    [HttpPost("decisions/{id:guid}/lock")]
+    [ProducesResponseType(typeof(DecisionResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<DecisionResponse>> LockDecision(
+        Guid id,
+        [FromBody] LockDecisionRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Get the authenticated user ID
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return Unauthorized(new ProblemDetails
+                {
+                    Title = "Unauthorized",
+                    Detail = "User ID not found in claims",
+                    Status = StatusCodes.Status401Unauthorized
+                });
+            }
+
+            var lockedDecision = await _decisionService.LockDecisionAsync(
+                id,
+                userId,
+                request.Reason,
+                cancellationToken);
+
+            var response = MapToDecisionResponse(lockedDecision);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation when locking decision {DecisionId}", id);
+            
+            if (ex.Message.Contains("not found"))
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Decision not found",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status404NotFound
+                });
+            }
+            
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Cannot lock decision",
+                Detail = ex.Message,
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error locking decision {DecisionId}", id);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ProblemDetails
+                {
+                    Title = "Error locking decision",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status500InternalServerError
+                });
+        }
+    }
+
+    /// <summary>
+    /// Unlock a decision to allow modifications
+    /// </summary>
+    /// <param name="id">The decision ID</param>
+    /// <param name="request">The unlock request</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The unlocked decision</returns>
+    [HttpPost("decisions/{id:guid}/unlock")]
+    [ProducesResponseType(typeof(DecisionResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<DecisionResponse>> UnlockDecision(
+        Guid id,
+        [FromBody] UnlockDecisionRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Get the authenticated user ID
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return Unauthorized(new ProblemDetails
+                {
+                    Title = "Unauthorized",
+                    Detail = "User ID not found in claims",
+                    Status = StatusCodes.Status401Unauthorized
+                });
+            }
+
+            var unlockedDecision = await _decisionService.UnlockDecisionAsync(
+                id,
+                userId,
+                request.Reason,
+                cancellationToken);
+
+            var response = MapToDecisionResponse(unlockedDecision);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation when unlocking decision {DecisionId}", id);
+            
+            if (ex.Message.Contains("not found"))
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Decision not found",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status404NotFound
+                });
+            }
+            
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Cannot unlock decision",
+                Detail = ex.Message,
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error unlocking decision {DecisionId}", id);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ProblemDetails
+                {
+                    Title = "Error unlocking decision",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status500InternalServerError
+                });
+        }
+    }
+
     private static DecisionResponse MapToDecisionResponse(Decision decision)
     {
         return new DecisionResponse

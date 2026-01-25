@@ -81,6 +81,26 @@ public class Decision
     public Guid? UpdatedBy { get; set; }
 
     /// <summary>
+    /// Whether this decision is locked (cannot be modified)
+    /// </summary>
+    public bool IsLocked { get; set; } = false;
+
+    /// <summary>
+    /// User ID who locked this decision
+    /// </summary>
+    public Guid? LockedBy { get; set; }
+
+    /// <summary>
+    /// Timestamp when this decision was locked
+    /// </summary>
+    public DateTime? LockedAt { get; set; }
+
+    /// <summary>
+    /// Reason for locking (optional)
+    /// </summary>
+    public string? LockReason { get; set; }
+
+    /// <summary>
     /// Navigation property to the workflow instance
     /// </summary>
     public WorkflowInstance? WorkflowInstance { get; set; }
