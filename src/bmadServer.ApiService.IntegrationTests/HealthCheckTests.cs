@@ -1,6 +1,7 @@
 using System.Net;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using bmadServer.ApiService.Controllers;
 
 namespace bmadServer.ApiService.IntegrationTests;
 
@@ -11,7 +12,7 @@ namespace bmadServer.ApiService.IntegrationTests;
 /// </summary>
 public class HealthCheckTests : IAsyncLifetime
 {
-    private WebApplicationFactory<Program> _factory = null!;
+    private WebApplicationFactory<AuthController> _factory = null!;
     private HttpClient _client = null!;
 
     public async Task InitializeAsync()
@@ -19,7 +20,7 @@ public class HealthCheckTests : IAsyncLifetime
         // WebApplicationFactory creates a test instance of the application
         // We configure it to use "Test" environment so that Program.cs skips database registration
         // This prevents health check failures when there's no PostgreSQL available
-        _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        _factory = new WebApplicationFactory<AuthController>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Test");
         });
