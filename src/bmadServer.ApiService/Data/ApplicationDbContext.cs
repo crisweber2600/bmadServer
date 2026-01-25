@@ -125,6 +125,7 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.PausedAt);
             
             // GIN indexes for JSONB columns (PostgreSQL only)
             entity.HasIndex(e => e.StepData)

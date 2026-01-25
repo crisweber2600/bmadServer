@@ -180,6 +180,221 @@ public class WorkflowInstanceServiceTests : IDisposable
         result.Should().BeNull();
     }
 
+    [Fact]
+    public async Task PauseWorkflow_FromRunningState_ShouldTransitionToPaused()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowDefinitionId = "create-prd",
+            UserId = userId,
+            Status = WorkflowStatus.Running,
+            CurrentStep = 2,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _context.WorkflowInstances.Add(instance);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var (success, message) = await _service.PauseWorkflowAsync(instance.Id, userId);
+
+        // Assert
+        success.Should().BeTrue();
+        message.Should().BeNull();
+        instance.Status.Should().Be(WorkflowStatus.Paused);
+        instance.PausedAt.Should().NotBeNull();
+        instance.PausedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
+
+        // Verify event was logged
+        var events = await _context.WorkflowEvents
+            .Where(e => e.WorkflowInstanceId == instance.Id && e.EventType == "WorkflowPaused")
+            .ToListAsync();
+        events.Should().HaveCount(1);
+        events[0].OldStatus.Should().Be(WorkflowStatus.Running);
+        events[0].NewStatus.Should().Be(WorkflowStatus.Paused);
+        events[0].UserId.Should().Be(userId);
+    }
+
+    [Fact]
+    public async Task PauseWorkflow_WhenAlreadyPaused_ShouldReturn400()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowDefinitionId = "create-prd",
+            UserId = userId,
+            Status = WorkflowStatus.Paused,
+            CurrentStep = 2,
+            PausedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _context.WorkflowInstances.Add(instance);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var (success, message) = await _service.PauseWorkflowAsync(instance.Id, userId);
+
+        // Assert
+        success.Should().BeFalse();
+        message.Should().Be("Workflow is already paused");
+        instance.Status.Should().Be(WorkflowStatus.Paused);
+    }
+
+    [Fact]
+    public async Task PauseWorkflow_WithInvalidState_ShouldReturnFalse()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowDefinitionId = "create-prd",
+            UserId = userId,
+            Status = WorkflowStatus.Completed,
+            CurrentStep = 5,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _context.WorkflowInstances.Add(instance);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var (success, message) = await _service.PauseWorkflowAsync(instance.Id, userId);
+
+        // Assert
+        success.Should().BeFalse();
+        message.Should().Contain("Cannot pause workflow");
+        instance.Status.Should().Be(WorkflowStatus.Completed);
+    }
+
+    [Fact]
+    public async Task PauseWorkflow_WithNonExistentWorkflow_ShouldReturnFalse()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var nonExistentId = Guid.NewGuid();
+
+        // Act
+        var (success, message) = await _service.PauseWorkflowAsync(nonExistentId, userId);
+
+        // Assert
+        success.Should().BeFalse();
+        message.Should().Be("Workflow instance not found");
+    }
+
+    [Fact]
+    public async Task ResumeWorkflow_FromPausedState_ShouldTransitionToRunning()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowDefinitionId = "create-prd",
+            UserId = userId,
+            Status = WorkflowStatus.Paused,
+            CurrentStep = 2,
+            PausedAt = DateTime.UtcNow.AddHours(-1),
+            CreatedAt = DateTime.UtcNow.AddHours(-2),
+            UpdatedAt = DateTime.UtcNow.AddHours(-1)
+        };
+        _context.WorkflowInstances.Add(instance);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var (success, message) = await _service.ResumeWorkflowAsync(instance.Id, userId);
+
+        // Assert
+        success.Should().BeTrue();
+        message.Should().BeNull(); // No context refresh for <24 hours
+        instance.Status.Should().Be(WorkflowStatus.Running);
+
+        // Verify event was logged
+        var events = await _context.WorkflowEvents
+            .Where(e => e.WorkflowInstanceId == instance.Id && e.EventType == "WorkflowResumed")
+            .ToListAsync();
+        events.Should().HaveCount(1);
+        events[0].OldStatus.Should().Be(WorkflowStatus.Paused);
+        events[0].NewStatus.Should().Be(WorkflowStatus.Running);
+        events[0].UserId.Should().Be(userId);
+    }
+
+    [Fact]
+    public async Task ResumeWorkflow_After24Hours_ShouldRefreshContext()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowDefinitionId = "create-prd",
+            UserId = userId,
+            Status = WorkflowStatus.Paused,
+            CurrentStep = 2,
+            PausedAt = DateTime.UtcNow.AddHours(-25), // More than 24 hours
+            CreatedAt = DateTime.UtcNow.AddHours(-30),
+            UpdatedAt = DateTime.UtcNow.AddHours(-25)
+        };
+        _context.WorkflowInstances.Add(instance);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var (success, message) = await _service.ResumeWorkflowAsync(instance.Id, userId);
+
+        // Assert
+        success.Should().BeTrue();
+        message.Should().Be("Workflow resumed. Context has been refreshed.");
+        instance.Status.Should().Be(WorkflowStatus.Running);
+    }
+
+    [Fact]
+    public async Task ResumeWorkflow_WithInvalidState_ShouldReturnFalse()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowDefinitionId = "create-prd",
+            UserId = userId,
+            Status = WorkflowStatus.Running,
+            CurrentStep = 2,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _context.WorkflowInstances.Add(instance);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var (success, message) = await _service.ResumeWorkflowAsync(instance.Id, userId);
+
+        // Assert
+        success.Should().BeFalse();
+        message.Should().Contain("Cannot resume workflow");
+        instance.Status.Should().Be(WorkflowStatus.Running);
+    }
+
+    [Fact]
+    public async Task ResumeWorkflow_WithNonExistentWorkflow_ShouldReturnFalse()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var nonExistentId = Guid.NewGuid();
+
+        // Act
+        var (success, message) = await _service.ResumeWorkflowAsync(nonExistentId, userId);
+
+        // Assert
+        success.Should().BeFalse();
+        message.Should().Be("Workflow instance not found");
+    }
+
     public void Dispose()
     {
         _context.Dispose();

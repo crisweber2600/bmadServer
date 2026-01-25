@@ -1,13 +1,16 @@
 using bmadServer.ApiService.Controllers;
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
+using bmadServer.ApiService.Hubs;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services;
 using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -180,6 +183,218 @@ public class WorkflowsControllerTests : IClassFixture<WebApplicationFactory<Prog
         var instance = await getResponse.Content.ReadFromJsonAsync<WorkflowInstance>();
         instance!.Status.Should().Be(WorkflowStatus.Running);
         instance.CurrentStep.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task PauseWorkflow_WithRunningWorkflow_ShouldReturn200()
+    {
+        // Arrange
+        var token = await GetAuthTokenAsync();
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        // Create and start a workflow
+        var createRequest = new CreateWorkflowRequest
+        {
+            WorkflowId = "create-prd"
+        };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/workflows", createRequest);
+        var createdInstance = await createResponse.Content.ReadFromJsonAsync<WorkflowInstance>();
+
+        await _client.PostAsync($"/api/v1/workflows/{createdInstance!.Id}/start", null);
+
+        // Act - Pause the workflow
+        var response = await _client.PostAsync($"/api/v1/workflows/{createdInstance.Id}/pause", null);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var pausedInstance = await response.Content.ReadFromJsonAsync<WorkflowInstance>();
+        pausedInstance.Should().NotBeNull();
+        pausedInstance!.Status.Should().Be(WorkflowStatus.Paused);
+        pausedInstance.PausedAt.Should().NotBeNull();
+        pausedInstance.PausedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public async Task PauseWorkflow_WhenAlreadyPaused_ShouldReturn400()
+    {
+        // Arrange
+        var token = await GetAuthTokenAsync();
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        // Create, start, and pause a workflow
+        var createRequest = new CreateWorkflowRequest
+        {
+            WorkflowId = "create-prd"
+        };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/workflows", createRequest);
+        var createdInstance = await createResponse.Content.ReadFromJsonAsync<WorkflowInstance>();
+
+        await _client.PostAsync($"/api/v1/workflows/{createdInstance!.Id}/start", null);
+        await _client.PostAsync($"/api/v1/workflows/{createdInstance.Id}/pause", null);
+
+        // Act - Try to pause again
+        var response = await _client.PostAsync($"/api/v1/workflows/{createdInstance.Id}/pause", null);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problemDetails = await response.Content.ReadAsStringAsync();
+        problemDetails.Should().Contain("already paused");
+    }
+
+    [Fact]
+    public async Task PauseWorkflow_WithNonExistentWorkflow_ShouldReturn404()
+    {
+        // Arrange
+        var token = await GetAuthTokenAsync();
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var nonExistentId = Guid.NewGuid();
+
+        // Act
+        var response = await _client.PostAsync($"/api/v1/workflows/{nonExistentId}/pause", null);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task PauseWorkflow_WithoutAuthentication_ShouldReturn401()
+    {
+        // Arrange
+        var workflowId = Guid.NewGuid();
+
+        // Act
+        var response = await _client.PostAsync($"/api/v1/workflows/{workflowId}/pause", null);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task ResumeWorkflow_WithPausedWorkflow_ShouldReturn200()
+    {
+        // Arrange
+        var token = await GetAuthTokenAsync();
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        // Create, start, and pause a workflow
+        var createRequest = new CreateWorkflowRequest
+        {
+            WorkflowId = "create-prd"
+        };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/workflows", createRequest);
+        var createdInstance = await createResponse.Content.ReadFromJsonAsync<WorkflowInstance>();
+
+        await _client.PostAsync($"/api/v1/workflows/{createdInstance!.Id}/start", null);
+        await _client.PostAsync($"/api/v1/workflows/{createdInstance.Id}/pause", null);
+
+        // Act - Resume the workflow
+        var response = await _client.PostAsync($"/api/v1/workflows/{createdInstance.Id}/resume", null);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var resumeResponse = await response.Content.ReadFromJsonAsync<ResumeWorkflowResponse>();
+        resumeResponse.Should().NotBeNull();
+        resumeResponse!.Workflow.Status.Should().Be(WorkflowStatus.Running);
+        resumeResponse.Message.Should().BeNull(); // No context refresh for short pause
+    }
+
+    [Fact]
+    public async Task ResumeWorkflow_WhenNotPaused_ShouldReturn400()
+    {
+        // Arrange
+        var token = await GetAuthTokenAsync();
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        // Create and start a workflow (but don't pause it)
+        var createRequest = new CreateWorkflowRequest
+        {
+            WorkflowId = "create-prd"
+        };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/workflows", createRequest);
+        var createdInstance = await createResponse.Content.ReadFromJsonAsync<WorkflowInstance>();
+
+        await _client.PostAsync($"/api/v1/workflows/{createdInstance!.Id}/start", null);
+
+        // Act - Try to resume a running workflow
+        var response = await _client.PostAsync($"/api/v1/workflows/{createdInstance.Id}/resume", null);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problemDetails = await response.Content.ReadAsStringAsync();
+        problemDetails.Should().Contain("Cannot resume");
+    }
+
+    [Fact]
+    public async Task ResumeWorkflow_WithNonExistentWorkflow_ShouldReturn404()
+    {
+        // Arrange
+        var token = await GetAuthTokenAsync();
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var nonExistentId = Guid.NewGuid();
+
+        // Act
+        var response = await _client.PostAsync($"/api/v1/workflows/{nonExistentId}/resume", null);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task ResumeWorkflow_WithoutAuthentication_ShouldReturn401()
+    {
+        // Arrange
+        var workflowId = Guid.NewGuid();
+
+        // Act
+        var response = await _client.PostAsync($"/api/v1/workflows/{workflowId}/resume", null);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task PauseAndResumeWorkflow_FullCycle_ShouldWorkCorrectly()
+    {
+        // Arrange
+        var token = await GetAuthTokenAsync();
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        // Create and start a workflow
+        var createRequest = new CreateWorkflowRequest
+        {
+            WorkflowId = "create-prd"
+        };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/workflows", createRequest);
+        var createdInstance = await createResponse.Content.ReadFromJsonAsync<WorkflowInstance>();
+
+        await _client.PostAsync($"/api/v1/workflows/{createdInstance!.Id}/start", null);
+
+        // Get initial state
+        var initialResponse = await _client.GetAsync($"/api/v1/workflows/{createdInstance.Id}");
+        var initialInstance = await initialResponse.Content.ReadFromJsonAsync<WorkflowInstance>();
+        initialInstance!.Status.Should().Be(WorkflowStatus.Running);
+
+        // Pause the workflow
+        var pauseResponse = await _client.PostAsync($"/api/v1/workflows/{createdInstance.Id}/pause", null);
+        pauseResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        
+        var pausedInstance = await pauseResponse.Content.ReadFromJsonAsync<WorkflowInstance>();
+        pausedInstance!.Status.Should().Be(WorkflowStatus.Paused);
+        pausedInstance.PausedAt.Should().NotBeNull();
+
+        // Resume the workflow
+        var resumeResponse = await _client.PostAsync($"/api/v1/workflows/{createdInstance.Id}/resume", null);
+        resumeResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        
+        var resumedWorkflowResponse = await resumeResponse.Content.ReadFromJsonAsync<ResumeWorkflowResponse>();
+        resumedWorkflowResponse!.Workflow.Status.Should().Be(WorkflowStatus.Running);
+        resumedWorkflowResponse.Message.Should().BeNull(); // No context refresh for short pause
+
+        // Verify final state
+        var finalResponse = await _client.GetAsync($"/api/v1/workflows/{createdInstance.Id}");
+        var finalInstance = await finalResponse.Content.ReadFromJsonAsync<WorkflowInstance>();
+        finalInstance!.Status.Should().Be(WorkflowStatus.Running);
+        finalInstance.CurrentStep.Should().Be(initialInstance.CurrentStep); // Step should be preserved
     }
 
     private async Task<string> GetAuthTokenAsync()

@@ -1,8 +1,10 @@
+using bmadServer.ApiService.Hubs;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services.Workflows;
 using bmadServer.ServiceDefaults.Services.Workflows;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using System.Security.Claims;
 
 namespace bmadServer.ApiService.Controllers;
@@ -18,17 +20,20 @@ public class WorkflowsController : ControllerBase
     private readonly IWorkflowInstanceService _workflowInstanceService;
     private readonly IWorkflowRegistry _workflowRegistry;
     private readonly IStepExecutor _stepExecutor;
+    private readonly IHubContext<ChatHub> _hubContext;
     private readonly ILogger<WorkflowsController> _logger;
 
     public WorkflowsController(
         IWorkflowInstanceService workflowInstanceService,
         IWorkflowRegistry workflowRegistry,
         IStepExecutor stepExecutor,
+        IHubContext<ChatHub> hubContext,
         ILogger<WorkflowsController> logger)
     {
         _workflowInstanceService = workflowInstanceService;
         _workflowRegistry = workflowRegistry;
         _stepExecutor = stepExecutor;
+        _hubContext = hubContext;
         _logger = logger;
     }
 
@@ -172,6 +177,158 @@ public class WorkflowsController : ControllerBase
                 detail: ex.Message);
         }
     }
+
+    /// <summary>
+    /// Pause a running workflow
+    /// </summary>
+    /// <param name="id">Workflow instance ID</param>
+    /// <returns>OK with workflow state or error</returns>
+    [HttpPost("{id}/pause")]
+    [ProducesResponseType(typeof(WorkflowInstance), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<WorkflowInstance>> PauseWorkflow(Guid id)
+    {
+        try
+        {
+            // Get user ID from claims
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status401Unauthorized,
+                    title: "Unauthorized",
+                    detail: "User ID not found in token");
+            }
+
+            // Attempt to pause the workflow
+            var (success, message) = await _workflowInstanceService.PauseWorkflowAsync(id, userId);
+            
+            if (!success)
+            {
+                // Check if it's a "not found" error or validation error
+                var instance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
+                if (instance == null)
+                {
+                    return Problem(
+                        statusCode: StatusCodes.Status404NotFound,
+                        title: "Not Found",
+                        detail: message ?? $"Workflow instance '{id}' not found");
+                }
+
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Bad Request",
+                    detail: message ?? "Unable to pause workflow");
+            }
+
+            // Get updated workflow instance
+            var updatedInstance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
+            
+            // Send SignalR notification to all workflow participants
+            await _hubContext.Clients.All.SendAsync("WORKFLOW_PAUSED", new
+            {
+                eventType = "WORKFLOW_PAUSED",
+                workflowId = id,
+                status = "Paused",
+                userId = userId,
+                timestamp = DateTime.UtcNow
+            });
+
+            _logger.LogInformation(
+                "Workflow {InstanceId} paused by user {UserId}",
+                id, userId);
+
+            return Ok(updatedInstance);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error pausing workflow {InstanceId}", id);
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Resume a paused workflow
+    /// </summary>
+    /// <param name="id">Workflow instance ID</param>
+    /// <returns>OK with workflow state or error</returns>
+    [HttpPost("{id}/resume")]
+    [ProducesResponseType(typeof(ResumeWorkflowResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<ResumeWorkflowResponse>> ResumeWorkflow(Guid id)
+    {
+        try
+        {
+            // Get user ID from claims
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status401Unauthorized,
+                    title: "Unauthorized",
+                    detail: "User ID not found in token");
+            }
+
+            // Attempt to resume the workflow
+            var (success, message) = await _workflowInstanceService.ResumeWorkflowAsync(id, userId);
+            
+            if (!success)
+            {
+                // Check if it's a "not found" error or validation error
+                var instance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
+                if (instance == null)
+                {
+                    return Problem(
+                        statusCode: StatusCodes.Status404NotFound,
+                        title: "Not Found",
+                        detail: message ?? $"Workflow instance '{id}' not found");
+                }
+
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Bad Request",
+                    detail: message ?? "Unable to resume workflow");
+            }
+
+            // Get updated workflow instance
+            var updatedInstance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
+            
+            // Send SignalR notification to all workflow participants
+            await _hubContext.Clients.All.SendAsync("WORKFLOW_RESUMED", new
+            {
+                eventType = "WORKFLOW_RESUMED",
+                workflowId = id,
+                status = "Running",
+                userId = userId,
+                timestamp = DateTime.UtcNow
+            });
+
+            _logger.LogInformation(
+                "Workflow {InstanceId} resumed by user {UserId}",
+                id, userId);
+
+            return Ok(new ResumeWorkflowResponse
+            {
+                Workflow = updatedInstance!,
+                Message = message
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resuming workflow {InstanceId}", id);
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: ex.Message);
+        }
+    }
 }
 
 /// <summary>
@@ -199,4 +356,20 @@ public class ExecuteStepRequest
     /// Optional user input for the step
     /// </summary>
     public string? UserInput { get; set; }
+}
+
+/// <summary>
+/// Response model for resuming a workflow
+/// </summary>
+public class ResumeWorkflowResponse
+{
+    /// <summary>
+    /// The updated workflow instance
+    /// </summary>
+    public required WorkflowInstance Workflow { get; set; }
+
+    /// <summary>
+    /// Optional message (e.g., context refresh notification)
+    /// </summary>
+    public string? Message { get; set; }
 }

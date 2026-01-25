@@ -1,5 +1,6 @@
 using bmadServer.ApiService.Controllers;
 using bmadServer.ApiService.Data;
+using bmadServer.ApiService.Hubs;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services.Workflows;
 using bmadServer.ApiService.Services.Workflows.Agents;
@@ -8,6 +9,7 @@ using bmadServer.ServiceDefaults.Services.Workflows;
 using bmadServer.Tests.Helpers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -54,6 +56,7 @@ public class StepExecutionIntegrationTests : IDisposable
             _workflowInstanceService,
             _workflowRegistry,
             _stepExecutor,
+            new Mock<IHubContext<ChatHub>>().Object,
             new Mock<ILogger<WorkflowsController>>().Object);
 
         // Setup test user

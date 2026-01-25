@@ -127,4 +127,135 @@ public class WorkflowInstanceService : IWorkflowInstanceService
     {
         return await _context.WorkflowInstances.FindAsync(instanceId);
     }
+
+    public async Task<(bool Success, string? Message)> PauseWorkflowAsync(Guid instanceId, Guid userId)
+    {
+        var instance = await _context.WorkflowInstances.FindAsync(instanceId);
+        if (instance == null)
+        {
+            _logger.LogWarning("Workflow instance {InstanceId} not found", instanceId);
+            return (false, "Workflow instance not found");
+        }
+
+        // Check if workflow is already paused
+        if (instance.Status == WorkflowStatus.Paused)
+        {
+            _logger.LogWarning(
+                "Attempted to pause already paused workflow instance {InstanceId}",
+                instanceId);
+            return (false, "Workflow is already paused");
+        }
+
+        // Validate transition to Paused state
+        if (!WorkflowStatusExtensions.ValidateTransition(instance.Status, WorkflowStatus.Paused))
+        {
+            _logger.LogWarning(
+                "Invalid state transition for workflow instance {InstanceId}: {OldStatus} -> Paused",
+                instanceId, instance.Status);
+            return (false, $"Cannot pause workflow in {instance.Status} state");
+        }
+
+        var oldStatus = instance.Status;
+        instance.Status = WorkflowStatus.Paused;
+        instance.PausedAt = DateTime.UtcNow;
+        instance.UpdatedAt = DateTime.UtcNow;
+
+        // Log the pause event
+        var workflowEvent = new WorkflowEvent
+        {
+            Id = Guid.NewGuid(),
+            WorkflowInstanceId = instanceId,
+            EventType = "WorkflowPaused",
+            OldStatus = oldStatus,
+            NewStatus = WorkflowStatus.Paused,
+            Timestamp = DateTime.UtcNow,
+            UserId = userId
+        };
+
+        _context.WorkflowEvents.Add(workflowEvent);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Workflow instance {InstanceId} paused by user {UserId}",
+            instanceId, userId);
+
+        return (true, null);
+    }
+
+    public async Task<(bool Success, string? Message)> ResumeWorkflowAsync(Guid instanceId, Guid userId)
+    {
+        var instance = await _context.WorkflowInstances.FindAsync(instanceId);
+        if (instance == null)
+        {
+            _logger.LogWarning("Workflow instance {InstanceId} not found", instanceId);
+            return (false, "Workflow instance not found");
+        }
+
+        // Validate transition from Paused to Running
+        if (!WorkflowStatusExtensions.ValidateTransition(instance.Status, WorkflowStatus.Running))
+        {
+            _logger.LogWarning(
+                "Invalid state transition for workflow instance {InstanceId}: {OldStatus} -> Running",
+                instanceId, instance.Status);
+            return (false, $"Cannot resume workflow in {instance.Status} state");
+        }
+
+        // Check if context refresh is needed (paused for >24 hours)
+        string? message = null;
+        if (instance.PausedAt.HasValue)
+        {
+            var pauseDuration = DateTime.UtcNow - instance.PausedAt.Value;
+            if (pauseDuration > TimeSpan.FromHours(24))
+            {
+                await RefreshWorkflowContextAsync(instance);
+                message = "Workflow resumed. Context has been refreshed.";
+                _logger.LogInformation(
+                    "Context refreshed for workflow instance {InstanceId} (paused for {Duration})",
+                    instanceId, pauseDuration);
+            }
+        }
+
+        var oldStatus = instance.Status;
+        instance.Status = WorkflowStatus.Running;
+        instance.UpdatedAt = DateTime.UtcNow;
+        // Keep PausedAt for historical tracking, but we could also clear it if needed
+
+        // Log the resume event
+        var workflowEvent = new WorkflowEvent
+        {
+            Id = Guid.NewGuid(),
+            WorkflowInstanceId = instanceId,
+            EventType = "WorkflowResumed",
+            OldStatus = oldStatus,
+            NewStatus = WorkflowStatus.Running,
+            Timestamp = DateTime.UtcNow,
+            UserId = userId
+        };
+
+        _context.WorkflowEvents.Add(workflowEvent);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Workflow instance {InstanceId} resumed by user {UserId}",
+            instanceId, userId);
+
+        return (true, message);
+    }
+
+    private async Task RefreshWorkflowContextAsync(WorkflowInstance instance)
+    {
+        // Context refresh logic - reload any stale data
+        // This is a placeholder implementation that could be extended based on specific needs
+        // For now, we just log that a refresh occurred
+        _logger.LogInformation(
+            "Refreshing context for workflow instance {InstanceId}",
+            instance.Id);
+        
+        // In a real implementation, this might:
+        // - Reload external data that might have changed
+        // - Validate that referenced entities still exist
+        // - Update cached values in the context
+        
+        await Task.CompletedTask;
+    }
 }
