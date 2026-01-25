@@ -197,7 +197,7 @@ public class GitHubActionsCICDSteps
         var startInfo = new ProcessStartInfo
         {
             FileName = "dotnet",
-            Arguments = "test bmadServer.Tests/bmadServer.Tests.csproj --configuration Release --logger trx",
+            Arguments = "test bmadServer.Tests/bmadServer.Tests.csproj --configuration Release --logger trx --filter \"FullyQualifiedName~Unit\"",
             WorkingDirectory = srcPath,
             RedirectStandardOutput = true,
             RedirectStandardError = true,

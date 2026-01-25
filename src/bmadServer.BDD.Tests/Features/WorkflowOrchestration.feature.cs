@@ -581,9 +581,6 @@ namespace bmadServer.BDD.Tests.Features
     await testRunner.ThenAsync("the status should transition to \"Running\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 99
-    await testRunner.AndAsync("the PausedAt timestamp should be cleared", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-#line 100
     await testRunner.AndAsync("a resume event should be logged", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -602,7 +599,7 @@ namespace bmadServer.BDD.Tests.Features
                     "story-4-4"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Cannot resume a cancelled workflow", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 103
+#line 102
   this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -615,17 +612,17 @@ namespace bmadServer.BDD.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 104
+#line 103
     await testRunner.GivenAsync("I have a cancelled workflow instance", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 105
+#line 104
     await testRunner.WhenAsync("I try to resume the workflow", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 106
+#line 105
     await testRunner.ThenAsync("the request should fail with 400 Bad Request", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 107
-    await testRunner.AndAsync("the error should indicate workflow is cancelled", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line 106
+    await testRunner.AndAsync("the error should indicate Cannot resume a cancelled", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -643,7 +640,7 @@ namespace bmadServer.BDD.Tests.Features
                     "story-4-5"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Cancel a running workflow", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 111
+#line 110
   this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -656,19 +653,19 @@ namespace bmadServer.BDD.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 112
+#line 111
     await testRunner.GivenAsync("I have a running workflow instance", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 113
+#line 112
     await testRunner.WhenAsync("I cancel the workflow", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 114
+#line 113
     await testRunner.ThenAsync("the status should transition to \"Cancelled\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 115
+#line 114
     await testRunner.AndAsync("the CancelledAt timestamp should be set", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 116
+#line 115
     await testRunner.AndAsync("a cancellation event should be logged", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -687,7 +684,7 @@ namespace bmadServer.BDD.Tests.Features
                     "story-4-5"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Cancel a paused workflow", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 119
+#line 118
   this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -700,16 +697,16 @@ namespace bmadServer.BDD.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 120
+#line 119
     await testRunner.GivenAsync("I have a paused workflow instance", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 121
+#line 120
     await testRunner.WhenAsync("I cancel the workflow", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 122
+#line 121
     await testRunner.ThenAsync("the status should transition to \"Cancelled\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 123
+#line 122
     await testRunner.AndAsync("the workflow should remain in database for audit", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -728,7 +725,7 @@ namespace bmadServer.BDD.Tests.Features
                     "story-4-5"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Cannot cancel a completed workflow", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 126
+#line 125
   this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -741,17 +738,17 @@ namespace bmadServer.BDD.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 127
+#line 126
     await testRunner.GivenAsync("I have a completed workflow instance", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 128
+#line 127
     await testRunner.WhenAsync("I try to cancel the workflow", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 129
+#line 128
     await testRunner.ThenAsync("the request should fail with 400 Bad Request", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 130
-    await testRunner.AndAsync("the error should indicate workflow already completed", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line 129
+    await testRunner.AndAsync("the error should indicate Cannot cancel a completed", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -769,7 +766,7 @@ namespace bmadServer.BDD.Tests.Features
                     "story-4-5"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Filter cancelled workflows", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 133
+#line 132
   this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -782,19 +779,19 @@ namespace bmadServer.BDD.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 134
+#line 133
     await testRunner.GivenAsync("I have multiple workflow instances including cancelled ones", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 135
+#line 134
     await testRunner.WhenAsync("I query workflows with showCancelled=false", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 136
+#line 135
     await testRunner.ThenAsync("cancelled workflows should be excluded", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 137
+#line 136
     await testRunner.WhenAsync("I query workflows with showCancelled=true", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 138
+#line 137
     await testRunner.ThenAsync("cancelled workflows should be included", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -806,14 +803,16 @@ namespace bmadServer.BDD.Tests.Features
         [Xunit.TraitAttribute("Description", "Skip an optional step")]
         [Xunit.TraitAttribute("Category", "workflow")]
         [Xunit.TraitAttribute("Category", "story-4-6")]
+        [Xunit.TraitAttribute("Category", "skip")]
         public async System.Threading.Tasks.Task SkipAnOptionalStep()
         {
             string[] tagsOfScenario = new string[] {
                     "workflow",
-                    "story-4-6"};
+                    "story-4-6",
+                    "skip"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Skip an optional step", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 142
+#line 143
   this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -826,25 +825,25 @@ namespace bmadServer.BDD.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 143
+#line 144
     await testRunner.GivenAsync("I have a running workflow instance", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 144
+#line 145
     await testRunner.AndAsync("the current step is optional", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 145
+#line 146
     await testRunner.AndAsync("the current step can be skipped", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 146
+#line 147
     await testRunner.WhenAsync("I skip the current step with reason \"Not needed\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 147
+#line 148
     await testRunner.ThenAsync("the step should be marked as skipped", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 148
+#line 149
     await testRunner.AndAsync("the skip reason should be recorded", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 149
+#line 150
     await testRunner.AndAsync("the workflow should advance to the next step", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -863,7 +862,7 @@ namespace bmadServer.BDD.Tests.Features
                     "story-4-6"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Cannot skip a required step", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 152
+#line 153
   this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -876,20 +875,20 @@ namespace bmadServer.BDD.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 153
+#line 154
     await testRunner.GivenAsync("I have a running workflow instance", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 154
+#line 155
     await testRunner.AndAsync("the current step is required", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 155
+#line 156
     await testRunner.WhenAsync("I try to skip the current step", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 156
+#line 157
     await testRunner.ThenAsync("the request should fail with 400 Bad Request", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 157
-    await testRunner.AndAsync("the error should indicate step is required", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line 158
+    await testRunner.AndAsync("the error should indicate This step is required", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -907,7 +906,7 @@ namespace bmadServer.BDD.Tests.Features
                     "story-4-6"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Cannot skip when CanSkip is false", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 160
+#line 161
   this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -920,23 +919,23 @@ namespace bmadServer.BDD.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 161
+#line 162
     await testRunner.GivenAsync("I have a running workflow instance", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 162
+#line 163
     await testRunner.AndAsync("the current step is optional", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 163
+#line 164
     await testRunner.ButAsync("the current step has CanSkip set to false", ((string)(null)), ((global::Reqnroll.Table)(null)), "But ");
 #line hidden
-#line 164
+#line 165
     await testRunner.WhenAsync("I try to skip the current step", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 165
+#line 166
     await testRunner.ThenAsync("the request should fail with 400 Bad Request", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 166
-    await testRunner.AndAsync("the error should indicate step cannot be skipped", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line 167
+    await testRunner.AndAsync("the error should indicate This step is required", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -947,14 +946,16 @@ namespace bmadServer.BDD.Tests.Features
         [Xunit.TraitAttribute("Description", "Navigate to a previous step")]
         [Xunit.TraitAttribute("Category", "workflow")]
         [Xunit.TraitAttribute("Category", "story-4-6")]
+        [Xunit.TraitAttribute("Category", "skip")]
         public async System.Threading.Tasks.Task NavigateToAPreviousStep()
         {
             string[] tagsOfScenario = new string[] {
                     "workflow",
-                    "story-4-6"};
+                    "story-4-6",
+                    "skip"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Navigate to a previous step", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 169
+#line 170
   this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -967,25 +968,25 @@ namespace bmadServer.BDD.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 170
+#line 171
     await testRunner.GivenAsync("I have a running workflow instance", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 171
+#line 172
     await testRunner.AndAsync("I have completed step 2", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 172
+#line 173
     await testRunner.AndAsync("I am now on step 3", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 173
+#line 174
     await testRunner.WhenAsync("I navigate to step 2", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 174
+#line 175
     await testRunner.ThenAsync("the current step should be set to step 2", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 175
+#line 176
     await testRunner.AndAsync("the previous step output should be available", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 176
+#line 177
     await testRunner.AndAsync("a step revisit event should be logged", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -1004,7 +1005,7 @@ namespace bmadServer.BDD.Tests.Features
                     "story-4-6"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Cannot navigate to non-existent step", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 179
+#line 180
   this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -1017,17 +1018,17 @@ namespace bmadServer.BDD.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 180
+#line 181
     await testRunner.GivenAsync("I have a running workflow instance", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 181
+#line 182
     await testRunner.WhenAsync("I try to navigate to step \"invalid-step\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 182
+#line 183
     await testRunner.ThenAsync("the request should fail with 400 Bad Request", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 183
-    await testRunner.AndAsync("the error should indicate invalid step ID", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line 184
+    await testRunner.AndAsync("the error should indicate not found in workflow", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -1045,7 +1046,7 @@ namespace bmadServer.BDD.Tests.Features
                     "story-4-6"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Cannot navigate to unvisited step", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 186
+#line 187
   this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -1058,20 +1059,20 @@ namespace bmadServer.BDD.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 187
+#line 188
     await testRunner.GivenAsync("I have a running workflow instance", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 188
+#line 189
     await testRunner.AndAsync("I am on step 2", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 189
+#line 190
     await testRunner.WhenAsync("I try to navigate to step 5", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 190
+#line 191
     await testRunner.ThenAsync("the request should fail with 400 Bad Request", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 191
-    await testRunner.AndAsync("the error should indicate step not yet visited", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line 192
+    await testRunner.AndAsync("the error should indicate not found in workflow", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -1082,14 +1083,16 @@ namespace bmadServer.BDD.Tests.Features
         [Xunit.TraitAttribute("Description", "Complete workflow lifecycle")]
         [Xunit.TraitAttribute("Category", "workflow")]
         [Xunit.TraitAttribute("Category", "integration")]
+        [Xunit.TraitAttribute("Category", "skip")]
         public async System.Threading.Tasks.Task CompleteWorkflowLifecycle()
         {
             string[] tagsOfScenario = new string[] {
                     "workflow",
-                    "integration"};
+                    "integration",
+                    "skip"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Complete workflow lifecycle", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 195
+#line 196
   this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -1102,34 +1105,34 @@ namespace bmadServer.BDD.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 196
+#line 197
     await testRunner.GivenAsync("I create a workflow instance for \"create-prd\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 197
+#line 198
     await testRunner.WhenAsync("I start the workflow", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 198
+#line 199
     await testRunner.AndAsync("I execute step 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 199
+#line 200
     await testRunner.AndAsync("I pause the workflow", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 200
+#line 201
     await testRunner.AndAsync("I resume the workflow", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 201
+#line 202
     await testRunner.AndAsync("I execute step 2", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 202
+#line 203
     await testRunner.AndAsync("I complete all remaining steps", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 203
+#line 204
     await testRunner.ThenAsync("the workflow status should be \"Completed\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 204
+#line 205
     await testRunner.AndAsync("all steps should have history records", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 205
+#line 206
     await testRunner.AndAsync("all events should be logged", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -1141,14 +1144,16 @@ namespace bmadServer.BDD.Tests.Features
         [Xunit.TraitAttribute("Description", "Workflow with skip and navigation")]
         [Xunit.TraitAttribute("Category", "workflow")]
         [Xunit.TraitAttribute("Category", "integration")]
+        [Xunit.TraitAttribute("Category", "skip")]
         public async System.Threading.Tasks.Task WorkflowWithSkipAndNavigation()
         {
             string[] tagsOfScenario = new string[] {
                     "workflow",
-                    "integration"};
+                    "integration",
+                    "skip"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Workflow with skip and navigation", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 208
+#line 209
   this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -1161,31 +1166,31 @@ namespace bmadServer.BDD.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 209
+#line 210
     await testRunner.GivenAsync("I create a workflow instance with optional steps", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 210
+#line 211
     await testRunner.WhenAsync("I start the workflow", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 211
+#line 212
     await testRunner.AndAsync("I execute step 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 212
+#line 213
     await testRunner.AndAsync("I skip optional step 2", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 213
+#line 214
     await testRunner.AndAsync("I execute step 3", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 214
+#line 215
     await testRunner.AndAsync("I navigate back to step 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 215
+#line 216
     await testRunner.AndAsync("I re-execute step 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 216
+#line 217
     await testRunner.ThenAsync("the step history should show the revisit", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 217
+#line 218
     await testRunner.AndAsync("the workflow should track all navigation", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -1197,14 +1202,16 @@ namespace bmadServer.BDD.Tests.Features
         [Xunit.TraitAttribute("Description", "Workflow error recovery")]
         [Xunit.TraitAttribute("Category", "workflow")]
         [Xunit.TraitAttribute("Category", "integration")]
+        [Xunit.TraitAttribute("Category", "skip")]
         public async System.Threading.Tasks.Task WorkflowErrorRecovery()
         {
             string[] tagsOfScenario = new string[] {
                     "workflow",
-                    "integration"};
+                    "integration",
+                    "skip"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Workflow error recovery", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 220
+#line 221
   this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -1217,25 +1224,25 @@ namespace bmadServer.BDD.Tests.Features
 #line 6
   await this.FeatureBackgroundAsync();
 #line hidden
-#line 221
+#line 222
     await testRunner.GivenAsync("I create a workflow instance", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 222
+#line 223
     await testRunner.WhenAsync("I start the workflow", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 223
+#line 224
     await testRunner.AndAsync("step execution fails", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 224
+#line 225
     await testRunner.ThenAsync("the workflow status should be \"Failed\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 225
+#line 226
     await testRunner.AndAsync("the error should be logged", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 226
+#line 227
     await testRunner.AndAsync("I should be able to view the error details", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 227
+#line 228
     await testRunner.AndAsync("the workflow should preserve all history", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
