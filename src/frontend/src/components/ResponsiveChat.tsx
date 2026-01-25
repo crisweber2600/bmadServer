@@ -121,7 +121,7 @@ export const ResponsiveChat: React.FC<ResponsiveChatProps> = ({
     setInputValue('');
   }, [inputValue, isStreaming, onSendMessage]);
 
-  const handleKeyPress = useCallback(
+  const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
@@ -291,7 +291,7 @@ export const ResponsiveChat: React.FC<ResponsiveChatProps> = ({
               placeholder="Type your message..."
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyDown}
               disabled={isStreaming}
               aria-label="Message input"
               rows={1}

@@ -161,7 +161,7 @@ describe('ResponsiveChat', () => {
       
       const input = screen.getByPlaceholderText('Type your message...');
       fireEvent.change(input, { target: { value: 'Test message' } });
-      fireEvent.keyPress(input, { key: 'Enter', code: 'Enter', charCode: 13 });
+      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
       
       expect(onSendMessage).toHaveBeenCalledWith('Test message');
     });

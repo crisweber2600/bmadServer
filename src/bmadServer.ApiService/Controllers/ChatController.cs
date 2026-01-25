@@ -87,7 +87,10 @@ public class ChatController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving chat history for user {UserId}", userId);
-            return StatusCode(500, "Error retrieving chat history");
+            return Problem(
+                detail: "An error occurred while retrieving chat history",
+                statusCode: 500,
+                title: "Chat History Error");
         }
     }
 
@@ -127,7 +130,10 @@ public class ChatController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving recent messages for user {UserId}", userId);
-            return StatusCode(500, "Error retrieving recent messages");
+            return Problem(
+                detail: "An error occurred while retrieving recent messages",
+                statusCode: 500,
+                title: "Recent Messages Error");
         }
     }
 

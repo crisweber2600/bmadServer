@@ -2,6 +2,7 @@ import React from 'react';
 import { Avatar, Typography } from 'antd';
 import { RobotOutlined, UserOutlined } from '@ant-design/icons';
 import ReactMarkdown from 'react-markdown';
+import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -57,34 +58,29 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                code(props: any) {
-                  const { inline, className, children } = props;
+                code: ({ inline, className, children, ...props }: { inline?: boolean; className?: string; children?: React.ReactNode }) => {
                   const match = /language-(\w+)/.exec(className || '');
                   return !inline && match ? (
                     <SyntaxHighlighter
                       style={vscDarkPlus as { [key: string]: React.CSSProperties }}
                       language={match[1]}
                       PreTag="div"
+                      {...props}
                     >
                       {String(children).replace(/\n$/, '')}
                     </SyntaxHighlighter>
                   ) : (
-                    <code className={className}>
+                    <code className={className} {...props}>
                       {children}
                     </code>
                   );
                 },
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                a(props: any) {
-                  const { children, ...rest } = props;
-                  return (
-                    <a {...rest} target="_blank" rel="noopener noreferrer">
-                      {children}
-                    </a>
-                  );
-                },
-              }}
+                a: ({ children, ...rest }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { children?: React.ReactNode }) => (
+                  <a {...rest} target="_blank" rel="noopener noreferrer">
+                    {children}
+                  </a>
+                ),
+              } as Components}
             >
               {content}
             </ReactMarkdown>

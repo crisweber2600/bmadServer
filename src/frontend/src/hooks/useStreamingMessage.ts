@@ -26,7 +26,7 @@ export function useStreamingMessage(options?: UseStreamingMessageOptions) {
   );
   const [isStreaming, setIsStreaming] = useState(false);
   const stoppedMessagesRef = useRef<Set<string>>(new Set());
-  const cleanupTimeoutsRef = useRef<Map<string, number>>(new Map());
+  const cleanupTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -54,7 +54,7 @@ export function useStreamingMessage(options?: UseStreamingMessageOptions) {
         stoppedMessagesRef.current.delete(messageId);
       }
       cleanupTimeoutsRef.current.delete(messageId);
-    }, 100) as unknown as number;
+    }, 100);
 
     cleanupTimeoutsRef.current.set(messageId, timeout);
   }, []);
@@ -145,7 +145,7 @@ export function useStreamingMessage(options?: UseStreamingMessageOptions) {
 
   const clearStreaming = useCallback(() => {
     // Clear all pending timeouts
-    cleanupTimeoutsRef.current.forEach((timeout: number) => clearTimeout(timeout));
+    cleanupTimeoutsRef.current.forEach((timeout) => clearTimeout(timeout));
     cleanupTimeoutsRef.current.clear();
     
     setStreamingMessages(new Map());

@@ -31,8 +31,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const [error, setError] = useState<string | null>(null);
   
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
-  const debounceTimerRef = useRef<number | null>(null);
-  const cancelTimerRef = useRef<number | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Load draft from localStorage on mount

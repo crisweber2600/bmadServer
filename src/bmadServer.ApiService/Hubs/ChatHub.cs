@@ -19,7 +19,36 @@ public class ChatHub : Hub
     private readonly int _partialSaveChunkInterval;
     
     // Track active streaming tasks per connection to prevent concurrent streams
+    // NOTE: This static dictionary works for single-server deployments. For horizontal scaling
+    // with SignalR backplane (Redis/Azure SignalR), consider moving to per-connection state
+    // or a distributed cache. See Epic 4 for scalability improvements.
     private static readonly ConcurrentDictionary<string, CancellationTokenSource> _activeStreams = new();
+    
+    // Timer for periodic cleanup of orphaned streams (connections that didn't disconnect cleanly)
+    private static readonly Timer _cleanupTimer = new(_ => CleanupOrphanedStreams(), null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
+    
+    private static void CleanupOrphanedStreams()
+    {
+        // Remove entries where the CancellationTokenSource has been disposed or cancelled
+        foreach (var kvp in _activeStreams)
+        {
+            try
+            {
+                if (kvp.Value.IsCancellationRequested)
+                {
+                    if (_activeStreams.TryRemove(kvp.Key, out var removed))
+                    {
+                        removed.Dispose();
+                    }
+                }
+            }
+            catch (ObjectDisposedException)
+            {
+                // Already disposed, just remove it
+                _activeStreams.TryRemove(kvp.Key, out _);
+            }
+        }
+    }
 
     public ChatHub(ISessionService sessionService, ILogger<ChatHub> logger, IConfiguration configuration)
     {
@@ -285,6 +314,10 @@ public class ChatHub : Hub
         });
     }
 
+    /// <summary>
+    /// Placeholder for agent response generation. Replace with actual agent routing in Epic 4.
+    /// TODO(Epic-4): Connect to workflow orchestration engine for real agent responses.
+    /// </summary>
     private string GenerateSimulatedResponse(string userMessage)
     {
         var lower = userMessage.ToLower();
