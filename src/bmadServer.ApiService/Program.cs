@@ -14,12 +14,20 @@ builder.AddServiceDefaults();
 // - Injects the connection string from AppHost service discovery (resource named "pgsql" → database "bmadserver")
 // - Configures health checks for the database
 // - Sets up OpenTelemetry tracing for database queries
+// - Enables connection pooling and resilience patterns
 // The connection name "bmadserver" matches the database name in AppHost.cs
 // See https://aspire.dev/integrations/databases/efcore/postgresql/ for more details
 // Skip database registration in test environments where PostgreSQL is not available
 if (!builder.Environment.IsEnvironment("Test"))
 {
-    builder.AddNpgsqlDbContext<bmadServer.ApiService.Data.ApplicationDbContext>("bmadserver");
+    builder.AddNpgsqlDbContext<bmadServer.ApiService.Data.ApplicationDbContext>("bmadserver", configureDbContextOptions: options =>
+    {
+        // Enable sensitive data logging only in development for debugging
+        if (builder.Environment.IsDevelopment())
+        {
+            options.EnableSensitiveDataLogging();
+        }
+    });
 }
 
 // Add structured exception handling with RFC 7807 problem details format

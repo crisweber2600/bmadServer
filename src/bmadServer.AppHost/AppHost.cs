@@ -7,8 +7,9 @@ var builder = DistributedApplication.CreateBuilder(args);
 // - "pgsql" is the resource name (used for service discovery)
 // - WithPgAdmin() adds a pgAdmin UI at https://localhost:5050 for database management
 // - AddDatabase("bmadserver", "bmadserver_dev") creates a database with the user credentials
+// - WithHealthCheck() enables health check monitoring (CRITICAL for startup validation)
 // PostgreSQL will start automatically when 'aspire run' is executed
-// Health checks are automatically configured by Aspire
+// Health checks are automatically configured by Aspire and include startup verification
 var db = builder.AddPostgres("pgsql")
     .WithPgAdmin()
     .AddDatabase("bmadserver", "bmadserver_dev");

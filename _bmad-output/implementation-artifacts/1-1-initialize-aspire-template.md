@@ -1,6 +1,6 @@
 # Story 1.1: Initialize bmadServer from .NET Aspire Starter Template
 
-**Status:** in-progress
+**Status:** review
 
 ## Story
 
