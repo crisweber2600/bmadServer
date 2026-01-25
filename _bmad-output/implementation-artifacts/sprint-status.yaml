@@ -148,11 +148,11 @@ development_status:
   # ====================================
   # EPIC 10: Error Handling & Recovery
   # ====================================
-  epic-10: backlog
-  10-1-graceful-error-handling: backlog
-  10-2-connection-recovery-retry: backlog
-  10-3-workflow-recovery-after-failure: backlog
-  10-4-conversation-stall-recovery: backlog
+  epic-10: in-progress
+  10-1-graceful-error-handling: ready-for-dev
+  10-2-connection-recovery-retry: ready-for-dev
+  10-3-workflow-recovery-after-failure: ready-for-dev
+  10-4-conversation-stall-recovery: ready-for-dev
   10-5-graceful-degradation-under-load: backlog
   epic-10-retrospective: optional
 
