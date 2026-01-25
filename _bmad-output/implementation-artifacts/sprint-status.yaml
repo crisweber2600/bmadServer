@@ -81,7 +81,7 @@ development_status:
   4-4-workflow-pause-resume: done
   4-5-workflow-exit-cancellation: done
   4-6-workflow-step-navigation-skip: done
-  4-7-workflow-status-progress-api: backlog
+  4-7-workflow-status-progress-api: done
   epic-4-retrospective: optional
 
   # ====================================
