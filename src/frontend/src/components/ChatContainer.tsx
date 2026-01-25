@@ -37,6 +37,7 @@ export const ChatContainer: React.FC = () => {
   const [showNewMessageBadge, setShowNewMessageBadge] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isUserScrolling, setIsUserScrolling] = useState(false);
+  const [currentMessageId, setCurrentMessageId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -177,6 +178,13 @@ export const ChatContainer: React.FC = () => {
 
       // Listen for message chunks (streaming)
       connection.on('MESSAGE_CHUNK', (data: any) => {
+        // Track current streaming message
+        if (!data.IsComplete) {
+          setCurrentMessageId(data.MessageId);
+        } else {
+          setCurrentMessageId(null);
+        }
+        
         // Handle streaming messages
         setMessages((prev) => {
           const existing = prev.find((m) => m.id === data.MessageId);
@@ -229,9 +237,15 @@ export const ChatContainer: React.FC = () => {
 
   // Handle cancel
   const handleCancel = async () => {
-    if (!connection) return;
-    // TODO: Implement cancel logic with message ID
-    setIsProcessing(false);
+    if (!connection || !currentMessageId) return;
+    
+    try {
+      await connection.invoke('StopGenerating', currentMessageId);
+      setIsProcessing(false);
+      setCurrentMessageId(null);
+    } catch (error) {
+      console.error('Failed to cancel message:', error);
+    }
   };
 
   // Welcome message for empty chat

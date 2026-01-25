@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { ChatInput } from '../ChatInput';
 
+const LONG_TIMEOUT = 10000; // 10 seconds for long-running tests
+
 describe('ChatInput', () => {
   const mockOnSend = vi.fn();
   const mockOnCancel = vi.fn();
@@ -124,7 +126,7 @@ describe('ChatInput', () => {
         const counter = screen.getByText(/2001\s*\/\s*2000/);
         expect(counter).toHaveClass('character-count-exceeded');
       });
-    }, 10000);
+    }, LONG_TIMEOUT);
 
     it('should disable Send button when exceeding 2000 characters', async () => {
       render(<ChatInput onSend={mockOnSend} />);
@@ -139,7 +141,7 @@ describe('ChatInput', () => {
       await waitFor(() => {
         expect(sendButton).toBeDisabled();
       });
-    }, 10000);
+    }, LONG_TIMEOUT);
   });
 
   describe('Keyboard Shortcuts', () => {

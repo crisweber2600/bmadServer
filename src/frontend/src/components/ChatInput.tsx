@@ -46,7 +46,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onCancel, isProces
   const [value, setValue] = useState<string>('');
   const [showCommands, setShowCommands] = useState<boolean>(false);
   const [selectedCommandIndex, setSelectedCommandIndex] = useState<number>(0);
-  const textareaRef = useRef<any>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Restore draft from localStorage on mount
   useEffect(() => {

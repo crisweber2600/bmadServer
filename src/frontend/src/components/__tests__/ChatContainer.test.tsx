@@ -14,15 +14,13 @@ const mockConnection = {
   state: 'Connected',
 };
 
-class MockHubConnectionBuilder {
-  withUrl = vi.fn().mockReturnThis();
-  withAutomaticReconnect = vi.fn().mockReturnThis();
-  configureLogging = vi.fn().mockReturnThis();
-  build = vi.fn(() => mockConnection);
-}
-
 vi.mock('@microsoft/signalr', () => ({
-  HubConnectionBuilder: MockHubConnectionBuilder,
+  HubConnectionBuilder: class MockHubConnectionBuilder {
+    withUrl = vi.fn().mockReturnThis();
+    withAutomaticReconnect = vi.fn().mockReturnThis();
+    configureLogging = vi.fn().mockReturnThis();
+    build = vi.fn(() => mockConnection);
+  },
   LogLevel: {
     Information: 1,
   },
