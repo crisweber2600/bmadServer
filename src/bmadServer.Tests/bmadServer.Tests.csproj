@@ -9,9 +9,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\bmadServer.ApiService\bmadServer.ApiService.csproj" />
+    <ProjectReference Include="..\bmadServer.ServiceDefaults\bmadServer.ServiceDefaults.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="FluentAssertions" Version="7.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.2" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.2" />
     <PackageReference Include="Moq" Version="4.20.72" />

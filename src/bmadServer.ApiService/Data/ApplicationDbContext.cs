@@ -1,5 +1,6 @@
 using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.Models;
+using bmadServer.ApiService.Models.Workflows;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
@@ -15,6 +16,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<Session> Sessions { get; set; }
     public DbSet<Workflow> Workflows { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
+    public DbSet<WorkflowInstance> WorkflowInstances { get; set; }
+    public DbSet<WorkflowEvent> WorkflowEvents { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -93,6 +96,60 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(e => e.User)
                 .WithMany(u => u.RefreshTokens)
                 .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<WorkflowInstance>(entity =>
+        {
+            entity.ToTable("workflow_instances");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.WorkflowDefinitionId).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasConversion<string>();
+            
+            // JSONB columns for PostgreSQL with JSON value converters for compatibility
+            entity.Property(e => e.StepData)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => v == null ? null : v.RootElement.GetRawText(),
+                    v => v == null ? null : JsonDocument.Parse(v));
+            entity.Property(e => e.Context)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => v == null ? null : v.RootElement.GetRawText(),
+                    v => v == null ? null : JsonDocument.Parse(v));
+            
+            // Indexes
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.CreatedAt);
+            
+            // GIN indexes for JSONB columns (PostgreSQL only)
+            entity.HasIndex(e => e.StepData)
+                .HasMethod("gin");
+            entity.HasIndex(e => e.Context)
+                .HasMethod("gin");
+        });
+
+        modelBuilder.Entity<WorkflowEvent>(entity =>
+        {
+            entity.ToTable("workflow_events");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.EventType).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.OldStatus)
+                .HasConversion<string?>();
+            entity.Property(e => e.NewStatus)
+                .HasConversion<string?>();
+            
+            // Indexes
+            entity.HasIndex(e => e.WorkflowInstanceId);
+            entity.HasIndex(e => e.Timestamp);
+            
+            // Foreign key to WorkflowInstance
+            entity.HasOne(e => e.WorkflowInstance)
+                .WithMany()
+                .HasForeignKey(e => e.WorkflowInstanceId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

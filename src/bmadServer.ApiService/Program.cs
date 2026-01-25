@@ -60,6 +60,12 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.ISessionService, bmadS
 // Register session cleanup background service
 builder.Services.AddHostedService<bmadServer.ApiService.BackgroundServices.SessionCleanupService>();
 
+// Register workflow registry as singleton (shared in-memory registry)
+builder.Services.AddSingleton<bmadServer.ServiceDefaults.Services.Workflows.IWorkflowRegistry, bmadServer.ServiceDefaults.Services.Workflows.WorkflowRegistry>();
+
+// Register workflow instance service
+builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IWorkflowInstanceService, bmadServer.ApiService.Services.Workflows.WorkflowInstanceService>();
+
 // Register FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<bmadServer.ApiService.Validators.RegisterRequestValidator>();
 

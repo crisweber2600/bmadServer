@@ -1,6 +1,6 @@
 # Story 4.1: Workflow Definition & Registry
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -33,29 +33,29 @@ so that the system knows which workflows are available and their step sequences.
 
 ## Tasks / Subtasks
 
-- [ ] Create Workflows/WorkflowDefinition.cs domain model (AC: 1, 4)
-  - [ ] Add properties: WorkflowId (string), Name (string), Description (string)
-  - [ ] Add EstimatedDuration (TimeSpan), RequiredRoles (List<string>)
-  - [ ] Add Steps collection with Step model containing: StepId, Name, AgentId, InputSchema, OutputSchema, IsOptional, CanSkip
-- [ ] Create Workflows/WorkflowRegistry.cs service (AC: 2, 3)
-  - [ ] Implement GetAllWorkflows() method
-  - [ ] Implement GetWorkflow(string id) method
-  - [ ] Implement ValidateWorkflow(string id) method
-  - [ ] Add dependency injection registration in Program.cs
-- [ ] Populate registry with BMAD workflows (AC: 3)
-  - [ ] Add create-prd workflow definition
-  - [ ] Add create-architecture workflow definition
-  - [ ] Add create-stories workflow definition
-  - [ ] Add design-ux workflow definition
-  - [ ] Add other core BMAD workflows from specification
-- [ ] Add error handling for invalid workflows (AC: 5)
-  - [ ] Return null or throw WorkflowNotFoundException for non-existent workflows
-  - [ ] Add appropriate logging
-- [ ] Add unit tests for WorkflowRegistry
-  - [ ] Test GetAllWorkflows returns all expected workflows
-  - [ ] Test GetWorkflow with valid id returns correct workflow
-  - [ ] Test GetWorkflow with invalid id handles error correctly
-  - [ ] Test ValidateWorkflow with valid and invalid workflows
+- [x] Create Workflows/WorkflowDefinition.cs domain model (AC: 1, 4)
+  - [x] Add properties: WorkflowId (string), Name (string), Description (string)
+  - [x] Add EstimatedDuration (TimeSpan), RequiredRoles (List<string>)
+  - [x] Add Steps collection with Step model containing: StepId, Name, AgentId, InputSchema, OutputSchema, IsOptional, CanSkip
+- [x] Create Workflows/WorkflowRegistry.cs service (AC: 2, 3)
+  - [x] Implement GetAllWorkflows() method
+  - [x] Implement GetWorkflow(string id) method
+  - [x] Implement ValidateWorkflow(string id) method
+  - [x] Add dependency injection registration in Program.cs
+- [x] Populate registry with BMAD workflows (AC: 3)
+  - [x] Add create-prd workflow definition
+  - [x] Add create-architecture workflow definition
+  - [x] Add create-stories workflow definition
+  - [x] Add design-ux workflow definition
+  - [x] Add other core BMAD workflows from specification
+- [x] Add error handling for invalid workflows (AC: 5)
+  - [x] Return null or throw WorkflowNotFoundException for non-existent workflows
+  - [x] Add appropriate logging
+- [x] Add unit tests for WorkflowRegistry
+  - [x] Test GetAllWorkflows returns all expected workflows
+  - [x] Test GetWorkflow with valid id returns correct workflow
+  - [x] Test GetWorkflow with invalid id handles error correctly
+  - [x] Test ValidateWorkflow with valid and invalid workflows
 
 ## Dev Notes
 
@@ -150,16 +150,34 @@ See `docs/` for overall project documentation and standards.
 
 ### Agent Model Used
 
-_To be filled by dev agent_
+Claude Sonnet 4 - Developer Agent (Amelia)
 
 ### Debug Log References
 
-_To be filled by dev agent_
+- Created domain models in ServiceDefaults/Models/Workflows/
+- Created services in ServiceDefaults/Services/Workflows/
+- Registered WorkflowRegistry as singleton in Program.cs
+- All 128 tests passing (10 new + 118 existing)
 
 ### Completion Notes List
 
-_To be filled by dev agent_
+✅ **Implementation Complete** (2026-01-25)
+- Created WorkflowDefinition and WorkflowStep domain models
+- Implemented IWorkflowRegistry interface and WorkflowRegistry service
+- Populated registry with 6 core BMAD workflows: create-prd, create-architecture, create-stories, design-ux, dev-story, code-review
+- Each workflow has detailed steps with AgentId, InputSchema, OutputSchema, IsOptional, CanSkip properties
+- Implemented null/empty ID handling with appropriate logging
+- Added O(1) dictionary-based lookup for performance
+- Registered as singleton service in DI container
+- Created comprehensive unit tests with 10 test cases covering all functionality
+- All tests pass (128/128)
 
 ### File List
 
-_To be filled by dev agent_
+- src/bmadServer.ServiceDefaults/Models/Workflows/WorkflowDefinition.cs (new)
+- src/bmadServer.ServiceDefaults/Models/Workflows/WorkflowStep.cs (new)
+- src/bmadServer.ServiceDefaults/Services/Workflows/IWorkflowRegistry.cs (new)
+- src/bmadServer.ServiceDefaults/Services/Workflows/WorkflowRegistry.cs (new)
+- src/bmadServer.ApiService/Program.cs (modified - added DI registration)
+- src/bmadServer.Tests/bmadServer.Tests.csproj (modified - added FluentAssertions and ServiceDefaults reference)
+- src/bmadServer.Tests/Unit/Services/Workflows/WorkflowRegistryTests.cs (new)
