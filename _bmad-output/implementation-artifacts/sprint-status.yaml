@@ -136,13 +136,13 @@ development_status:
   # ===============================================
   # EPIC 9: Data Persistence & State Management
   # ===============================================
-  epic-9: backlog
-  9-1-event-log-architecture: backlog
-  9-2-jsonb-state-storage-with-concurrency-control: backlog
-  9-3-artifact-storage-management: backlog
-  9-4-workflow-export-import: backlog
-  9-5-checkpoint-restoration: backlog
-  9-6-audit-log-retention-compliance: backlog
+  epic-9: in-progress
+  9-1-event-log-architecture: ready-for-dev
+  9-2-jsonb-state-storage-with-concurrency-control: ready-for-dev
+  9-3-artifact-storage-management: ready-for-dev
+  9-4-workflow-export-import: ready-for-dev
+  9-5-checkpoint-restoration: ready-for-dev
+  9-6-audit-log-retention-compliance: ready-for-dev
   epic-9-retrospective: optional
 
   # ====================================

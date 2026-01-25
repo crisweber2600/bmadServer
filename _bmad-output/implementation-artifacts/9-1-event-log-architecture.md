@@ -32,49 +32,204 @@ As a developer, I want all workflow events logged immutably, so that we have a c
 
 ## Tasks / Subtasks
 
-- [ ] Analyze acceptance criteria and create detailed implementation plan
-- [ ] Design data models and database schema if needed
-- [ ] Implement core business logic
-- [ ] Create API endpoints and/or UI components
-- [ ] Write unit tests for critical paths
-- [ ] Write integration tests for key scenarios
-- [ ] Update API documentation
-- [ ] Perform manual testing and validation
-- [ ] Code review and address feedback
+- [ ] Create WorkflowEvent entity model (AC: 1, 3)
+  - [ ] Add properties: Id (Guid), WorkflowInstanceId (Guid), EventType (enum), Payload (JSONB), UserId (Guid), Timestamp (DateTime), CorrelationId (string), SequenceNumber (long)
+  - [ ] Add indexes: workflowInstanceId, timestamp, eventType
+  - [ ] Ensure model is immutable (readonly properties after construction)
+- [ ] Create WorkflowEventType enum (AC: 4)
+  - [ ] Define event types: WorkflowStarted, StepCompleted, DecisionMade, UserInput, AgentResponse, StateChanged, Error, WorkflowPaused, WorkflowResumed, WorkflowCancelled, WorkflowCompleted
+  - [ ] Add XML documentation for each event type
+- [ ] Create database migration for WorkflowEvents table (AC: 2)
+  - [ ] Use EF Core migrations to create table
+  - [ ] Add monthly partitioning configuration (PostgreSQL native partitioning)
+  - [ ] Create indexes for performance: (workflowInstanceId, sequenceNumber), (timestamp)
+  - [ ] Set up append-only constraints (no UPDATE/DELETE triggers)
+- [ ] Implement EventStore service (AC: 5)
+  - [ ] Create IEventStore interface with methods: AppendAsync, GetEventsAsync, ReplayAsync
+  - [ ] Implement EventStore service with PostgreSQL backend
+  - [ ] AppendAsync: Insert event with auto-incremented sequence number
+  - [ ] GetEventsAsync: Query by workflowInstanceId with ordering
+  - [ ] ReplayAsync: Get events from specific sequence number
+  - [ ] Add logging for all operations
+- [ ] Integrate event logging into existing workflow services (AC: 1)
+  - [ ] Update WorkflowInstanceService to log WorkflowStarted, WorkflowCompleted, WorkflowCancelled events
+  - [ ] Update StepExecutor (from Story 4.3) to log StepCompleted events
+  - [ ] Ensure all state changes trigger StateChanged events
+  - [ ] Add error logging for exceptions
+- [ ] Add partition management (AC: 2)
+  - [ ] Create monthly partition creation job
+  - [ ] Add background service to auto-create partitions for next month
+  - [ ] Add partition cleanup for old data (retention policy)
+- [ ] Write unit tests
+  - [ ] Test EventStore.AppendAsync inserts events correctly
+  - [ ] Test EventStore.GetEventsAsync returns events in order
+  - [ ] Test EventStore.ReplayAsync filters by sequence number
+  - [ ] Test event immutability (cannot update/delete)
+  - [ ] Test all event types are logged correctly
+- [ ] Write integration tests
+  - [ ] End-to-end workflow event logging
+  - [ ] Verify event replay reconstructs workflow state
+  - [ ] Test partition creation and querying
+  - [ ] Verify append-only enforcement
 
 ## Dev Notes
 
-### Implementation Guidance
+### Architecture Alignment
 
-This story should be implemented following the patterns established in the codebase:
-- Follow the architecture patterns defined in `architecture.md`
-- Use existing service patterns and dependency injection
-- Ensure proper error handling and logging
-- Add appropriate authorization checks based on user roles
-- Follow the coding standards and conventions of the project
+**Source:** [ARCHITECTURE.MD - Event Log, JSONB Storage]
 
-### Testing Strategy
+- Create entity: `src/bmadServer.ApiService/Models/Events/WorkflowEvent.cs`
+- Create enum: `src/bmadServer.ApiService/Models/Events/WorkflowEventType.cs`
+- Create service: `src/bmadServer.ApiService/Services/Events/EventStore.cs`
+- Create interface: `src/bmadServer.ApiService/Services/Events/IEventStore.cs`
+- Migration: `src/bmadServer.ApiService/Data/Migrations/XXX_CreateWorkflowEventsTable.cs`
+- Follow PostgreSQL JSONB pattern from existing event_logs table structure
 
-- Unit tests should cover business logic and edge cases
-- Integration tests should verify API endpoints and database interactions
-- Consider performance implications for database queries
-- Test error scenarios and validation rules
+### Technical Requirements
+
+**Event Log Schema:**
+```csharp
+public class WorkflowEvent
+{
+    public Guid Id { get; init; }
+    public Guid WorkflowInstanceId { get; init; }
+    public WorkflowEventType EventType { get; init; }
+    public JsonDocument Payload { get; init; }  // System.Text.Json JSONB
+    public Guid? UserId { get; init; }
+    public DateTime Timestamp { get; init; }
+    public string? CorrelationId { get; init; }
+    public long SequenceNumber { get; init; }  // Auto-increment per workflow
+}
+```
+
+**PostgreSQL Partitioning:**
+```sql
+-- Create partitioned table by month
+CREATE TABLE workflow_events (
+    id UUID PRIMARY KEY,
+    workflow_instance_id UUID NOT NULL,
+    event_type VARCHAR(100) NOT NULL,
+    payload JSONB NOT NULL,
+    user_id UUID,
+    timestamp TIMESTAMP NOT NULL,
+    correlation_id VARCHAR(255),
+    sequence_number BIGSERIAL NOT NULL
+) PARTITION BY RANGE (timestamp);
+
+-- Create index on JSONB payload for querying
+CREATE INDEX idx_workflow_events_payload ON workflow_events USING GIN (payload);
+CREATE INDEX idx_workflow_events_workflow_sequence ON workflow_events (workflow_instance_id, sequence_number);
+
+-- Example partition for January 2026
+CREATE TABLE workflow_events_2026_01 PARTITION OF workflow_events
+    FOR VALUES FROM ('2026-01-01') TO ('2026-02-01');
+```
+
+**Append-Only Enforcement:**
+```csharp
+// In EventStore, prevent UPDATE/DELETE
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.Entity<WorkflowEvent>()
+        .ToTable("workflow_events")
+        .HasNoKey(); // Prevent EF from attempting updates
+        
+    // All operations go through AppendAsync only
+}
+```
+
+**Event Replay Pattern:**
+```csharp
+public async Task<IEnumerable<WorkflowEvent>> ReplayAsync(
+    Guid workflowId, 
+    long fromSequence = 0, 
+    CancellationToken cancellationToken = default)
+{
+    return await _context.WorkflowEvents
+        .Where(e => e.WorkflowInstanceId == workflowId 
+                 && e.SequenceNumber >= fromSequence)
+        .OrderBy(e => e.SequenceNumber)
+        .AsNoTracking()
+        .ToListAsync(cancellationToken);
+}
+```
+
+### File Structure Requirements
+
+```
+src/bmadServer.ApiService/
+├── Models/
+│   └── Events/
+│       ├── WorkflowEvent.cs (new)
+│       └── WorkflowEventType.cs (new)
+├── Services/
+│   └── Events/
+│       ├── IEventStore.cs (new)
+│       ├── EventStore.cs (new)
+│       └── PartitionManagementService.cs (new - background service)
+└── Data/
+    └── Migrations/
+        └── XXX_CreateWorkflowEventsTable.cs (new)
+```
 
 ### Dependencies
 
-Review the acceptance criteria for dependencies on:
-- Other stories or epics that must be completed first
-- External packages or services that need to be configured
-- Database migrations that need to be created
+**From Previous Stories:**
+- Story 4.2: WorkflowInstance entity (FK reference)
+- Story 4.3: StepExecutor service (needs event logging integration)
+- Story 2.1: User entity (FK reference for userId)
 
-## Files to Create/Modify
+**NuGet Packages:**
+- System.Text.Json (already in project) - for JSONB payload
+- Npgsql.EntityFrameworkCore.PostgreSQL (already in project) - for partitioning
 
-Files will be determined during implementation based on:
-- Data models and entities needed
-- API endpoints required
-- Service layer components
-- Database migrations
-- Test files
+### Testing Requirements
+
+**Unit Tests:** `test/bmadServer.Tests/Services/Events/EventStoreTests.cs`
+
+**Test Coverage:**
+- Append events with all required fields
+- Query events by workflow ID
+- Replay from specific sequence number
+- Verify sequence number auto-increment
+- Test partition creation logic
+- Verify no UPDATE/DELETE operations allowed
+
+**Integration Tests:** `test/bmadServer.Tests/Integration/Events/EventLogIntegrationTests.cs`
+
+**Test Coverage:**
+- Full workflow execution logs all expected events
+- Event replay successfully reconstructs workflow state
+- Partition switching works correctly at month boundaries
+- Concurrent event appends maintain sequence integrity
+
+### Integration Notes
+
+**Connection to Other Stories:**
+- Story 9.2: State changes trigger StateChanged events
+- Story 9.3: Artifact creation triggers events
+- Story 9.5: Checkpoint creation logs snapshot events
+- Story 9.6: Audit log queries use event log data
+
+**Performance Considerations:**
+- Partition by month to keep index sizes manageable
+- Use GIN index on JSONB for complex payload queries
+- Batch event insertion for bulk operations
+- Consider read replicas for heavy audit queries
+
+### Previous Story Intelligence
+
+**From Epic 4 Stories:**
+- WorkflowInstance already has event logging placeholder (event_logs table exists)
+- Current event_logs table uses JSONB with flexible schema - leverage this pattern
+- Partition management can be handled via background service pattern from Story 4.4
+
+### References
+
+- [Source: _bmad-output/planning-artifacts/epics.md#Story 9.1]
+- [Source: ARCHITECTURE.md - Event Log, JSONB Storage, Database Layer]
+- [PostgreSQL Partitioning: https://www.postgresql.org/docs/17/ddl-partitioning.html]
+- [Event Sourcing Pattern: Martin Fowler - https://martinfowler.com/eaaDev/EventSourcing.html]
 
 
 ---
