@@ -15,6 +15,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Session> Sessions { get; set; }
     public DbSet<Workflow> Workflows { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
+    public DbSet<WorkflowContextEntity> WorkflowContexts { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -94,6 +95,19 @@ public class ApplicationDbContext : DbContext
                 .WithMany(u => u.RefreshTokens)
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<WorkflowContextEntity>(entity =>
+        {
+            entity.ToTable("workflow_contexts");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.WorkflowInstanceId).IsUnique();
+            entity.Property(e => e.ContextData)
+                .HasColumnType("jsonb")
+                .IsRequired();
+            entity.Property(e => e.Version).IsRequired();
+            entity.HasIndex(e => e.WorkflowInstanceId);
+            entity.HasIndex(e => e.LastModifiedAt);
         });
     }
 }
