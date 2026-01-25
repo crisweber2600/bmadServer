@@ -173,7 +173,7 @@ export class SignalRChatClient {
 }
 
 // Example usage
-async function example() {
+export async function example() {
   // Function to get access token (e.g., from localStorage or auth service)
   const getAccessToken = async (): Promise<string> => {
     // Replace with your actual token retrieval logic

@@ -17,7 +17,7 @@ export function useTouchGestures(options?: TouchGestureOptions) {
   } = options || {};
 
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
-  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const longPressTimerRef = useRef<number | null>(null);
   const longPressTargetRef = useRef<HTMLElement | null>(null);
 
   const handleTouchStart = useCallback(
@@ -37,7 +37,7 @@ export function useTouchGestures(options?: TouchGestureOptions) {
             longPressTargetRef.current.classList.add('long-press-active');
             onLongPress(longPressTargetRef.current);
           }
-        }, longPressDuration);
+        }, longPressDuration) as unknown as number;
       }
     },
     [onLongPress, longPressDuration]
@@ -92,9 +92,9 @@ export function useTouchGestures(options?: TouchGestureOptions) {
 
   const attachGestureListeners = useCallback(
     (element: HTMLElement) => {
-      element.addEventListener('touchstart', handleTouchStart, { passive: false });
-      element.addEventListener('touchmove', handleTouchMove, { passive: false });
-      element.addEventListener('touchend', handleTouchEnd, { passive: false });
+      element.addEventListener('touchstart', handleTouchStart, { passive: true });
+      element.addEventListener('touchmove', handleTouchMove, { passive: true });
+      element.addEventListener('touchend', handleTouchEnd, { passive: true });
 
       return () => {
         element.removeEventListener('touchstart', handleTouchStart);

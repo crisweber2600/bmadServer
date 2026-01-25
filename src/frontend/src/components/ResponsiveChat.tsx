@@ -37,11 +37,13 @@ export const ResponsiveChat: React.FC<ResponsiveChatProps> = ({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentStreamingMessageId, setCurrentStreamingMessageId] = useState<string | null>(null);
 
+  // Note: handleMessageChunk and handleGenerationStopped are provided by useStreamingMessage
+  // but are not used in this demo component. In a real application, these would be registered
+  // with a SignalR connection to handle real-time MESSAGE_CHUNK and GENERATION_STOPPED events.
+  // See docs/examples/signalr-client-reconnection.ts for SignalR integration example.
   const {
     streamingMessages,
     isStreaming,
-    handleMessageChunk: _handleMessageChunk,
-    handleGenerationStopped: _handleGenerationStopped,
   } = useStreamingMessage({
     onComplete: (message) => {
       console.log('Message complete:', message);

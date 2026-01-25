@@ -26,7 +26,7 @@ export function useStreamingMessage(options?: UseStreamingMessageOptions) {
   );
   const [isStreaming, setIsStreaming] = useState(false);
   const stoppedMessagesRef = useRef<Set<string>>(new Set());
-  const cleanupTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const cleanupTimeoutsRef = useRef<Map<string, number>>(new Map());
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -54,7 +54,7 @@ export function useStreamingMessage(options?: UseStreamingMessageOptions) {
         stoppedMessagesRef.current.delete(messageId);
       }
       cleanupTimeoutsRef.current.delete(messageId);
-    }, 100);
+    }, 100) as unknown as number;
 
     cleanupTimeoutsRef.current.set(messageId, timeout);
   }, []);
@@ -74,7 +74,7 @@ export function useStreamingMessage(options?: UseStreamingMessageOptions) {
         return;
       }
 
-      setStreamingMessages((prev) => {
+      setStreamingMessages((prev: Map<string, StreamingMessage>) => {
         const newMap = new Map(prev);
         const existing = newMap.get(messageId);
 
@@ -94,6 +94,12 @@ export function useStreamingMessage(options?: UseStreamingMessageOptions) {
           onComplete?.(updated);
           // Schedule cleanup for completed message
           scheduleCleanup(messageId);
+          
+          // Check if there are any remaining incomplete messages before setting isStreaming to false
+          const hasIncompleteMessages = Array.from(newMap.values()).some((msg: StreamingMessage) => !msg.isComplete);
+          if (!hasIncompleteMessages) {
+            setIsStreaming(false);
+          }
         } else {
           setIsStreaming(true);
         }
@@ -108,7 +114,7 @@ export function useStreamingMessage(options?: UseStreamingMessageOptions) {
     const messageId = data.MessageId;
     stoppedMessagesRef.current.add(messageId);
 
-    setStreamingMessages((prev) => {
+    setStreamingMessages((prev: Map<string, StreamingMessage>) => {
       const newMap = new Map(prev);
       const existing = newMap.get(messageId);
 
@@ -125,6 +131,12 @@ export function useStreamingMessage(options?: UseStreamingMessageOptions) {
 
         // Schedule cleanup for stopped message
         scheduleCleanup(messageId, true);
+        
+        // Check if there are any remaining incomplete messages
+        const hasIncompleteMessages = Array.from(newMap.values()).some((msg: StreamingMessage) => !msg.isComplete);
+        if (!hasIncompleteMessages) {
+          setIsStreaming(false);
+        }
       }
 
       return newMap;
@@ -133,7 +145,7 @@ export function useStreamingMessage(options?: UseStreamingMessageOptions) {
 
   const clearStreaming = useCallback(() => {
     // Clear all pending timeouts
-    cleanupTimeoutsRef.current.forEach((timeout) => clearTimeout(timeout));
+    cleanupTimeoutsRef.current.forEach((timeout: number) => clearTimeout(timeout));
     cleanupTimeoutsRef.current.clear();
     
     setStreamingMessages(new Map());
