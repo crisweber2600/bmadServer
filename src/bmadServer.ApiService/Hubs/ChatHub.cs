@@ -120,6 +120,8 @@ public class ChatHub : Hub
             throw new HubException("No active session found");
         }
 
+        var userMessageId = Guid.NewGuid().ToString();
+
         // Update session state with new message
         await _sessionService.UpdateSessionStateAsync(session.Id, userId, s =>
         {
@@ -127,7 +129,7 @@ public class ChatHub : Hub
             
             s.WorkflowState.ConversationHistory.Add(new Models.ChatMessage
             {
-                Id = Guid.NewGuid().ToString(),
+                Id = userMessageId,
                 Role = "user",
                 Content = message,
                 Timestamp = DateTime.UtcNow
@@ -147,13 +149,123 @@ public class ChatHub : Hub
             "User {UserId} sent message in session {SessionId}. Processing time: {ProcessTimeMs}ms", 
             userId, session.Id, processTime);
 
-        // Echo message back (placeholder - real implementation would invoke workflow/agent)
+        // Echo user message back
         await Clients.Caller.SendAsync("ReceiveMessage", new
         {
             Role = "user",
             Content = message,
+            Timestamp = DateTime.UtcNow,
+            MessageId = userMessageId
+        });
+
+        // Start streaming agent response (simulated for now)
+        await StreamAgentResponse(userId, session.Id, message);
+    }
+
+    /// <summary>
+    /// Simulates streaming an agent response with MESSAGE_CHUNK events.
+    /// In production, this would integrate with an actual AI agent/LLM.
+    /// </summary>
+    private async Task StreamAgentResponse(Guid userId, Guid sessionId, string userMessage)
+    {
+        var messageId = Guid.NewGuid().ToString();
+        var agentId = "bmad-agent-1";
+        var fullResponse = GenerateSimulatedResponse(userMessage);
+        
+        // Simulate token-by-token streaming
+        var words = fullResponse.Split(' ');
+        var streamedContent = "";
+
+        for (int i = 0; i < words.Length; i++)
+        {
+            var chunk = (i == 0 ? "" : " ") + words[i];
+            streamedContent += chunk;
+            var isComplete = i == words.Length - 1;
+
+            await Clients.Caller.SendAsync("MESSAGE_CHUNK", new
+            {
+                MessageId = messageId,
+                Chunk = chunk,
+                IsComplete = isComplete,
+                AgentId = agentId,
+                Timestamp = DateTime.UtcNow
+            });
+
+            // Save partial message for recovery
+            if (!isComplete)
+            {
+                await SavePartialMessage(sessionId, userId, messageId, streamedContent, agentId);
+            }
+
+            // Simulate streaming delay (50-100ms per token for realism)
+            await Task.Delay(Random.Shared.Next(50, 100));
+        }
+
+        // Save complete message to session history
+        await _sessionService.UpdateSessionStateAsync(sessionId, userId, s =>
+        {
+            s.WorkflowState ??= new Models.WorkflowState();
+            s.WorkflowState.ConversationHistory.Add(new Models.ChatMessage
+            {
+                Id = messageId,
+                Role = "agent",
+                Content = fullResponse,
+                Timestamp = DateTime.UtcNow,
+                AgentId = agentId
+            });
+        });
+    }
+
+    /// <summary>
+    /// Saves partial message for interruption recovery.
+    /// </summary>
+    private async Task SavePartialMessage(Guid sessionId, Guid userId, string messageId, 
+        string partialContent, string agentId)
+    {
+        await _sessionService.UpdateSessionStateAsync(sessionId, userId, s =>
+        {
+            s.WorkflowState ??= new Models.WorkflowState();
+            s.WorkflowState.PendingInput = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                MessageId = messageId,
+                PartialContent = partialContent,
+                AgentId = agentId,
+                IsStreaming = true
+            });
+        });
+    }
+
+    /// <summary>
+    /// Stops message generation mid-stream.
+    /// </summary>
+    public async Task StopGenerating(string messageId)
+    {
+        var userId = GetUserIdFromClaims();
+        _logger.LogInformation("User {UserId} requested to stop message {MessageId}", userId, messageId);
+
+        // Signal client that generation stopped
+        await Clients.Caller.SendAsync("GENERATION_STOPPED", new
+        {
+            MessageId = messageId,
             Timestamp = DateTime.UtcNow
         });
+    }
+
+    private string GenerateSimulatedResponse(string userMessage)
+    {
+        var lower = userMessage.ToLower();
+
+        if (lower.Contains("help"))
+        {
+            return "I'd be happy to help! Here are some things I can do:\n\n- Answer questions about BMAD\n- Provide code examples\n- Explain concepts\n- And much more!\n\nWhat would you like to know?";
+        }
+
+        if (lower.Contains("code"))
+        {
+            return "Here's a simple code example:\n\n```javascript\nfunction greet(name) {\n  return `Hello, ${name}!`;\n}\n\nconsole.log(greet('World'));\n```\n\nThis function takes a name and returns a greeting.";
+        }
+
+        return $"You said: \"{userMessage}\"\n\nThat's interesting! I can help you with various tasks. Try asking about help, code, or links.";
     }
 
     /// <summary>
