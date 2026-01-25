@@ -1,34 +1,33 @@
 {
   "format": 1,
   "restore": {
-    "/Users/cris/bmadServer/src/bmadServer.ApiService/bmadServer.ApiService.csproj": {}
+    "/home/runner/work/bmadServer/bmadServer/src/bmadServer.ApiService/bmadServer.ApiService.csproj": {}
   },
   "projects": {
-    "/Users/cris/bmadServer/src/bmadServer.ApiService/bmadServer.ApiService.csproj": {
+    "/home/runner/work/bmadServer/bmadServer/src/bmadServer.ApiService/bmadServer.ApiService.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/cris/bmadServer/src/bmadServer.ApiService/bmadServer.ApiService.csproj",
+        "projectUniqueName": "/home/runner/work/bmadServer/bmadServer/src/bmadServer.ApiService/bmadServer.ApiService.csproj",
         "projectName": "bmadServer.ApiService",
-        "projectPath": "/Users/cris/bmadServer/src/bmadServer.ApiService/bmadServer.ApiService.csproj",
-        "packagesPath": "/Users/cris/.nuget/packages/",
-        "outputPath": "/Users/cris/bmadServer/src/bmadServer.ApiService/obj/",
+        "projectPath": "/home/runner/work/bmadServer/bmadServer/src/bmadServer.ApiService/bmadServer.ApiService.csproj",
+        "packagesPath": "/home/runner/.nuget/packages/",
+        "outputPath": "/home/runner/work/bmadServer/bmadServer/src/bmadServer.ApiService/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/Users/cris/.nuget/NuGet/NuGet.Config"
+          "/home/runner/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net10.0"
         ],
         "sources": {
-          "/opt/homebrew/Cellar/dotnet/10.0.102/libexec/library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net10.0": {
             "targetAlias": "net10.0",
             "projectReferences": {
-              "/Users/cris/bmadServer/src/bmadServer.ServiceDefaults/bmadServer.ServiceDefaults.csproj": {
-                "projectPath": "/Users/cris/bmadServer/src/bmadServer.ServiceDefaults/bmadServer.ServiceDefaults.csproj"
+              "/home/runner/work/bmadServer/bmadServer/src/bmadServer.ServiceDefaults/bmadServer.ServiceDefaults.csproj": {
+                "projectPath": "/home/runner/work/bmadServer/bmadServer/src/bmadServer.ServiceDefaults/bmadServer.ServiceDefaults.csproj"
               }
             }
           }
@@ -53,6 +52,14 @@
               "target": "Package",
               "version": "[13.1.0, )"
             },
+            "BCrypt.Net-Next": {
+              "target": "Package",
+              "version": "[4.0.3, )"
+            },
+            "FluentValidation.AspNetCore": {
+              "target": "Package",
+              "version": "[11.3.1, )"
+            },
             "Microsoft.AspNetCore.OpenApi": {
               "target": "Package",
               "version": "[10.0.1, )"
@@ -68,6 +75,10 @@
             "Npgsql.EntityFrameworkCore.PostgreSQL": {
               "target": "Package",
               "version": "[10.0.0, )"
+            },
+            "Swashbuckle.AspNetCore": {
+              "target": "Package",
+              "version": "[10.1.0, )"
             }
           },
           "imports": [
@@ -89,7 +100,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/opt/homebrew/Cellar/dotnet/10.0.102/libexec/sdk/10.0.102/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/10.0.102/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.AspNetCore": "(,10.0.32767]",
             "Microsoft.AspNetCore.Antiforgery": "(,10.0.32767]",
@@ -507,23 +518,22 @@
         }
       }
     },
-    "/Users/cris/bmadServer/src/bmadServer.ServiceDefaults/bmadServer.ServiceDefaults.csproj": {
+    "/home/runner/work/bmadServer/bmadServer/src/bmadServer.ServiceDefaults/bmadServer.ServiceDefaults.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/cris/bmadServer/src/bmadServer.ServiceDefaults/bmadServer.ServiceDefaults.csproj",
+        "projectUniqueName": "/home/runner/work/bmadServer/bmadServer/src/bmadServer.ServiceDefaults/bmadServer.ServiceDefaults.csproj",
         "projectName": "bmadServer.ServiceDefaults",
-        "projectPath": "/Users/cris/bmadServer/src/bmadServer.ServiceDefaults/bmadServer.ServiceDefaults.csproj",
-        "packagesPath": "/Users/cris/.nuget/packages/",
-        "outputPath": "/Users/cris/bmadServer/src/bmadServer.ServiceDefaults/obj/",
+        "projectPath": "/home/runner/work/bmadServer/bmadServer/src/bmadServer.ServiceDefaults/bmadServer.ServiceDefaults.csproj",
+        "packagesPath": "/home/runner/.nuget/packages/",
+        "outputPath": "/home/runner/work/bmadServer/bmadServer/src/bmadServer.ServiceDefaults/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/Users/cris/.nuget/NuGet/NuGet.Config"
+          "/home/runner/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net10.0"
         ],
         "sources": {
-          "/opt/homebrew/Cellar/dotnet/10.0.102/libexec/library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -596,7 +606,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/opt/homebrew/Cellar/dotnet/10.0.102/libexec/sdk/10.0.102/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/10.0.102/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.AspNetCore": "(,10.0.32767]",
             "Microsoft.AspNetCore.Antiforgery": "(,10.0.32767]",

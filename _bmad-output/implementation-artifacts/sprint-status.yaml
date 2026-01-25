@@ -51,7 +51,7 @@ development_status:
   # EPIC 2: User Authentication & Session Management
   # =========================================================
   epic-2: in-progress
-  2-1-user-registration-auth: backlog
+  2-1-user-registration-auth: review
   2-2-jwt-token-generation: backlog
   2-3-refresh-token-flow: backlog
   2-4-session-persistence-recovery: backlog

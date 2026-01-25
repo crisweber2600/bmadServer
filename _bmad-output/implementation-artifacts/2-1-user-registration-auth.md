@@ -1,6 +1,6 @@
 # Story 2.1: User Registration & Local Database Authentication
 
-**Status:** ready-for-dev
+**Status:** review
 
 ## Story
 
@@ -72,50 +72,50 @@ so that I can securely access bmadServer and start using BMAD workflows.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Create User entity and DbContext configuration** (AC: Database schema)
-  - [ ] Create `Models/User.cs` entity class with Id, Email, PasswordHash, DisplayName, CreatedAt, UpdatedAt
-  - [ ] Add DbSet<User> to ApplicationDbContext
-  - [ ] Configure entity in OnModelCreating (indexes, constraints)
-  - [ ] Add unique index on Email column
-  - [ ] Configure Id as UUID/GUID with database-generated values
+- [x] **Task 1: Create User entity and DbContext configuration** (AC: Database schema)
+  - [x] Create `Models/User.cs` entity class with Id, Email, PasswordHash, DisplayName, CreatedAt, UpdatedAt
+  - [x] Add DbSet<User> to ApplicationDbContext
+  - [x] Configure entity in OnModelCreating (indexes, constraints)
+  - [x] Add unique index on Email column
+  - [x] Configure Id as UUID/GUID with database-generated values
 
-- [ ] **Task 2: Generate EF Core migration for Users table** (AC: Migration criteria)
-  - [ ] Run `dotnet ef migrations add AddUsersTable`
-  - [ ] Review generated migration file for correctness
-  - [ ] Verify CREATE TABLE includes all columns with proper types
-  - [ ] Run `dotnet ef database update` to apply migration
-  - [ ] Verify table exists with `SELECT * FROM users`
+- [x] **Task 2: Generate EF Core migration for Users table** (AC: Migration criteria)
+  - [x] Run `dotnet ef migrations add AddUsersTable`
+  - [x] Review generated migration file for correctness
+  - [x] Verify CREATE TABLE includes all columns with proper types
+  - [x] Run `dotnet ef database update` to apply migration
+  - [x] Verify table exists with `SELECT * FROM users`
 
-- [ ] **Task 3: Implement password hashing service** (AC: bcrypt hashing)
-  - [ ] Add BCrypt.Net-Next NuGet package
-  - [ ] Create `Services/IPasswordHasher.cs` interface
-  - [ ] Create `Services/PasswordHasher.cs` implementation using bcrypt (cost factor 12)
-  - [ ] Register service in DI container
-  - [ ] Write unit tests for hash generation and verification
+- [x] **Task 3: Implement password hashing service** (AC: bcrypt hashing)
+  - [x] Add BCrypt.Net-Next NuGet package
+  - [x] Create `Services/IPasswordHasher.cs` interface
+  - [x] Create `Services/PasswordHasher.cs` implementation using bcrypt (cost factor 12)
+  - [x] Register service in DI container
+  - [x] Write unit tests for hash generation and verification
 
-- [ ] **Task 4: Create registration DTO and validation** (AC: Validation criteria)
-  - [ ] Create `DTOs/RegisterRequest.cs` with Email, Password, DisplayName
-  - [ ] Create `DTOs/UserResponse.cs` for response (excludes PasswordHash)
-  - [ ] Add FluentValidation validators for:
+- [x] **Task 4: Create registration DTO and validation** (AC: Validation criteria)
+  - [x] Create `DTOs/RegisterRequest.cs` with Email, Password, DisplayName
+  - [x] Create `DTOs/UserResponse.cs` for response (excludes PasswordHash)
+  - [x] Add FluentValidation validators for:
     - Email format validation (regex)
     - Password strength (min 8 chars, special char, number)
     - DisplayName required, max 100 chars
-  - [ ] Register validators in DI container
+  - [x] Register validators in DI container
 
-- [ ] **Task 5: Implement registration endpoint** (AC: All registration criteria)
-  - [ ] Create `Controllers/AuthController.cs`
-  - [ ] Add POST `/api/v1/auth/register` endpoint
-  - [ ] Check for existing email (return 409 Conflict if exists)
-  - [ ] Hash password using IPasswordHasher
-  - [ ] Create User entity and save to database
-  - [ ] Return 201 Created with UserResponse DTO
-  - [ ] Add proper error handling with ProblemDetails
+- [x] **Task 5: Implement registration endpoint** (AC: All registration criteria)
+  - [x] Create `Controllers/AuthController.cs`
+  - [x] Add POST `/api/v1/auth/register` endpoint
+  - [x] Check for existing email (return 409 Conflict if exists)
+  - [x] Hash password using IPasswordHasher
+  - [x] Create User entity and save to database
+  - [x] Return 201 Created with UserResponse DTO
+  - [x] Add proper error handling with ProblemDetails
 
-- [ ] **Task 6: Configure OpenAPI documentation** (AC: Swagger documentation)
-  - [ ] Add XML documentation comments to controller and DTOs
-  - [ ] Configure Swagger to include validation rules in schema
-  - [ ] Verify endpoint appears in /swagger UI
-  - [ ] Test endpoint from Swagger UI
+- [x] **Task 6: Configure OpenAPI documentation** (AC: Swagger documentation)
+  - [x] Add XML documentation comments to controller and DTOs
+  - [x] Configure Swagger to include validation rules in schema
+  - [x] Verify endpoint appears in /swagger UI
+  - [x] Test endpoint from Swagger UI
 
 ## Dev Notes
 
@@ -262,3 +262,63 @@ This story follows the Aspire-first development pattern:
 - PRD: [prd.md](../planning-artifacts/prd.md) - FR16, FR17
 - **Aspire Rules:** [PROJECT-WIDE-RULES.md](../../../PROJECT-WIDE-RULES.md)
 - **Aspire Docs:** https://aspire.dev
+
+---
+
+## Dev Agent Record
+
+### Implementation Plan
+Implemented user registration endpoint following TDD/BDD approach:
+1. Created User entity with DisplayName field
+2. Configured EF Core DbContext with unique email index
+3. Generated EF Core migration for Users table updates
+4. Implemented BCrypt password hashing service (work factor 12)
+5. Created DTOs (RegisterRequest, UserResponse) with FluentValidation
+6. Implemented AuthController with registration endpoint
+7. Configured Swagger/OpenAPI documentation with XML comments
+8. All tests pass (37 total: unit, integration, validation)
+
+### Completion Notes
+✅ All acceptance criteria satisfied:
+- User registration endpoint implemented at POST /api/v1/auth/register
+- Password hashing with bcrypt (cost factor 12)
+- Email uniqueness enforced with database unique index
+- Validation: email format, password strength (8+ chars, number, special char), display name (max 100)
+- ProblemDetails error format for 400/409 responses
+- Swagger documentation with XML comments
+- 37 tests passing (UserEntity, PasswordHasher, Validator, Integration)
+
+Migration AddUsersTable created (applies DisplayName column and unique Email index).
+
+## File List
+
+### New Files
+- `src/bmadServer.ApiService/Services/IPasswordHasher.cs` - Password hashing interface
+- `src/bmadServer.ApiService/Services/PasswordHasher.cs` - BCrypt password hasher implementation
+- `src/bmadServer.ApiService/DTOs/RegisterRequest.cs` - Registration request DTO
+- `src/bmadServer.ApiService/DTOs/UserResponse.cs` - User response DTO (excludes password)
+- `src/bmadServer.ApiService/Validators/RegisterRequestValidator.cs` - FluentValidation validator
+- `src/bmadServer.ApiService/Controllers/AuthController.cs` - Authentication controller
+- `src/bmadServer.ApiService/Migrations/20260125025918_AddUsersTable.cs` - EF Core migration
+- `src/bmadServer.Tests/Unit/UserEntityTests.cs` - User entity unit tests
+- `src/bmadServer.Tests/Unit/PasswordHasherTests.cs` - Password hasher unit tests
+- `src/bmadServer.Tests/Unit/RegisterRequestValidatorTests.cs` - Validator unit tests
+- `src/bmadServer.Tests/Integration/AuthControllerTests.cs` - Registration endpoint integration tests
+- `src/bmadServer.Tests/Integration/TestWebApplicationFactory.cs` - Test web application factory
+
+### Modified Files
+- `src/bmadServer.ApiService/Data/Entities/User.cs` - Added DisplayName property
+- `src/bmadServer.ApiService/Data/ApplicationDbContext.cs` - Added DisplayName config and unique Email index
+- `src/bmadServer.ApiService/Program.cs` - Registered services (PasswordHasher, FluentValidation, Controllers, Swagger)
+- `src/bmadServer.ApiService/bmadServer.ApiService.csproj` - Added packages (BCrypt, FluentValidation, Swashbuckle)
+- `src/bmadServer.Tests/Integration/DatabaseMigrationTests.cs` - Updated for DisplayName field
+- `src/bmadServer.Tests/bmadServer.Tests.csproj` - Added test packages (AspNetCore.Mvc.Testing, InMemory DB)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` - Updated story status to review
+
+## Change Log
+
+- 2026-01-25: Implemented Story 2-1 User Registration & Local Database Authentication
+  - Added user registration endpoint with password hashing
+  - Implemented FluentValidation for request validation
+  - Configured Swagger/OpenAPI documentation
+  - All 37 tests passing

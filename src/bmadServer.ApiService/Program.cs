@@ -1,3 +1,6 @@
+using FluentValidation;
+using System.Reflection;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add Aspire service defaults: health checks, telemetry (logging + tracing), service discovery, and resilience patterns
@@ -35,10 +38,32 @@ if (!builder.Environment.IsEnvironment("Test"))
 // Errors will be returned as JSON with status code, title, detail, and trace ID
 builder.Services.AddProblemDetails();
 
+// Register password hashing service
+builder.Services.AddScoped<bmadServer.ApiService.Services.IPasswordHasher, bmadServer.ApiService.Services.PasswordHasher>();
+
+// Register FluentValidation
+builder.Services.AddValidatorsFromAssemblyContaining<bmadServer.ApiService.Validators.RegisterRequestValidator>();
+
+// Add controllers
+builder.Services.AddControllers();
+
 // Add OpenAPI/Swagger documentation (available in development environment)
 // Provides automatic API documentation at /openapi/v1.json in development
 // Remove or conditionally add in production environments
 builder.Services.AddOpenApi();
+
+// Add Swagger/OpenAPI with XML documentation
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    // Include XML documentation
+    var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFilename);
+    if (File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath);
+    }
+});
 
 var app = builder.Build();
 
@@ -51,6 +76,12 @@ app.UseExceptionHandler();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "bmadServer API v1");
+        options.RoutePrefix = "swagger";
+    });
 }
 
 // Sample data for demonstration purposes
@@ -87,8 +118,15 @@ app.MapGet("/weatherforecast", () =>
 //   - /alive: Service is running (liveness probe, subset of health checks)
 app.MapDefaultEndpoints();
 
+// Map controllers
+app.MapControllers();
+
 // Start the application
 app.Run();
+
+// Make Program class accessible to tests
+public partial class Program { }
+
 
 // Simple record for demonstration - remove in production
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)

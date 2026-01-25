@@ -23,6 +23,8 @@ public class ApplicationDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Email).IsRequired();
             entity.Property(e => e.PasswordHash).IsRequired();
+            entity.Property(e => e.DisplayName).IsRequired().HasMaxLength(100);
+            entity.HasIndex(e => e.Email).IsUnique();
         });
 
         modelBuilder.Entity<Session>(entity =>
