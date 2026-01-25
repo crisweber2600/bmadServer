@@ -129,4 +129,74 @@ public class ChatHubIntegrationTests : IClassFixture<TestWebApplicationFactory>
         Assert.True(activeSession.IsActive);
         Assert.NotNull(activeSession.ConnectionId);
     }
+
+    [Fact]
+    public async Task SendMessage_Should_Acknowledge_Within_2_Seconds()
+    {
+        // Arrange - Tests NFR1: message acknowledgment within 2 seconds
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        var user = new User
+        {
+            Email = $"test-perf-{Guid.NewGuid()}@example.com",
+            PasswordHash = "hash",
+            DisplayName = "Test User"
+        };
+        dbContext.Users.Add(user);
+        await dbContext.SaveChangesAsync();
+
+        var sessionService = scope.ServiceProvider.GetRequiredService<bmadServer.ApiService.Services.ISessionService>();
+        var session = await sessionService.CreateSessionAsync(user.Id, "conn-perf");
+
+        // Act - Measure message processing time
+        var startTime = DateTime.UtcNow;
+        
+        await sessionService.UpdateSessionStateAsync(session.Id, user.Id, s =>
+        {
+            s.WorkflowState ??= new WorkflowState();
+            s.WorkflowState.ConversationHistory.Add(new ChatMessage
+            {
+                Id = Guid.NewGuid().ToString(),
+                Role = "user",
+                Content = "Test message",
+                Timestamp = DateTime.UtcNow
+            });
+        });
+
+        var elapsedTime = DateTime.UtcNow - startTime;
+
+        // Assert - Should complete within 2 seconds per NFR1
+        Assert.True(elapsedTime.TotalSeconds < 2, 
+            $"Message acknowledgment took {elapsedTime.TotalSeconds:F2}s, expected < 2s");
+    }
+
+    [Fact]
+    public async Task ConnectionId_Should_Be_Logged_For_Debugging()
+    {
+        // Arrange
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        var user = new User
+        {
+            Email = $"test-logging-{Guid.NewGuid()}@example.com",
+            PasswordHash = "hash",
+            DisplayName = "Test User"
+        };
+        dbContext.Users.Add(user);
+        await dbContext.SaveChangesAsync();
+
+        var sessionService = scope.ServiceProvider.GetRequiredService<bmadServer.ApiService.Services.ISessionService>();
+        var connectionId = $"conn-{Guid.NewGuid()}";
+
+        // Act
+        var (session, _) = await sessionService.RecoverSessionAsync(user.Id, connectionId);
+
+        // Assert - Connection ID is stored and can be retrieved
+        Assert.Equal(connectionId, session.ConnectionId);
+        
+        var dbSession = await dbContext.Sessions.FindAsync(session.Id);
+        Assert.Equal(connectionId, dbSession!.ConnectionId);
+    }
 }

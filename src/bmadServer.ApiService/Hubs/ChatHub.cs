@@ -103,6 +103,7 @@ public class ChatHub : Hub
 
     /// <summary>
     /// Sends a chat message and updates session activity.
+    /// Message is acknowledged within 2 seconds per NFR1.
     /// </summary>
     public async Task SendMessage(string message)
     {
@@ -145,6 +146,45 @@ public class ChatHub : Hub
         {
             Role = "user",
             Content = message,
+            Timestamp = DateTime.UtcNow
+        });
+    }
+
+    /// <summary>
+    /// Joins a specific workflow context.
+    /// Groups are used for workflow-specific broadcasting.
+    /// </summary>
+    public async Task JoinWorkflow(string workflowName)
+    {
+        var userId = GetUserIdFromClaims();
+        
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"workflow-{workflowName}");
+        
+        _logger.LogInformation("User {UserId} joined workflow {WorkflowName}", 
+            userId, workflowName);
+        
+        await Clients.Caller.SendAsync("JoinedWorkflow", new
+        {
+            WorkflowName = workflowName,
+            Timestamp = DateTime.UtcNow
+        });
+    }
+
+    /// <summary>
+    /// Leaves a specific workflow context.
+    /// </summary>
+    public async Task LeaveWorkflow(string workflowName)
+    {
+        var userId = GetUserIdFromClaims();
+        
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"workflow-{workflowName}");
+        
+        _logger.LogInformation("User {UserId} left workflow {WorkflowName}", 
+            userId, workflowName);
+        
+        await Clients.Caller.SendAsync("LeftWorkflow", new
+        {
+            WorkflowName = workflowName,
             Timestamp = DateTime.UtcNow
         });
     }

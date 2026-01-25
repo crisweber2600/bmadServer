@@ -91,8 +91,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ClockSkew = TimeSpan.Zero // No tolerance for expiry
         };
 
+        // Enable SignalR authentication via query string for WebSocket connections
+        // SignalR sends access_token via query string when establishing connection
         options.Events = new JwtBearerEvents
         {
+            OnMessageReceived = context =>
+            {
+                // Read the token from the query string for SignalR connections
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+
+                // If the request is for our hub endpoint and token exists
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/chat"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            },
             OnAuthenticationFailed = context =>
             {
                 if (context.Exception is SecurityTokenExpiredException)

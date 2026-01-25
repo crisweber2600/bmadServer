@@ -63,7 +63,7 @@ development_status:
   # EPIC 3: Real-Time Chat Interface
   # ===================================
   epic-3: in-progress
-  3-1-signalr-hub-setup-websocket-connection: ready-for-dev
+  3-1-signalr-hub-setup-websocket-connection: review
   3-2-chat-message-component-with-ant-design: ready-for-dev
   3-3-chat-input-component-with-rich-interactions: ready-for-dev
   3-4-real-time-message-streaming: ready-for-dev
