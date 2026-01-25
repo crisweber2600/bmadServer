@@ -52,7 +52,7 @@ development_status:
   # =========================================================
   epic-2: in-progress
   2-1-user-registration-auth: review
-  2-2-jwt-token-generation: backlog
+  2-2-jwt-token-generation: review
   2-3-refresh-token-flow: backlog
   2-4-session-persistence-recovery: backlog
   2-5-rbac-implementation: backlog

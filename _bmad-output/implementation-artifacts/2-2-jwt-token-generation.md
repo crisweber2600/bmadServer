@@ -1,6 +1,6 @@
 # Story 2.2: JWT Token Generation & Validation
 
-**Status:** ready-for-dev
+**Status:** review
 
 ## Story
 
@@ -94,61 +94,61 @@ so that I can make authenticated API requests to bmadServer.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Configure JWT settings in appsettings.json** (AC: Configuration criteria)
-  - [ ] Add Jwt section to appsettings.json and appsettings.Development.json
-  - [ ] Generate secure 256-bit SecretKey for development
-  - [ ] Set Issuer to "bmadServer"
-  - [ ] Set Audience to "bmadServer-api"
-  - [ ] Set AccessTokenExpirationMinutes to 15
-  - [ ] Document environment variable override for production
+- [x] **Task 1: Configure JWT settings in appsettings.json** (AC: Configuration criteria)
+  - [x] Add Jwt section to appsettings.json and appsettings.Development.json
+  - [x] Generate secure 256-bit SecretKey for development
+  - [x] Set Issuer to "bmadServer"
+  - [x] Set Audience to "bmadServer-api"
+  - [x] Set AccessTokenExpirationMinutes to 15
+  - [x] Document environment variable override for production
 
-- [ ] **Task 2: Create JWT configuration class** (AC: Configuration binding)
-  - [ ] Create `Configuration/JwtSettings.cs` with all JWT properties
-  - [ ] Configure options binding in Program.cs
-  - [ ] Add validation to ensure SecretKey is at least 32 characters
+- [x] **Task 2: Create JWT configuration class** (AC: Configuration binding)
+  - [x] Create `Configuration/JwtSettings.cs` with all JWT properties
+  - [x] Configure options binding in Program.cs
+  - [x] Add validation to ensure SecretKey is at least 32 characters
 
-- [ ] **Task 3: Implement JWT token service** (AC: Token generation criteria)
-  - [ ] Create `Services/IJwtTokenService.cs` interface
-  - [ ] Create `Services/JwtTokenService.cs` implementation
-  - [ ] Generate access token with claims: sub (userId), email, iat, exp
-  - [ ] Sign token using HMAC-SHA256 algorithm
-  - [ ] Return token string with proper format
-  - [ ] Write unit tests for token generation
+- [x] **Task 3: Implement JWT token service** (AC: Token generation criteria)
+  - [x] Create `Services/IJwtTokenService.cs` interface
+  - [x] Create `Services/JwtTokenService.cs` implementation
+  - [x] Generate access token with claims: sub (userId), email, iat, exp
+  - [x] Sign token using HMAC-SHA256 algorithm
+  - [x] Return token string with proper format
+  - [x] Write unit tests for token generation
 
-- [ ] **Task 4: Configure JWT authentication middleware** (AC: Middleware criteria)
-  - [ ] Add Microsoft.AspNetCore.Authentication.JwtBearer NuGet package
-  - [ ] Configure AddAuthentication with JwtBearerDefaults
-  - [ ] Set TokenValidationParameters:
+- [x] **Task 4: Configure JWT authentication middleware** (AC: Middleware criteria)
+  - [x] Add Microsoft.AspNetCore.Authentication.JwtBearer NuGet package
+  - [x] Configure AddAuthentication with JwtBearerDefaults
+  - [x] Set TokenValidationParameters:
     - ValidateIssuer = true
     - ValidateAudience = true
     - ValidateLifetime = true
     - ValidateIssuerSigningKey = true
     - ClockSkew = TimeSpan.Zero (strict expiry)
-  - [ ] Add app.UseAuthentication() before app.UseAuthorization()
+  - [x] Add app.UseAuthentication() before app.UseAuthorization()
 
-- [ ] **Task 5: Implement login endpoint** (AC: All login criteria)
-  - [ ] Create `DTOs/LoginRequest.cs` with Email, Password
-  - [ ] Create `DTOs/LoginResponse.cs` with accessToken, tokenType, expiresIn, user
-  - [ ] Add POST `/api/v1/auth/login` to AuthController
-  - [ ] Lookup user by email (case-insensitive)
-  - [ ] Verify password using IPasswordHasher
-  - [ ] Generate JWT token using IJwtTokenService
-  - [ ] Return 200 OK with LoginResponse
-  - [ ] Implement timing-safe comparison to prevent timing attacks
+- [x] **Task 5: Implement login endpoint** (AC: All login criteria)
+  - [x] Create `DTOs/LoginRequest.cs` with Email, Password
+  - [x] Create `DTOs/LoginResponse.cs` with accessToken, tokenType, expiresIn, user
+  - [x] Add POST `/api/v1/auth/login` to AuthController
+  - [x] Lookup user by email (case-insensitive)
+  - [x] Verify password using IPasswordHasher
+  - [x] Generate JWT token using IJwtTokenService
+  - [x] Return 200 OK with LoginResponse
+  - [x] Implement timing-safe comparison to prevent timing attacks
 
-- [ ] **Task 6: Handle authentication errors** (AC: Error handling criteria)
-  - [ ] Return generic "Invalid email or password" for wrong credentials
-  - [ ] Implement consistent timing for failed vs successful lookups
-  - [ ] Configure JWT events for proper error responses (OnChallenge, OnAuthenticationFailed)
-  - [ ] Return ProblemDetails for expired token errors
-  - [ ] Return ProblemDetails for invalid signature errors
+- [x] **Task 6: Handle authentication errors** (AC: Error handling criteria)
+  - [x] Return generic "Invalid email or password" for wrong credentials
+  - [x] Implement consistent timing for failed vs successful lookups
+  - [x] Configure JWT events for proper error responses (OnChallenge, OnAuthenticationFailed)
+  - [x] Return ProblemDetails for expired token errors
+  - [x] Return ProblemDetails for invalid signature errors
 
-- [ ] **Task 7: Implement /users/me endpoint** (AC: Token validation criteria)
-  - [ ] Create `Controllers/UsersController.cs`
-  - [ ] Add GET `/api/v1/users/me` with [Authorize] attribute
-  - [ ] Extract userId from JWT claims
-  - [ ] Return current user profile
-  - [ ] Test with valid, expired, and invalid tokens
+- [x] **Task 7: Implement /users/me endpoint** (AC: Token validation criteria)
+  - [x] Create `Controllers/UsersController.cs`
+  - [x] Add GET `/api/v1/users/me` with [Authorize] attribute
+  - [x] Extract userId from JWT claims
+  - [x] Return current user profile
+  - [x] Test with valid, expired, and invalid tokens
 
 ## Dev Notes
 
@@ -337,3 +337,90 @@ This story follows the Aspire-first development pattern:
 - PRD: [prd.md](../planning-artifacts/prd.md) - Security requirements
 - **Aspire Rules:** [PROJECT-WIDE-RULES.md](../../../PROJECT-WIDE-RULES.md)
 - **Aspire Docs:** https://aspire.dev
+
+---
+
+## Dev Agent Record
+
+### Implementation Plan
+
+**Approach:**
+Followed red-green-refactor TDD cycle for all tasks. Implemented JWT token generation and validation using ASP.NET Core's built-in authentication middleware with proper security measures:
+
+1. **Configuration:** Added JWT settings to appsettings.json with 256-bit secret key, issuer, audience, and 15-minute expiry
+2. **Token Service:** Implemented JwtTokenService to generate signed JWT tokens with user claims (sub, email, iat, exp)
+3. **Middleware:** Configured JWT Bearer authentication with strict validation parameters (ClockSkew = 0)
+4. **Login Endpoint:** Added POST /api/v1/auth/login with timing-safe password verification to prevent timing attacks
+5. **Protected Endpoint:** Added GET /api/v1/users/me with [Authorize] attribute for token validation testing
+6. **Error Handling:** Configured custom JWT events to return ProblemDetails for expired/invalid tokens
+
+**Security Measures:**
+- Timing-safe password comparison to prevent timing attacks
+- Generic error messages to prevent email enumeration
+- Strict token validation with zero clock skew
+- Proper ProblemDetails responses for all error cases
+
+### Debug Log
+
+No significant issues encountered. All tests passed on first run after fixing test database scoping issue (changed to static database name to ensure in-memory database is shared across test scopes).
+
+### Completion Notes
+
+✅ **All 7 tasks completed successfully**
+- JWT configuration added to appsettings.json (256-bit key)
+- JwtSettings configuration class with validation
+- IJwtTokenService interface and JwtTokenService implementation
+- JWT authentication middleware configured in Program.cs
+- Login endpoint with timing-safe password verification
+- Error handling with ProblemDetails for expired/invalid tokens
+- /users/me endpoint with [Authorize] attribute
+
+**Tests Added:**
+- 6 unit tests for JwtTokenService (token generation, claims, validation)
+- 6 integration tests for login endpoint (valid credentials, invalid password, email enumeration, case sensitivity)
+- 6 integration tests for /users/me endpoint (valid token, expired token, tampered token, missing token, deleted user)
+
+**All 55 tests passing** (18 new tests added in this story)
+
+**Security Features Implemented:**
+- Timing-safe password comparison
+- Generic error messages to prevent enumeration
+- Zero clock skew for strict expiry
+- ProblemDetails for all authentication errors
+- HMAC-SHA256 token signing
+
+---
+
+## File List
+
+### New Files
+- src/bmadServer.ApiService/Configuration/JwtSettings.cs
+- src/bmadServer.ApiService/Services/IJwtTokenService.cs
+- src/bmadServer.ApiService/Services/JwtTokenService.cs
+- src/bmadServer.ApiService/DTOs/LoginRequest.cs
+- src/bmadServer.ApiService/DTOs/LoginResponse.cs
+- src/bmadServer.ApiService/Controllers/UsersController.cs
+- src/bmadServer.ApiService/Validators/LoginRequestValidator.cs
+- src/bmadServer.Tests/Unit/JwtTokenServiceTests.cs
+- src/bmadServer.Tests/Integration/LoginIntegrationTests.cs
+- src/bmadServer.Tests/Integration/UsersMeIntegrationTests.cs
+
+### Modified Files
+- src/bmadServer.ApiService/appsettings.json
+- src/bmadServer.ApiService/appsettings.Development.json
+- src/bmadServer.ApiService/Controllers/AuthController.cs
+- src/bmadServer.ApiService/Program.cs
+- src/bmadServer.ApiService/bmadServer.ApiService.csproj
+
+---
+
+## Change Log
+
+- **2026-01-25:** Story 2.2 implementation complete - JWT token generation and validation
+  - Added JWT authentication with 15-minute access tokens
+  - Implemented POST /api/v1/auth/login endpoint
+  - Implemented GET /api/v1/users/me protected endpoint
+  - Added timing-safe password verification
+  - Configured JWT Bearer authentication middleware
+  - Added comprehensive unit and integration tests (18 new tests)
+  - All acceptance criteria satisfied, all tests passing (55/55)
