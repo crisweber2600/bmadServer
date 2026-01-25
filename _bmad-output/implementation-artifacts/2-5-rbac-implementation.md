@@ -418,13 +418,16 @@ Implemented RBAC following TDD approach:
 - `src/bmadServer.ApiService/DTOs/UserRolesResponse.cs` - User roles response DTO
 - `src/bmadServer.ApiService/Migrations/AddUserRolesTable.cs` - EF migration
 - `src/bmadServer.Tests/Unit/RoleServiceTests.cs` - 11 unit tests
+- `src/bmadServer.ApiService/Validators/AssignRoleRequestValidator.cs` - FluentValidation for role assignments
 
 #### Modified Files
 - `src/bmadServer.ApiService/Data/Entities/User.cs` - Added UserRoles navigation property
-- `src/bmadServer.ApiService/Data/ApplicationDbContext.cs` - Added UserRoles DbSet and config
+- `src/bmadServer.ApiService/Data/ApplicationDbContext.cs` - Added UserRoles DbSet and config, added index on AssignedBy
 - `src/bmadServer.ApiService/Controllers/AuthController.cs` - Assigns default role, uses roles in JWT
 - `src/bmadServer.ApiService/Controllers/UsersController.cs` - Returns roles in /users/me
-- `src/bmadServer.ApiService/Services/IJwtTokenService.cs` - Added Role enum overload
+- `src/bmadServer.ApiService/Controllers/RolesController.cs` - Added XML documentation comments
+- `src/bmadServer.ApiService/Services/IRoleService.cs` - Added Role enum overload
+- `src/bmadServer.ApiService/Services/RoleService.cs` - Added logging, transaction for RemoveRoleAsync
 - `src/bmadServer.ApiService/Services/JwtTokenService.cs` - Added Role enum overload
 - `src/bmadServer.ApiService/DTOs/UserResponse.cs` - Added Roles property
 - `src/bmadServer.ApiService/Program.cs` - Registered RoleService

@@ -1,16 +1,19 @@
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace bmadServer.ApiService.Services;
 
 public class RoleService : IRoleService
 {
     private readonly ApplicationDbContext _dbContext;
+    private readonly ILogger<RoleService> _logger;
 
-    public RoleService(ApplicationDbContext dbContext)
+    public RoleService(ApplicationDbContext dbContext, ILogger<RoleService> logger)
     {
         _dbContext = dbContext;
+        _logger = logger;
     }
 
     public async Task<IEnumerable<Role>> GetUserRolesAsync(Guid userId)
@@ -27,7 +30,10 @@ public class RoleService : IRoleService
             .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.Role == role);
 
         if (existingRole != null)
+        {
+            _logger.LogDebug("Role {Role} already assigned to user {UserId}", role, userId);
             return;
+        }
 
         var userRole = new UserRole
         {
@@ -39,24 +45,48 @@ public class RoleService : IRoleService
 
         _dbContext.UserRoles.Add(userRole);
         await _dbContext.SaveChangesAsync();
+        
+        _logger.LogInformation("Role {Role} assigned to user {UserId} by {AssignedBy}", 
+            role, userId, assignedBy?.ToString() ?? "system");
     }
 
     public async Task RemoveRoleAsync(Guid userId, Role role)
     {
-        var userRole = await _dbContext.UserRoles
-            .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.Role == role);
+        // Use transaction to prevent race condition between checking count and removing
+        using var transaction = await _dbContext.Database.BeginTransactionAsync();
+        
+        try
+        {
+            var userRole = await _dbContext.UserRoles
+                .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.Role == role);
 
-        if (userRole == null)
-            return;
+            if (userRole == null)
+            {
+                await transaction.CommitAsync();
+                _logger.LogDebug("Role {Role} not assigned to user {UserId}, nothing to remove", role, userId);
+                return;
+            }
 
-        var remainingRoles = await _dbContext.UserRoles
-            .CountAsync(ur => ur.UserId == userId);
+            var remainingRoles = await _dbContext.UserRoles
+                .CountAsync(ur => ur.UserId == userId);
 
-        if (remainingRoles <= 1)
-            throw new InvalidOperationException("Cannot remove the last role from a user");
+            if (remainingRoles <= 1)
+            {
+                _logger.LogWarning("Attempt to remove last role {Role} from user {UserId} blocked", role, userId);
+                throw new InvalidOperationException("Cannot remove the last role from a user");
+            }
 
-        _dbContext.UserRoles.Remove(userRole);
-        await _dbContext.SaveChangesAsync();
+            _dbContext.UserRoles.Remove(userRole);
+            await _dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
+            
+            _logger.LogInformation("Role {Role} removed from user {UserId}", role, userId);
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task AssignDefaultRoleAsync(Guid userId)

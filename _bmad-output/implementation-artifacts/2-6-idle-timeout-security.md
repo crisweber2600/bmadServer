@@ -547,6 +547,7 @@ Implemented backend idle timeout functionality:
 
 #### New Files
 - `src/bmadServer.ApiService/Middleware/ActivityTrackingMiddleware.cs`
+- `src/bmadServer.ApiService/Middleware/SessionActivityMiddleware.cs` - Auto-updates session activity with debounce
 - `src/bmadServer.Tests/Unit/IdleTimeoutTests.cs`
 
 #### Modified Files

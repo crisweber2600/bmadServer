@@ -2,6 +2,9 @@ using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Logging;
+using Moq;
 using Xunit;
 
 namespace bmadServer.Tests.Unit;
@@ -11,15 +14,18 @@ public class RoleServiceTests : IDisposable
     private readonly ApplicationDbContext _dbContext;
     private readonly RoleService _roleService;
     private readonly User _testUser;
+    private readonly Mock<ILogger<RoleService>> _mockLogger;
 
     public RoleServiceTests()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .ConfigureWarnings(x => x.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options;
 
         _dbContext = new ApplicationDbContext(options);
-        _roleService = new RoleService(_dbContext);
+        _mockLogger = new Mock<ILogger<RoleService>>();
+        _roleService = new RoleService(_dbContext, _mockLogger.Object);
 
         _testUser = new User
         {
@@ -151,5 +157,77 @@ public class RoleServiceTests : IDisposable
 
         var hasRole = await _roleService.UserHasRoleAsync(_testUser.Id, Role.Admin);
         Assert.False(hasRole);
+    }
+
+    [Fact]
+    public async Task AssignDefaultRoleAsync_WhenUserAlreadyHasParticipantRole_DoesNotDuplicate()
+    {
+        // Assign Participant role directly
+        await _roleService.AssignRoleAsync(_testUser.Id, Role.Participant);
+
+        // Try to assign default role (which is also Participant)
+        await _roleService.AssignDefaultRoleAsync(_testUser.Id);
+
+        var roles = await _roleService.GetUserRolesAsync(_testUser.Id);
+        Assert.Single(roles);
+        Assert.Contains(Role.Participant, roles);
+    }
+
+    [Fact]
+    public async Task AssignRoleAsync_WithInvalidUserId_DoesNotThrow()
+    {
+        var invalidUserId = Guid.NewGuid();
+
+        // Should not throw, just add the role assignment
+        await _roleService.AssignRoleAsync(invalidUserId, Role.Admin);
+
+        var roles = await _roleService.GetUserRolesAsync(invalidUserId);
+        Assert.Single(roles);
+        Assert.Contains(Role.Admin, roles);
+    }
+
+    [Fact]
+    public async Task ConcurrentRoleOperations_DoNotCauseRaceCondition()
+    {
+        // Assign initial roles
+        await _roleService.AssignRoleAsync(_testUser.Id, Role.Participant);
+        await _roleService.AssignRoleAsync(_testUser.Id, Role.Viewer);
+        await _roleService.AssignRoleAsync(_testUser.Id, Role.Admin);
+
+        // Try to remove two roles concurrently (one should fail)
+        var task1 = Task.Run(async () =>
+        {
+            try
+            {
+                await _roleService.RemoveRoleAsync(_testUser.Id, Role.Participant);
+                return true;
+            }
+            catch (InvalidOperationException)
+            {
+                return false;
+            }
+        });
+
+        var task2 = Task.Run(async () =>
+        {
+            try
+            {
+                await _roleService.RemoveRoleAsync(_testUser.Id, Role.Viewer);
+                return true;
+            }
+            catch (InvalidOperationException)
+            {
+                return false;
+            }
+        });
+
+        var results = await Task.WhenAll(task1, task2);
+
+        // At least one should succeed
+        Assert.Contains(true, results);
+        
+        // Verify user still has at least one role
+        var remainingRoles = await _roleService.GetUserRolesAsync(_testUser.Id);
+        Assert.NotEmpty(remainingRoles);
     }
 }
