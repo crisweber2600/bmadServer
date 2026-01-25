@@ -104,7 +104,7 @@ development_status:
   # EPIC 6: Decision Management & Locking
   # ============================================
   epic-6: in-progress
-  6-1-decision-capture-storage: ready-for-dev
+  6-1-decision-capture-storage: review
   6-2-decision-version-history: backlog
   6-3-decision-locking-mechanism: backlog
   6-4-decision-review-workflow: backlog
