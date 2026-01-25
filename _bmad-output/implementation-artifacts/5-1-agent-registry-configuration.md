@@ -1,6 +1,6 @@
 # Story 5.1: Agent Registry & Configuration
 
-**Status:** ready-for-dev
+**Status:** done
 
 ## Story
 
