@@ -21,6 +21,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<WorkflowEvent> WorkflowEvents { get; set; }
     public DbSet<WorkflowStepHistory> WorkflowStepHistories { get; set; }
     public DbSet<Decision> Decisions { get; set; }
+    public DbSet<DecisionVersion> DecisionVersions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -266,6 +267,59 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(e => e.DecisionMaker)
                 .WithMany()
                 .HasForeignKey(e => e.DecidedBy)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<DecisionVersion>(entity =>
+        {
+            entity.ToTable("decision_versions");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Question).HasMaxLength(1000);
+            entity.Property(e => e.Reasoning).HasMaxLength(4000);
+            entity.Property(e => e.ChangeReason).HasMaxLength(1000);
+            
+            // JSONB columns for PostgreSQL with JSON value converters for compatibility
+            entity.Property(e => e.Value)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => v == null ? null : v.RootElement.GetRawText(),
+                    v => v == null ? null : JsonDocument.Parse(v));
+            entity.Property(e => e.Options)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => v == null ? null : v.RootElement.GetRawText(),
+                    v => v == null ? null : JsonDocument.Parse(v));
+            entity.Property(e => e.Context)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => v == null ? null : v.RootElement.GetRawText(),
+                    v => v == null ? null : JsonDocument.Parse(v));
+            
+            // Indexes for fast lookups
+            entity.HasIndex(e => e.DecisionId);
+            entity.HasIndex(e => e.VersionNumber);
+            entity.HasIndex(e => e.ModifiedBy);
+            entity.HasIndex(e => e.ModifiedAt);
+            entity.HasIndex(e => new { e.DecisionId, e.VersionNumber }).IsUnique();
+            
+            // GIN indexes for JSONB columns (PostgreSQL only)
+            entity.HasIndex(e => e.Value)
+                .HasMethod("gin");
+            entity.HasIndex(e => e.Options)
+                .HasMethod("gin");
+            entity.HasIndex(e => e.Context)
+                .HasMethod("gin");
+            
+            // Foreign key to Decision
+            entity.HasOne(e => e.Decision)
+                .WithMany(d => d.Versions)
+                .HasForeignKey(e => e.DecisionId)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            // Foreign key to User (Modifier)
+            entity.HasOne(e => e.Modifier)
+                .WithMany()
+                .HasForeignKey(e => e.ModifiedBy)
                 .OnDelete(DeleteBehavior.Restrict);
         });
     }

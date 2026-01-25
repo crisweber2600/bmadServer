@@ -66,6 +66,21 @@ public class Decision
     public JsonDocument? Context { get; set; }
 
     /// <summary>
+    /// Current version number of this decision
+    /// </summary>
+    public int CurrentVersion { get; set; } = 1;
+
+    /// <summary>
+    /// Timestamp when this decision was last updated
+    /// </summary>
+    public DateTime? UpdatedAt { get; set; }
+
+    /// <summary>
+    /// User ID who last updated this decision
+    /// </summary>
+    public Guid? UpdatedBy { get; set; }
+
+    /// <summary>
     /// Navigation property to the workflow instance
     /// </summary>
     public WorkflowInstance? WorkflowInstance { get; set; }
@@ -74,4 +89,9 @@ public class Decision
     /// Navigation property to the user who made the decision
     /// </summary>
     public User? DecisionMaker { get; set; }
+
+    /// <summary>
+    /// Navigation property to version history
+    /// </summary>
+    public ICollection<DecisionVersion> Versions { get; set; } = new List<DecisionVersion>();
 }

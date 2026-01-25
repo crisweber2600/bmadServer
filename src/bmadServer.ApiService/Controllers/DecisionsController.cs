@@ -186,6 +186,187 @@ public class DecisionsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Update an existing decision
+    /// </summary>
+    /// <param name="id">The decision ID</param>
+    /// <param name="request">The update request</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The updated decision</returns>
+    [HttpPut("decisions/{id:guid}")]
+    [ProducesResponseType(typeof(DecisionResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<DecisionResponse>> UpdateDecision(
+        Guid id,
+        [FromBody] UpdateDecisionRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Get the authenticated user ID
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return Unauthorized(new ProblemDetails
+                {
+                    Title = "Unauthorized",
+                    Detail = "User ID not found in claims",
+                    Status = StatusCodes.Status401Unauthorized
+                });
+            }
+
+            var updatedDecision = await _decisionService.UpdateDecisionAsync(
+                id,
+                userId,
+                JsonDocument.Parse(request.Value.GetRawText()),
+                request.Question,
+                request.Options.HasValue ? JsonDocument.Parse(request.Options.Value.GetRawText()) : null,
+                request.Reasoning,
+                request.Context.HasValue ? JsonDocument.Parse(request.Context.Value.GetRawText()) : null,
+                request.ChangeReason,
+                cancellationToken);
+
+            var response = MapToDecisionResponse(updatedDecision);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation when updating decision {DecisionId}", id);
+            return NotFound(new ProblemDetails
+            {
+                Title = "Decision not found",
+                Detail = ex.Message,
+                Status = StatusCodes.Status404NotFound
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating decision {DecisionId}", id);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ProblemDetails
+                {
+                    Title = "Error updating decision",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status500InternalServerError
+                });
+        }
+    }
+
+    /// <summary>
+    /// Get version history for a decision
+    /// </summary>
+    /// <param name="id">The decision ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of decision versions</returns>
+    [HttpGet("decisions/{id:guid}/history")]
+    [ProducesResponseType(typeof(List<DecisionVersionResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<List<DecisionVersionResponse>>> GetDecisionHistory(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var versions = await _decisionService.GetDecisionHistoryAsync(id, cancellationToken);
+
+            var responses = versions.Select(v => new DecisionVersionResponse
+            {
+                Id = v.Id,
+                VersionNumber = v.VersionNumber,
+                Value = v.Value?.RootElement ?? default,
+                ModifiedBy = v.ModifiedBy,
+                ModifiedAt = v.ModifiedAt,
+                ChangeReason = v.ChangeReason,
+                Question = v.Question,
+                Options = v.Options?.RootElement,
+                Reasoning = v.Reasoning,
+                Context = v.Context?.RootElement
+            }).ToList();
+
+            return Ok(responses);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving version history for decision {DecisionId}", id);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ProblemDetails
+                {
+                    Title = "Error retrieving version history",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status500InternalServerError
+                });
+        }
+    }
+
+    /// <summary>
+    /// Revert a decision to a previous version
+    /// </summary>
+    /// <param name="id">The decision ID</param>
+    /// <param name="version">The version number to revert to</param>
+    /// <param name="request">The revert request</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The updated decision</returns>
+    [HttpPost("decisions/{id:guid}/revert")]
+    [ProducesResponseType(typeof(DecisionResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<DecisionResponse>> RevertDecision(
+        Guid id,
+        [FromQuery] int version,
+        [FromBody] RevertDecisionRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Get the authenticated user ID
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return Unauthorized(new ProblemDetails
+                {
+                    Title = "Unauthorized",
+                    Detail = "User ID not found in claims",
+                    Status = StatusCodes.Status401Unauthorized
+                });
+            }
+
+            var revertedDecision = await _decisionService.RevertDecisionAsync(
+                id,
+                version,
+                userId,
+                request.Reason,
+                cancellationToken);
+
+            var response = MapToDecisionResponse(revertedDecision);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation when reverting decision {DecisionId} to version {Version}", id, version);
+            return NotFound(new ProblemDetails
+            {
+                Title = "Not found",
+                Detail = ex.Message,
+                Status = StatusCodes.Status404NotFound
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reverting decision {DecisionId} to version {Version}", id, version);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ProblemDetails
+                {
+                    Title = "Error reverting decision",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status500InternalServerError
+                });
+        }
+    }
+
     private static DecisionResponse MapToDecisionResponse(Decision decision)
     {
         return new DecisionResponse
