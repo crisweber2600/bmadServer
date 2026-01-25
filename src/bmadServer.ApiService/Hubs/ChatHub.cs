@@ -1,3 +1,4 @@
+using bmadServer.ApiService.Models;
 using bmadServer.ApiService.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
@@ -236,6 +237,31 @@ public class ChatHub : Hub
 
         _logger.LogInformation("Streaming completed for message {MessageId} in session {SessionId}", 
             messageId, session.Id);
+    }
+
+    /// <summary>
+    /// Gets paginated chat history for the current session.
+    /// Returns last 50 messages by default, supports pagination for older messages.
+    /// </summary>
+    public async Task<ChatHistoryResponse> GetChatHistory(int pageSize = 50, int offset = 0)
+    {
+        var userId = GetUserIdFromClaims();
+        
+        var session = await _sessionService.GetActiveSessionAsync(userId, Context.ConnectionId);
+        if (session == null)
+        {
+            throw new HubException("No active session found");
+        }
+
+        var chatHistoryService = Context.GetHttpContext()
+            ?.RequestServices.GetRequiredService<IChatHistoryService>();
+        
+        if (chatHistoryService == null)
+        {
+            throw new HubException("Chat history service not available");
+        }
+
+        return await chatHistoryService.GetChatHistoryAsync(userId, session.Id, pageSize, offset);
     }
 
     /// <summary>

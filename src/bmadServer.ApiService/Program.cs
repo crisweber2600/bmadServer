@@ -68,6 +68,9 @@ builder.Services.AddSingleton<bmadServer.ApiService.Services.IMessageStreamingSe
 // Register role service
 builder.Services.AddScoped<bmadServer.ApiService.Services.IRoleService, bmadServer.ApiService.Services.RoleService>();
 
+// Register chat history service
+builder.Services.AddScoped<bmadServer.ApiService.Services.IChatHistoryService, bmadServer.ApiService.Services.ChatHistoryService>();
+
 // Register session cleanup background service
 builder.Services.AddHostedService<bmadServer.ApiService.BackgroundServices.SessionCleanupService>();
 
