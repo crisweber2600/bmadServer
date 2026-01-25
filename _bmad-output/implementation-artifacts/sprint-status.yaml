@@ -153,7 +153,7 @@ development_status:
   10-2-connection-recovery-retry: ready-for-dev
   10-3-workflow-recovery-after-failure: ready-for-dev
   10-4-conversation-stall-recovery: ready-for-dev
-  10-5-graceful-degradation-under-load: backlog
+  10-5-graceful-degradation-under-load: ready-for-dev
   epic-10-retrospective: optional
 
   # =====================================
