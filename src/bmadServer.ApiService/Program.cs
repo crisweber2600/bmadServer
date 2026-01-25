@@ -60,6 +60,9 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.ISessionService, bmadS
 // Register agent registry as singleton (agent definitions don't change)
 builder.Services.AddSingleton<bmadServer.ApiService.Agents.IAgentRegistry, bmadServer.ApiService.Agents.AgentRegistry>();
 
+// Register agent messaging service as scoped (needs request-scoped logging)
+builder.Services.AddScoped<bmadServer.ApiService.Agents.IAgentMessaging, bmadServer.ApiService.Agents.AgentMessaging>();
+
 // Register session cleanup background service
 builder.Services.AddHostedService<bmadServer.ApiService.BackgroundServices.SessionCleanupService>();
 
