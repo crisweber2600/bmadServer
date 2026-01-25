@@ -2,28 +2,52 @@
 
 A real-time, multi-agent workflow orchestration system built with .NET Aspire, featuring distributed tracing, event-driven architecture, and collaborative decision-making capabilities.
 
+## 📚 Documentation
+
+- **[Quick Start & Setup Guide](./SETUP.md)** ← Start here!
+  - Installation prerequisites
+  - Local development setup
+  - Troubleshooting guide
+  - Adding new services
+
+- **[System Architecture](./ARCHITECTURE.md)** ← Understand the design
+  - Component diagram
+  - Data flow
+  - Technology choices
+  - Deployment strategies
+
+- **[Project-Wide Rules](./PROJECT-WIDE-RULES.md)** ← Development standards
+  - Code conventions
+  - Testing requirements
+  - Aspire best practices
+
 ## 🚀 Quick Start
 
-### Prerequisites
+### 1. Prerequisites
 
-- **.NET 8.0+** SDK installed
-- **Aspire workload** installed: `dotnet workload install aspire`
-- **Git** configured
+- **.NET 10 SDK** (verify: `dotnet --version`)
+- **Git** (verify: `git --version`)
+- **Docker Desktop** (for Aspire container management)
 
-### Running the Project
+### 2. Clone & Setup
 
 ```bash
-# Navigate to src directory
-cd src
-
-# Build the solution
-dotnet build
-
-# Run with Aspire orchestration
-aspire run
+git clone https://github.com/crisweber2600/bmadServer.git
+cd bmadServer/src
+dotnet restore
 ```
 
-The Aspire dashboard will open automatically at **https://localhost:17360**.
+### 3. Run Aspire
+
+```bash
+aspire run
+# or on macOS if certificate issues:
+ASPIRE_ALLOW_UNSECURED_TRANSPORT=true aspire run
+```
+
+Dashboard: https://localhost:17360  
+API: http://localhost:8080  
+Health: http://localhost:8080/health
 
 ## 📋 Project Structure
 
