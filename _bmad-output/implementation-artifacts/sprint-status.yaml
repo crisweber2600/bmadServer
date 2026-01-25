@@ -87,12 +87,12 @@ development_status:
   # ====================================
   # EPIC 5: Multi-Agent Collaboration
   # ====================================
-  epic-5: in-progress
+  epic-5: done
   5-1-agent-registry-configuration: done
   5-2-agent-to-agent-messaging: done
   5-3-shared-workflow-context: done
   5-4-agent-handoff-attribution: done
-  5-5-human-approval-for-low-confidence-decisions: in-progress
+  5-5-human-approval-for-low-confidence-decisions: review
   epic-5-retrospective: optional
 
   # ============================================
