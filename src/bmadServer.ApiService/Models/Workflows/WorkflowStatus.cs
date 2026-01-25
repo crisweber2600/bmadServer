@@ -23,7 +23,8 @@ public static class WorkflowStatusExtensions
             WorkflowStatus.WaitingForInput, 
             WorkflowStatus.WaitingForApproval, 
             WorkflowStatus.Completed, 
-            WorkflowStatus.Failed 
+            WorkflowStatus.Failed,
+            WorkflowStatus.Cancelled
         },
         [WorkflowStatus.Paused] = new() { WorkflowStatus.Running, WorkflowStatus.Cancelled },
         [WorkflowStatus.WaitingForInput] = new() { WorkflowStatus.Running, WorkflowStatus.Cancelled },

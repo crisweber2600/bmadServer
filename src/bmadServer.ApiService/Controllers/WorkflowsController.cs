@@ -38,6 +38,61 @@ public class WorkflowsController : ControllerBase
     }
 
     /// <summary>
+    /// Get list of workflow instances for the authenticated user
+    /// </summary>
+    /// <param name="showCancelled">Include cancelled workflows in results (default: false)</param>
+    /// <returns>List of workflow instances</returns>
+    [HttpGet]
+    [ProducesResponseType(typeof(List<WorkflowInstanceListItem>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<List<WorkflowInstanceListItem>>> GetWorkflows([FromQuery] bool showCancelled = false)
+    {
+        try
+        {
+            // Get user ID from claims
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status401Unauthorized,
+                    title: "Unauthorized",
+                    detail: "User ID not found in token");
+            }
+
+            var workflows = await _workflowInstanceService.GetWorkflowInstancesAsync(userId, showCancelled);
+
+            // Map to list items with display metadata
+            var listItems = workflows.Select(w => new WorkflowInstanceListItem
+            {
+                Id = w.Id,
+                WorkflowDefinitionId = w.WorkflowDefinitionId,
+                Status = w.Status,
+                CurrentStep = w.CurrentStep,
+                CreatedAt = w.CreatedAt,
+                UpdatedAt = w.UpdatedAt,
+                PausedAt = w.PausedAt,
+                CancelledAt = w.CancelledAt,
+                IsCancelled = w.Status == WorkflowStatus.Cancelled,
+                IsTerminal = w.Status.IsTerminal()
+            }).ToList();
+
+            _logger.LogInformation(
+                "Retrieved {Count} workflows for user {UserId}",
+                listItems.Count, userId);
+
+            return Ok(listItems);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving workflows for user");
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: ex.Message);
+        }
+    }
+
+    /// <summary>
     /// Create a new workflow instance
     /// </summary>
     /// <param name="request">Workflow creation request</param>
@@ -329,6 +384,80 @@ public class WorkflowsController : ControllerBase
                 detail: ex.Message);
         }
     }
+
+    /// <summary>
+    /// Cancel a workflow
+    /// </summary>
+    /// <param name="id">Workflow instance ID</param>
+    /// <returns>OK with workflow state or error</returns>
+    [HttpPost("{id}/cancel")]
+    [ProducesResponseType(typeof(WorkflowInstance), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<WorkflowInstance>> CancelWorkflow(Guid id)
+    {
+        try
+        {
+            // Get user ID from claims
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status401Unauthorized,
+                    title: "Unauthorized",
+                    detail: "User ID not found in token");
+            }
+
+            // Attempt to cancel the workflow
+            var (success, message) = await _workflowInstanceService.CancelWorkflowAsync(id, userId);
+            
+            if (!success)
+            {
+                // Check if it's a "not found" error or validation error
+                var instance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
+                if (instance == null)
+                {
+                    return Problem(
+                        statusCode: StatusCodes.Status404NotFound,
+                        title: "Not Found",
+                        detail: message ?? $"Workflow instance '{id}' not found");
+                }
+
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Bad Request",
+                    detail: message ?? "Unable to cancel workflow");
+            }
+
+            // Get updated workflow instance
+            var updatedInstance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
+            
+            // Send SignalR notification to all workflow participants
+            await _hubContext.Clients.All.SendAsync("WORKFLOW_CANCELLED", new
+            {
+                eventType = "WORKFLOW_CANCELLED",
+                workflowId = id,
+                status = "Cancelled",
+                userId = userId,
+                timestamp = DateTime.UtcNow
+            });
+
+            _logger.LogInformation(
+                "Workflow {InstanceId} cancelled by user {UserId}",
+                id, userId);
+
+            return Ok(updatedInstance);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error cancelling workflow {InstanceId}", id);
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: ex.Message);
+        }
+    }
 }
 
 /// <summary>
@@ -372,4 +501,60 @@ public class ResumeWorkflowResponse
     /// Optional message (e.g., context refresh notification)
     /// </summary>
     public string? Message { get; set; }
+}
+
+/// <summary>
+/// Response model for workflow list items with display metadata
+/// </summary>
+public class WorkflowInstanceListItem
+{
+    /// <summary>
+    /// Workflow instance ID
+    /// </summary>
+    public Guid Id { get; set; }
+
+    /// <summary>
+    /// Workflow definition ID
+    /// </summary>
+    public required string WorkflowDefinitionId { get; set; }
+
+    /// <summary>
+    /// Current workflow status
+    /// </summary>
+    public WorkflowStatus Status { get; set; }
+
+    /// <summary>
+    /// Current step number (1-based)
+    /// </summary>
+    public int CurrentStep { get; set; }
+
+    /// <summary>
+    /// When the workflow was created
+    /// </summary>
+    public DateTime CreatedAt { get; set; }
+
+    /// <summary>
+    /// When the workflow was last updated
+    /// </summary>
+    public DateTime UpdatedAt { get; set; }
+
+    /// <summary>
+    /// When the workflow was paused (if applicable)
+    /// </summary>
+    public DateTime? PausedAt { get; set; }
+
+    /// <summary>
+    /// When the workflow was cancelled (if applicable)
+    /// </summary>
+    public DateTime? CancelledAt { get; set; }
+
+    /// <summary>
+    /// Whether the workflow is cancelled (for UI display)
+    /// </summary>
+    public bool IsCancelled { get; set; }
+
+    /// <summary>
+    /// Whether the workflow is in a terminal state (Completed, Failed, or Cancelled)
+    /// </summary>
+    public bool IsTerminal { get; set; }
 }

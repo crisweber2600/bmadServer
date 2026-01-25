@@ -31,38 +31,38 @@ As a user (Marcus), I want to safely exit or cancel a workflow, so that I can ab
 
 ## Tasks / Subtasks
 
-- [ ] Extend WorkflowInstanceService with cancel method (AC: 1)
-  - [ ] Implement CancelWorkflow(workflowId, userId) method
-  - [ ] Validate workflow is in cancellable state (Running, Paused, WaitingForInput)
-  - [ ] Transition to Cancelled state
-  - [ ] Terminate any pending operations (coordinate with StepExecutor from Story 4.3)
-  - [ ] Log cancellation event to WorkflowEvents
-- [ ] Add validation to prevent cancelling completed workflows (AC: 2, 3)
-  - [ ] Check if status is Completed, Failed, or already Cancelled
-  - [ ] Return 400 Bad Request with appropriate message
-- [ ] Ensure workflow history preservation (AC: 2)
-  - [ ] Cancelled workflows remain in database (soft delete pattern)
-  - [ ] Add CancelledAt timestamp to WorkflowInstance
-  - [ ] All WorkflowStepHistory records remain accessible
-- [ ] Prevent resuming cancelled workflows (AC: 2)
-  - [ ] Update ResumeWorkflow validation from Story 4.4
-  - [ ] Return 400 Bad Request if workflow is Cancelled
-- [ ] Add UI support for cancelled workflows (AC: 4)
-  - [ ] Update workflow list endpoint to include cancelled status
-  - [ ] Add filter query parameter: ?showCancelled=true/false
-  - [ ] Return display metadata for strikethrough/badge styling
-- [ ] Create API endpoint: POST /api/v1/workflows/{id}/cancel
-  - [ ] Require authentication and workflow ownership
-  - [ ] Return 200 OK with updated workflow state
-- [ ] Add unit tests
-  - [ ] Test cancel from each valid state (Running, Paused, WaitingForInput)
-  - [ ] Test cannot cancel Completed workflow
-  - [ ] Test cannot resume Cancelled workflow
-  - [ ] Test unauthorized cancel attempts
-- [ ] Add integration tests
-  - [ ] End-to-end cancel via API
-  - [ ] Verify workflow history preservation
-  - [ ] Test filter functionality for cancelled workflows
+- [x] Extend WorkflowInstanceService with cancel method (AC: 1)
+  - [x] Implement CancelWorkflow(workflowId, userId) method
+  - [x] Validate workflow is in cancellable state (Running, Paused, WaitingForInput)
+  - [x] Transition to Cancelled state
+  - [x] Terminate any pending operations (coordinate with StepExecutor from Story 4.3)
+  - [x] Log cancellation event to WorkflowEvents
+- [x] Add validation to prevent cancelling completed workflows (AC: 2, 3)
+  - [x] Check if status is Completed, Failed, or already Cancelled
+  - [x] Return 400 Bad Request with appropriate message
+- [x] Ensure workflow history preservation (AC: 2)
+  - [x] Cancelled workflows remain in database (soft delete pattern)
+  - [x] Add CancelledAt timestamp to WorkflowInstance
+  - [x] All WorkflowStepHistory records remain accessible
+- [x] Prevent resuming cancelled workflows (AC: 2)
+  - [x] Update ResumeWorkflow validation from Story 4.4
+  - [x] Return 400 Bad Request if workflow is Cancelled
+- [x] Add UI support for cancelled workflows (AC: 4)
+  - [x] Update workflow list endpoint to include cancelled status
+  - [x] Add filter query parameter: ?showCancelled=true/false
+  - [x] Return display metadata for strikethrough/badge styling
+- [x] Create API endpoint: POST /api/v1/workflows/{id}/cancel
+  - [x] Require authentication and workflow ownership
+  - [x] Return 200 OK with updated workflow state
+- [x] Add unit tests
+  - [x] Test cancel from each valid state (Running, Paused, WaitingForInput)
+  - [x] Test cannot cancel Completed workflow
+  - [x] Test cannot resume Cancelled workflow
+  - [x] Test unauthorized cancel attempts
+- [x] Add integration tests
+  - [x] End-to-end cancel via API
+  - [x] Verify workflow history preservation
+  - [x] Test filter functionality for cancelled workflows
 
 ## Dev Notes
 
@@ -160,19 +160,54 @@ src/bmadServer.ApiService/
 
 ### Agent Model Used
 
-_To be filled by dev agent_
+Claude 3.5 Sonnet (GitHub Copilot CLI)
 
 ### Debug Log References
 
-_To be filled by dev agent_
+N/A - All tests passed on first run after fixing state transition definitions.
 
 ### Completion Notes List
 
-_To be filled by dev agent_
+1. **Database Migration**: Created migration `20260125130309_AddCancelledAtToWorkflowInstance` to add the `CancelledAt` nullable timestamp column to `workflow_instances` table with index.
+
+2. **State Transitions**: Updated `WorkflowStatus.cs` to allow Running → Cancelled transitions in addition to the existing Paused, WaitingForInput, and WaitingForApproval → Cancelled transitions.
+
+3. **Service Implementation**: 
+   - Implemented `CancelWorkflowAsync` in `WorkflowInstanceService` with proper validation
+   - Prevents cancellation of Completed, Failed, or already Cancelled workflows
+   - Logs WorkflowCancelled events
+   - Updated `ResumeWorkflowAsync` to reject cancelled workflows
+   - Added `GetWorkflowInstancesAsync` with showCancelled filter
+
+4. **API Endpoint**:
+   - Added POST `/api/v1/workflows/{id}/cancel` endpoint
+   - Added GET `/api/v1/workflows?showCancelled=true/false` endpoint
+   - Returns WorkflowInstanceListItem with display metadata (IsCancelled, IsTerminal)
+   - SignalR notification for WORKFLOW_CANCELLED event
+
+5. **Testing**:
+   - Unit tests: 23 tests in WorkflowInstanceServiceTests (all passing)
+   - Integration tests: 8 tests in WorkflowCancellationIntegrationTests (all passing)
+   - Total workflow tests: 214 passing
+   - Coverage includes all valid/invalid state transitions, history preservation, filter functionality
 
 ### File List
 
-_To be filled by dev agent_
+**Modified:**
+- `src/bmadServer.ApiService/Controllers/WorkflowsController.cs` - Added Cancel and List endpoints
+- `src/bmadServer.ApiService/Data/ApplicationDbContext.cs` - Added CancelledAt index
+- `src/bmadServer.ApiService/Models/Workflows/WorkflowInstance.cs` - Added CancelledAt property
+- `src/bmadServer.ApiService/Models/Workflows/WorkflowStatus.cs` - Updated valid transitions
+- `src/bmadServer.ApiService/Services/Workflows/IWorkflowInstanceService.cs` - Added interface methods
+- `src/bmadServer.ApiService/Services/Workflows/WorkflowInstanceService.cs` - Implemented cancel and list logic
+- `src/bmadServer.Tests/Unit/Services/Workflows/WorkflowInstanceServiceTests.cs` - Added cancel tests
+
+**Created:**
+- `src/bmadServer.ApiService/Migrations/20260125130309_AddCancelledAtToWorkflowInstance.cs` - Migration
+- `src/bmadServer.ApiService/Migrations/20260125130309_AddCancelledAtToWorkflowInstance.Designer.cs` - Migration designer
+- `src/bmadServer.Tests/Integration/Workflows/WorkflowCancellationIntegrationTests.cs` - Integration tests
+
+### File List
 
 ## Aspire Development Standards
 

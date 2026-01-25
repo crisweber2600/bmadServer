@@ -191,6 +191,15 @@ public class WorkflowInstanceService : IWorkflowInstanceService
             return (false, "Workflow instance not found");
         }
 
+        // Cannot resume cancelled workflows
+        if (instance.Status == WorkflowStatus.Cancelled)
+        {
+            _logger.LogWarning(
+                "Cannot resume cancelled workflow instance {InstanceId}",
+                instanceId);
+            return (false, "Cannot resume a cancelled workflow");
+        }
+
         // Validate transition from Paused to Running
         if (!WorkflowStatusExtensions.ValidateTransition(instance.Status, WorkflowStatus.Running))
         {
@@ -242,6 +251,76 @@ public class WorkflowInstanceService : IWorkflowInstanceService
         return (true, message);
     }
 
+    public async Task<(bool Success, string? Message)> CancelWorkflowAsync(Guid instanceId, Guid userId)
+    {
+        var instance = await _context.WorkflowInstances.FindAsync(instanceId);
+        if (instance == null)
+        {
+            _logger.LogWarning("Workflow instance {InstanceId} not found", instanceId);
+            return (false, "Workflow instance not found");
+        }
+
+        // Cannot cancel workflows in terminal states
+        if (instance.Status == WorkflowStatus.Completed)
+        {
+            _logger.LogWarning(
+                "Attempted to cancel completed workflow instance {InstanceId}",
+                instanceId);
+            return (false, "Cannot cancel a completed workflow");
+        }
+
+        if (instance.Status == WorkflowStatus.Failed)
+        {
+            _logger.LogWarning(
+                "Attempted to cancel failed workflow instance {InstanceId}",
+                instanceId);
+            return (false, "Cannot cancel a failed workflow");
+        }
+
+        if (instance.Status == WorkflowStatus.Cancelled)
+        {
+            _logger.LogWarning(
+                "Attempted to cancel already cancelled workflow instance {InstanceId}",
+                instanceId);
+            return (false, "Workflow is already cancelled");
+        }
+
+        // Validate transition to Cancelled state
+        if (!WorkflowStatusExtensions.ValidateTransition(instance.Status, WorkflowStatus.Cancelled))
+        {
+            _logger.LogWarning(
+                "Invalid state transition for workflow instance {InstanceId}: {OldStatus} -> Cancelled",
+                instanceId, instance.Status);
+            return (false, $"Cannot cancel workflow in {instance.Status} state");
+        }
+
+        var oldStatus = instance.Status;
+        instance.Status = WorkflowStatus.Cancelled;
+        instance.CancelledAt = DateTime.UtcNow;
+        instance.UpdatedAt = DateTime.UtcNow;
+
+        // Log the cancellation event
+        var workflowEvent = new WorkflowEvent
+        {
+            Id = Guid.NewGuid(),
+            WorkflowInstanceId = instanceId,
+            EventType = "WorkflowCancelled",
+            OldStatus = oldStatus,
+            NewStatus = WorkflowStatus.Cancelled,
+            Timestamp = DateTime.UtcNow,
+            UserId = userId
+        };
+
+        _context.WorkflowEvents.Add(workflowEvent);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Workflow instance {InstanceId} cancelled by user {UserId}",
+            instanceId, userId);
+
+        return (true, null);
+    }
+
     private async Task RefreshWorkflowContextAsync(WorkflowInstance instance)
     {
         // Context refresh logic - reload any stale data
@@ -257,5 +336,26 @@ public class WorkflowInstanceService : IWorkflowInstanceService
         // - Update cached values in the context
         
         await Task.CompletedTask;
+    }
+
+    public async Task<List<WorkflowInstance>> GetWorkflowInstancesAsync(Guid userId, bool showCancelled = false)
+    {
+        var query = _context.WorkflowInstances
+            .Where(w => w.UserId == userId);
+
+        if (!showCancelled)
+        {
+            query = query.Where(w => w.Status != WorkflowStatus.Cancelled);
+        }
+
+        var workflows = await query
+            .OrderByDescending(w => w.CreatedAt)
+            .ToListAsync();
+
+        _logger.LogInformation(
+            "Retrieved {Count} workflows for user {UserId} (showCancelled: {ShowCancelled})",
+            workflows.Count, userId, showCancelled);
+
+        return workflows;
     }
 }

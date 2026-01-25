@@ -395,6 +395,228 @@ public class WorkflowInstanceServiceTests : IDisposable
         message.Should().Be("Workflow instance not found");
     }
 
+    [Fact]
+    public async Task CancelWorkflow_FromRunningState_ShouldTransitionToCancelled()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowDefinitionId = "create-prd",
+            UserId = userId,
+            Status = WorkflowStatus.Running,
+            CurrentStep = 2,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _context.WorkflowInstances.Add(instance);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var (success, message) = await _service.CancelWorkflowAsync(instance.Id, userId);
+
+        // Assert
+        success.Should().BeTrue();
+        message.Should().BeNull();
+        instance.Status.Should().Be(WorkflowStatus.Cancelled);
+        instance.CancelledAt.Should().NotBeNull();
+        instance.CancelledAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
+
+        // Verify event was logged
+        var events = await _context.WorkflowEvents
+            .Where(e => e.WorkflowInstanceId == instance.Id && e.EventType == "WorkflowCancelled")
+            .ToListAsync();
+        events.Should().HaveCount(1);
+        events[0].OldStatus.Should().Be(WorkflowStatus.Running);
+        events[0].NewStatus.Should().Be(WorkflowStatus.Cancelled);
+        events[0].UserId.Should().Be(userId);
+    }
+
+    [Fact]
+    public async Task CancelWorkflow_FromPausedState_ShouldTransitionToCancelled()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowDefinitionId = "create-prd",
+            UserId = userId,
+            Status = WorkflowStatus.Paused,
+            CurrentStep = 2,
+            PausedAt = DateTime.UtcNow.AddHours(-1),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _context.WorkflowInstances.Add(instance);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var (success, message) = await _service.CancelWorkflowAsync(instance.Id, userId);
+
+        // Assert
+        success.Should().BeTrue();
+        message.Should().BeNull();
+        instance.Status.Should().Be(WorkflowStatus.Cancelled);
+        instance.CancelledAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task CancelWorkflow_FromWaitingForInputState_ShouldTransitionToCancelled()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowDefinitionId = "create-prd",
+            UserId = userId,
+            Status = WorkflowStatus.WaitingForInput,
+            CurrentStep = 2,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _context.WorkflowInstances.Add(instance);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var (success, message) = await _service.CancelWorkflowAsync(instance.Id, userId);
+
+        // Assert
+        success.Should().BeTrue();
+        message.Should().BeNull();
+        instance.Status.Should().Be(WorkflowStatus.Cancelled);
+        instance.CancelledAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task CancelWorkflow_WhenCompleted_ShouldReturnError()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowDefinitionId = "create-prd",
+            UserId = userId,
+            Status = WorkflowStatus.Completed,
+            CurrentStep = 5,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _context.WorkflowInstances.Add(instance);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var (success, message) = await _service.CancelWorkflowAsync(instance.Id, userId);
+
+        // Assert
+        success.Should().BeFalse();
+        message.Should().Be("Cannot cancel a completed workflow");
+        instance.Status.Should().Be(WorkflowStatus.Completed);
+        instance.CancelledAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CancelWorkflow_WhenFailed_ShouldReturnError()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowDefinitionId = "create-prd",
+            UserId = userId,
+            Status = WorkflowStatus.Failed,
+            CurrentStep = 3,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _context.WorkflowInstances.Add(instance);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var (success, message) = await _service.CancelWorkflowAsync(instance.Id, userId);
+
+        // Assert
+        success.Should().BeFalse();
+        message.Should().Be("Cannot cancel a failed workflow");
+        instance.Status.Should().Be(WorkflowStatus.Failed);
+        instance.CancelledAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CancelWorkflow_WhenAlreadyCancelled_ShouldReturnError()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowDefinitionId = "create-prd",
+            UserId = userId,
+            Status = WorkflowStatus.Cancelled,
+            CurrentStep = 2,
+            CancelledAt = DateTime.UtcNow.AddHours(-1),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _context.WorkflowInstances.Add(instance);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var (success, message) = await _service.CancelWorkflowAsync(instance.Id, userId);
+
+        // Assert
+        success.Should().BeFalse();
+        message.Should().Be("Workflow is already cancelled");
+        instance.Status.Should().Be(WorkflowStatus.Cancelled);
+    }
+
+    [Fact]
+    public async Task CancelWorkflow_WithNonExistentWorkflow_ShouldReturnFalse()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var nonExistentId = Guid.NewGuid();
+
+        // Act
+        var (success, message) = await _service.CancelWorkflowAsync(nonExistentId, userId);
+
+        // Assert
+        success.Should().BeFalse();
+        message.Should().Be("Workflow instance not found");
+    }
+
+    [Fact]
+    public async Task ResumeWorkflow_WhenCancelled_ShouldReturnError()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowDefinitionId = "create-prd",
+            UserId = userId,
+            Status = WorkflowStatus.Cancelled,
+            CurrentStep = 2,
+            CancelledAt = DateTime.UtcNow.AddHours(-1),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _context.WorkflowInstances.Add(instance);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var (success, message) = await _service.ResumeWorkflowAsync(instance.Id, userId);
+
+        // Assert
+        success.Should().BeFalse();
+        message.Should().Be("Cannot resume a cancelled workflow");
+        instance.Status.Should().Be(WorkflowStatus.Cancelled);
+    }
+
     public void Dispose()
     {
         _context.Dispose();

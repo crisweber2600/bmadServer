@@ -10,4 +10,6 @@ public interface IWorkflowInstanceService
     Task<WorkflowInstance?> GetWorkflowInstanceAsync(Guid instanceId);
     Task<(bool Success, string? Message)> PauseWorkflowAsync(Guid instanceId, Guid userId);
     Task<(bool Success, string? Message)> ResumeWorkflowAsync(Guid instanceId, Guid userId);
+    Task<(bool Success, string? Message)> CancelWorkflowAsync(Guid instanceId, Guid userId);
+    Task<List<WorkflowInstance>> GetWorkflowInstancesAsync(Guid userId, bool showCancelled = false);
 }

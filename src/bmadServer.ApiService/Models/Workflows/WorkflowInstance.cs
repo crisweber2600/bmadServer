@@ -14,4 +14,5 @@ public class WorkflowInstance
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public DateTime? PausedAt { get; set; }
+    public DateTime? CancelledAt { get; set; }
 }
