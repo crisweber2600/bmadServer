@@ -1,4 +1,5 @@
 using bmadServer.ApiService.Data;
+using bmadServer.ApiService.DTOs;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ServiceDefaults.Services.Workflows;
 using Microsoft.EntityFrameworkCore;
@@ -529,5 +530,235 @@ public class WorkflowInstanceService : IWorkflowInstanceService
             stepId, instance.CurrentStep, instanceId, userId);
 
         return (true, null);
+    }
+
+    public async Task<WorkflowStatusResponse?> GetWorkflowStatusAsync(Guid instanceId)
+    {
+        var instance = await _context.WorkflowInstances.FindAsync(instanceId);
+        if (instance == null)
+        {
+            _logger.LogWarning("Workflow instance {InstanceId} not found", instanceId);
+            return null;
+        }
+
+        var workflowDef = _workflowRegistry.GetWorkflow(instance.WorkflowDefinitionId);
+        if (workflowDef == null)
+        {
+            _logger.LogWarning(
+                "Workflow definition {WorkflowId} not found for instance {InstanceId}",
+                instance.WorkflowDefinitionId, instanceId);
+            return null;
+        }
+
+        var totalSteps = workflowDef.Steps.Count;
+        var percentComplete = CalculateProgress(instance, totalSteps);
+        var estimatedCompletion = await EstimateCompletionAsync(instanceId);
+
+        // Get step history for completion times
+        var stepHistories = await _context.WorkflowStepHistories
+            .Where(h => h.WorkflowInstanceId == instanceId)
+            .ToListAsync();
+
+        var steps = new List<WorkflowStepProgressDto>();
+        for (int i = 0; i < totalSteps; i++)
+        {
+            var step = workflowDef.Steps[i];
+            var stepNumber = i + 1;
+            var stepHistory = stepHistories.FirstOrDefault(h => h.StepId == step.StepId);
+
+            string stepStatus;
+            DateTime? completedAt = null;
+
+            if (stepHistory != null)
+            {
+                stepStatus = stepHistory.Status switch
+                {
+                    StepExecutionStatus.Completed => "Completed",
+                    StepExecutionStatus.Failed => "Failed",
+                    StepExecutionStatus.Skipped => "Skipped",
+                    _ => "Current"
+                };
+                completedAt = stepHistory.CompletedAt;
+            }
+            else if (stepNumber == instance.CurrentStep)
+            {
+                stepStatus = "Current";
+            }
+            else if (stepNumber < instance.CurrentStep)
+            {
+                stepStatus = "Completed";
+            }
+            else
+            {
+                stepStatus = "Pending";
+            }
+
+            steps.Add(new WorkflowStepProgressDto
+            {
+                StepId = step.StepId,
+                Name = step.Name,
+                Status = stepStatus,
+                CompletedAt = completedAt,
+                AgentName = step.AgentId
+            });
+        }
+
+        // Determine startedAt - use CreatedAt for Created status, or when first step was started
+        DateTime? startedAt = instance.Status == WorkflowStatus.Created 
+            ? null 
+            : instance.CreatedAt;
+
+        return new WorkflowStatusResponse
+        {
+            Id = instance.Id,
+            WorkflowId = instance.WorkflowDefinitionId,
+            Name = workflowDef.Name,
+            Status = instance.Status.ToString(),
+            CurrentStep = instance.CurrentStep,
+            TotalSteps = totalSteps,
+            PercentComplete = percentComplete,
+            StartedAt = startedAt,
+            EstimatedCompletion = estimatedCompletion,
+            Steps = steps
+        };
+    }
+
+    public int CalculateProgress(WorkflowInstance instance, int totalSteps)
+    {
+        if (totalSteps == 0)
+        {
+            return 0;
+        }
+
+        // If completed or failed, return 100%
+        if (instance.Status.IsTerminal())
+        {
+            return 100;
+        }
+
+        // Calculate based on current step (CurrentStep is 1-based)
+        // If on step 3 of 5, we've completed steps 1 and 2, so (2/5) * 100 = 40%
+        var completedSteps = Math.Max(0, instance.CurrentStep - 1);
+        var progress = (int)Math.Round((double)completedSteps / totalSteps * 100);
+        
+        return Math.Min(progress, 100);
+    }
+
+    public async Task<DateTime?> EstimateCompletionAsync(Guid instanceId)
+    {
+        var instance = await _context.WorkflowInstances.FindAsync(instanceId);
+        if (instance == null || instance.Status.IsTerminal())
+        {
+            return null;
+        }
+
+        var workflowDef = _workflowRegistry.GetWorkflow(instance.WorkflowDefinitionId);
+        if (workflowDef == null)
+        {
+            return null;
+        }
+
+        var totalSteps = workflowDef.Steps.Count;
+        var remainingSteps = totalSteps - instance.CurrentStep + 1;
+
+        if (remainingSteps <= 0)
+        {
+            return null;
+        }
+
+        // Get completed step histories for this instance
+        var completedSteps = await _context.WorkflowStepHistories
+            .Where(h => h.WorkflowInstanceId == instanceId && 
+                       h.Status == StepExecutionStatus.Completed &&
+                       h.CompletedAt.HasValue)
+            .ToListAsync();
+
+        if (completedSteps.Any())
+        {
+            // Calculate average duration per step from this instance
+            var durations = completedSteps
+                .Where(s => s.CompletedAt.HasValue)
+                .Select(s => (s.CompletedAt!.Value - s.StartedAt).TotalMinutes)
+                .ToList();
+
+            if (durations.Any())
+            {
+                var avgDurationMinutes = durations.Average();
+                var estimatedMinutesRemaining = avgDurationMinutes * remainingSteps;
+                return DateTime.UtcNow.AddMinutes(estimatedMinutesRemaining);
+            }
+        }
+
+        // Fallback: use workflow definition's estimated duration
+        var totalEstimatedMinutes = workflowDef.EstimatedDuration.TotalMinutes;
+        var avgStepDuration = totalEstimatedMinutes / totalSteps;
+        var fallbackEstimateMinutes = avgStepDuration * remainingSteps;
+        
+        return DateTime.UtcNow.AddMinutes(fallbackEstimateMinutes);
+    }
+
+    public async Task<PagedResult<WorkflowInstance>> GetFilteredWorkflowsAsync(
+        Guid userId,
+        WorkflowStatus? status = null,
+        string? workflowType = null,
+        DateTime? createdAfter = null,
+        DateTime? createdBefore = null,
+        int page = 1,
+        int pageSize = 20)
+    {
+        // Validate pagination parameters
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var query = _context.WorkflowInstances
+            .Where(w => w.UserId == userId);
+
+        // Apply filters
+        if (status.HasValue)
+        {
+            query = query.Where(w => w.Status == status.Value);
+        }
+
+        if (!string.IsNullOrEmpty(workflowType))
+        {
+            query = query.Where(w => w.WorkflowDefinitionId == workflowType);
+        }
+
+        if (createdAfter.HasValue)
+        {
+            query = query.Where(w => w.CreatedAt >= createdAfter.Value);
+        }
+
+        if (createdBefore.HasValue)
+        {
+            query = query.Where(w => w.CreatedAt <= createdBefore.Value);
+        }
+
+        // Get total count
+        var totalItems = await query.CountAsync();
+
+        // Apply pagination and ordering
+        var items = await query
+            .OrderByDescending(w => w.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        var totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
+
+        _logger.LogInformation(
+            "Retrieved {Count} workflows (page {Page}/{TotalPages}) for user {UserId} with filters: status={Status}, type={WorkflowType}",
+            items.Count, page, totalPages, userId, status, workflowType);
+
+        return new PagedResult<WorkflowInstance>
+        {
+            Items = items,
+            Page = page,
+            PageSize = pageSize,
+            TotalItems = totalItems,
+            TotalPages = totalPages,
+            HasPrevious = page > 1,
+            HasNext = page < totalPages
+        };
     }
 }

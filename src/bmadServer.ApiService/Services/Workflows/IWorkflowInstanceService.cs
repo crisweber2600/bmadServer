@@ -1,3 +1,4 @@
+using bmadServer.ApiService.DTOs;
 using bmadServer.ApiService.Models.Workflows;
 
 namespace bmadServer.ApiService.Services.Workflows;
@@ -14,4 +15,17 @@ public interface IWorkflowInstanceService
     Task<List<WorkflowInstance>> GetWorkflowInstancesAsync(Guid userId, bool showCancelled = false);
     Task<(bool Success, string? Message)> SkipCurrentStepAsync(Guid instanceId, Guid userId, string? skipReason = null);
     Task<(bool Success, string? Message)> GoToStepAsync(Guid instanceId, string stepId, Guid userId);
+    
+    // Story 4-7: Progress and status methods
+    Task<WorkflowStatusResponse?> GetWorkflowStatusAsync(Guid instanceId);
+    int CalculateProgress(WorkflowInstance instance, int totalSteps);
+    Task<DateTime?> EstimateCompletionAsync(Guid instanceId);
+    Task<PagedResult<WorkflowInstance>> GetFilteredWorkflowsAsync(
+        Guid userId, 
+        WorkflowStatus? status = null,
+        string? workflowType = null,
+        DateTime? createdAfter = null,
+        DateTime? createdBefore = null,
+        int page = 1,
+        int pageSize = 20);
 }

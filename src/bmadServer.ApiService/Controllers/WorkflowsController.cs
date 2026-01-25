@@ -1,3 +1,4 @@
+using bmadServer.ApiService.DTOs;
 using bmadServer.ApiService.Hubs;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services.Workflows;
@@ -37,15 +38,43 @@ public class WorkflowsController : ControllerBase
         _logger = logger;
     }
 
+    private async Task SendWorkflowStatusChangedNotification(Guid workflowId)
+    {
+        var status = await _workflowInstanceService.GetWorkflowStatusAsync(workflowId);
+        if (status != null)
+        {
+            await _hubContext.Clients.All.SendAsync("WORKFLOW_STATUS_CHANGED", new
+            {
+                eventType = "WORKFLOW_STATUS_CHANGED",
+                workflowId = workflowId,
+                status = status,
+                timestamp = DateTime.UtcNow
+            });
+        }
+    }
+
     /// <summary>
     /// Get list of workflow instances for the authenticated user
     /// </summary>
     /// <param name="showCancelled">Include cancelled workflows in results (default: false)</param>
-    /// <returns>List of workflow instances</returns>
+    /// <param name="status">Filter by workflow status</param>
+    /// <param name="workflowType">Filter by workflow definition ID</param>
+    /// <param name="createdAfter">Filter workflows created after this date</param>
+    /// <param name="createdBefore">Filter workflows created before this date</param>
+    /// <param name="page">Page number (1-based, default: 1)</param>
+    /// <param name="pageSize">Number of items per page (default: 20, max: 100)</param>
+    /// <returns>Paginated list of workflow instances</returns>
     [HttpGet]
-    [ProducesResponseType(typeof(List<WorkflowInstanceListItem>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PagedResult<WorkflowInstanceListItem>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<List<WorkflowInstanceListItem>>> GetWorkflows([FromQuery] bool showCancelled = false)
+    public async Task<ActionResult<PagedResult<WorkflowInstanceListItem>>> GetWorkflows(
+        [FromQuery] bool showCancelled = false,
+        [FromQuery] WorkflowStatus? status = null,
+        [FromQuery] string? workflowType = null,
+        [FromQuery] DateTime? createdAfter = null,
+        [FromQuery] DateTime? createdBefore = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
     {
         try
         {
@@ -59,6 +88,45 @@ public class WorkflowsController : ControllerBase
                     detail: "User ID not found in token");
             }
 
+            // Use filtered query if any filters are provided
+            if (status.HasValue || !string.IsNullOrEmpty(workflowType) || 
+                createdAfter.HasValue || createdBefore.HasValue || page > 1 || pageSize != 20)
+            {
+                var pagedResult = await _workflowInstanceService.GetFilteredWorkflowsAsync(
+                    userId, status, workflowType, createdAfter, createdBefore, page, pageSize);
+
+                // Map to list items with display metadata
+                var pagedListItems = new PagedResult<WorkflowInstanceListItem>
+                {
+                    Items = pagedResult.Items.Select(w => new WorkflowInstanceListItem
+                    {
+                        Id = w.Id,
+                        WorkflowDefinitionId = w.WorkflowDefinitionId,
+                        Status = w.Status,
+                        CurrentStep = w.CurrentStep,
+                        CreatedAt = w.CreatedAt,
+                        UpdatedAt = w.UpdatedAt,
+                        PausedAt = w.PausedAt,
+                        CancelledAt = w.CancelledAt,
+                        IsCancelled = w.Status == WorkflowStatus.Cancelled,
+                        IsTerminal = w.Status.IsTerminal()
+                    }).ToList(),
+                    Page = pagedResult.Page,
+                    PageSize = pagedResult.PageSize,
+                    TotalItems = pagedResult.TotalItems,
+                    TotalPages = pagedResult.TotalPages,
+                    HasPrevious = pagedResult.HasPrevious,
+                    HasNext = pagedResult.HasNext
+                };
+
+                _logger.LogInformation(
+                    "Retrieved paginated workflows (page {Page}/{TotalPages}, {Count} items) for user {UserId}",
+                    pagedListItems.Page, pagedListItems.TotalPages, pagedListItems.Items.Count, userId);
+
+                return Ok(pagedListItems);
+            }
+
+            // Legacy behavior for backward compatibility
             var workflows = await _workflowInstanceService.GetWorkflowInstancesAsync(userId, showCancelled);
 
             // Map to list items with display metadata
@@ -76,11 +144,23 @@ public class WorkflowsController : ControllerBase
                 IsTerminal = w.Status.IsTerminal()
             }).ToList();
 
+            // Return as paged result for consistency
+            var result = new PagedResult<WorkflowInstanceListItem>
+            {
+                Items = listItems,
+                Page = 1,
+                PageSize = listItems.Count,
+                TotalItems = listItems.Count,
+                TotalPages = 1,
+                HasPrevious = false,
+                HasNext = false
+            };
+
             _logger.LogInformation(
                 "Retrieved {Count} workflows for user {UserId}",
                 listItems.Count, userId);
 
-            return Ok(listItems);
+            return Ok(result);
         }
         catch (Exception ex)
         {
@@ -149,17 +229,17 @@ public class WorkflowsController : ControllerBase
     }
 
     /// <summary>
-    /// Get workflow instance by ID
+    /// Get workflow instance status with detailed progress information
     /// </summary>
     /// <param name="id">Workflow instance ID</param>
-    /// <returns>Workflow instance</returns>
+    /// <returns>Workflow status with step progress</returns>
     [HttpGet("{id}")]
-    [ProducesResponseType(typeof(WorkflowInstance), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(WorkflowStatusResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<WorkflowInstance>> GetWorkflow(Guid id)
+    public async Task<ActionResult<WorkflowStatusResponse>> GetWorkflow(Guid id)
     {
-        var instance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
-        if (instance == null)
+        var status = await _workflowInstanceService.GetWorkflowStatusAsync(id);
+        if (status == null)
         {
             return Problem(
                 statusCode: StatusCodes.Status404NotFound,
@@ -167,7 +247,7 @@ public class WorkflowsController : ControllerBase
                 detail: $"Workflow instance '{id}' not found");
         }
 
-        return Ok(instance);
+        return Ok(status);
     }
 
     /// <summary>
@@ -189,6 +269,9 @@ public class WorkflowsController : ControllerBase
                 title: "Bad Request",
                 detail: "Unable to start workflow. Workflow may not exist or transition is invalid");
         }
+
+        // Send status change notification
+        await SendWorkflowStatusChangedNotification(id);
 
         return NoContent();
     }
@@ -281,15 +364,8 @@ public class WorkflowsController : ControllerBase
             // Get updated workflow instance
             var updatedInstance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
             
-            // Send SignalR notification to all workflow participants
-            await _hubContext.Clients.All.SendAsync("WORKFLOW_PAUSED", new
-            {
-                eventType = "WORKFLOW_PAUSED",
-                workflowId = id,
-                status = "Paused",
-                userId = userId,
-                timestamp = DateTime.UtcNow
-            });
+            // Send SignalR notification with full status
+            await SendWorkflowStatusChangedNotification(id);
 
             _logger.LogInformation(
                 "Workflow {InstanceId} paused by user {UserId}",
@@ -355,15 +431,8 @@ public class WorkflowsController : ControllerBase
             // Get updated workflow instance
             var updatedInstance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
             
-            // Send SignalR notification to all workflow participants
-            await _hubContext.Clients.All.SendAsync("WORKFLOW_RESUMED", new
-            {
-                eventType = "WORKFLOW_RESUMED",
-                workflowId = id,
-                status = "Running",
-                userId = userId,
-                timestamp = DateTime.UtcNow
-            });
+            // Send SignalR notification with full status
+            await SendWorkflowStatusChangedNotification(id);
 
             _logger.LogInformation(
                 "Workflow {InstanceId} resumed by user {UserId}",
@@ -433,15 +502,8 @@ public class WorkflowsController : ControllerBase
             // Get updated workflow instance
             var updatedInstance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
             
-            // Send SignalR notification to all workflow participants
-            await _hubContext.Clients.All.SendAsync("WORKFLOW_CANCELLED", new
-            {
-                eventType = "WORKFLOW_CANCELLED",
-                workflowId = id,
-                status = "Cancelled",
-                userId = userId,
-                timestamp = DateTime.UtcNow
-            });
+            // Send SignalR notification with full status
+            await SendWorkflowStatusChangedNotification(id);
 
             _logger.LogInformation(
                 "Workflow {InstanceId} cancelled by user {UserId}",
@@ -511,6 +573,9 @@ public class WorkflowsController : ControllerBase
             // Get updated workflow instance
             var updatedInstance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
 
+            // Send status change notification
+            await SendWorkflowStatusChangedNotification(id);
+
             _logger.LogInformation(
                 "Step skipped for workflow {InstanceId} by user {UserId}",
                 id, userId);
@@ -575,6 +640,9 @@ public class WorkflowsController : ControllerBase
 
             // Get updated workflow instance
             var updatedInstance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
+
+            // Send status change notification
+            await SendWorkflowStatusChangedNotification(id);
 
             _logger.LogInformation(
                 "Navigated to step {StepId} for workflow {InstanceId} by user {UserId}",

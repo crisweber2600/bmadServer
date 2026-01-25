@@ -1,6 +1,7 @@
 using bmadServer.ApiService.Controllers;
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
+using bmadServer.ApiService.DTOs;
 using bmadServer.ApiService.Hubs;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services;
@@ -138,9 +139,10 @@ public class WorkflowsControllerTests : IClassFixture<WebApplicationFactory<Prog
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var instance = await response.Content.ReadFromJsonAsync<WorkflowInstance>();
-        instance.Should().NotBeNull();
-        instance!.Id.Should().Be(createdInstance.Id);
+        var status = await response.Content.ReadFromJsonAsync<WorkflowStatusResponse>();
+        status.Should().NotBeNull();
+        status!.Id.Should().Be(createdInstance.Id);
+        status.WorkflowId.Should().Be("create-prd");
     }
 
     [Fact]
@@ -180,9 +182,9 @@ public class WorkflowsControllerTests : IClassFixture<WebApplicationFactory<Prog
 
         // Verify workflow status changed
         var getResponse = await _client.GetAsync($"/api/v1/workflows/{createdInstance.Id}");
-        var instance = await getResponse.Content.ReadFromJsonAsync<WorkflowInstance>();
-        instance!.Status.Should().Be(WorkflowStatus.Running);
-        instance.CurrentStep.Should().Be(1);
+        var status = await getResponse.Content.ReadFromJsonAsync<WorkflowStatusResponse>();
+        status!.Status.Should().Be("Running");
+        status.CurrentStep.Should().Be(1);
     }
 
     [Fact]
@@ -371,8 +373,8 @@ public class WorkflowsControllerTests : IClassFixture<WebApplicationFactory<Prog
 
         // Get initial state
         var initialResponse = await _client.GetAsync($"/api/v1/workflows/{createdInstance.Id}");
-        var initialInstance = await initialResponse.Content.ReadFromJsonAsync<WorkflowInstance>();
-        initialInstance!.Status.Should().Be(WorkflowStatus.Running);
+        var initialStatus = await initialResponse.Content.ReadFromJsonAsync<WorkflowStatusResponse>();
+        initialStatus!.Status.Should().Be("Running");
 
         // Pause the workflow
         var pauseResponse = await _client.PostAsync($"/api/v1/workflows/{createdInstance.Id}/pause", null);
@@ -392,9 +394,9 @@ public class WorkflowsControllerTests : IClassFixture<WebApplicationFactory<Prog
 
         // Verify final state
         var finalResponse = await _client.GetAsync($"/api/v1/workflows/{createdInstance.Id}");
-        var finalInstance = await finalResponse.Content.ReadFromJsonAsync<WorkflowInstance>();
-        finalInstance!.Status.Should().Be(WorkflowStatus.Running);
-        finalInstance.CurrentStep.Should().Be(initialInstance.CurrentStep); // Step should be preserved
+        var finalStatus = await finalResponse.Content.ReadFromJsonAsync<WorkflowStatusResponse>();
+        finalStatus!.Status.Should().Be("Running");
+        finalStatus.CurrentStep.Should().Be(initialStatus.CurrentStep); // Step should be preserved
     }
 
     [Fact]

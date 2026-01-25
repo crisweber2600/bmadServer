@@ -35,12 +35,12 @@ As a user (Marcus), I want to view detailed workflow status and progress, so tha
 
 ## Tasks / Subtasks
 
-- [ ] Analyze acceptance criteria and create detailed implementation plan
-- [ ] Design data models and database schema if needed
-- [ ] Implement core business logic
-- [ ] Create API endpoints and/or UI components
-- [ ] Write unit tests for critical paths
-- [ ] Write integration tests for key scenarios
+- [x] Analyze acceptance criteria and create detailed implementation plan
+- [x] Design data models and database schema if needed
+- [x] Implement core business logic
+- [x] Create API endpoints and/or UI components
+- [x] Write unit tests for critical paths
+- [ ] Write integration tests for key scenarios (partial - needs JSON serialization fix)
 - [ ] Update API documentation
 - [ ] Perform manual testing and validation
 - [ ] Code review and address feedback
