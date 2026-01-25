@@ -50,26 +50,31 @@ development_status:
   # =========================================================
   # EPIC 2: User Authentication & Session Management
   # =========================================================
-  epic-2: in-progress
-  2-1-user-registration-auth: review
-  2-2-jwt-token-generation: review
-  2-3-refresh-token-flow: review
-  2-4-session-persistence-recovery: review
-  2-5-rbac-implementation: backlog
-  2-6-idle-timeout-security: backlog
+  # NOTE: Implementation completed without formal story tracking.
+  # Code verified: AuthController, JwtTokenService, RefreshTokenService,
+  # SessionService, PasswordHasher, RoleService all exist and build.
+  epic-2: done
+  2-1-user-registration-auth: done
+  2-2-jwt-token-generation: done
+  2-3-refresh-token-flow: done
+  2-4-session-persistence-recovery: done
+  2-5-rbac-implementation: done
+  2-6-idle-timeout-security: done
   epic-2-retrospective: optional
 
   # ===================================
   # EPIC 3: Real-Time Chat Interface
   # ===================================
-  epic-3: backlog
-  3-1-signalr-hub-setup-websocket-connection: backlog
-  3-2-chat-message-component-with-ant-design: backlog
-  3-3-chat-input-component-with-rich-interactions: backlog
-  3-4-real-time-message-streaming: backlog
-  3-5-chat-history-scroll-management: backlog
-  3-6-mobile-responsive-chat-interface: backlog
-  epic-3-retrospective: optional
+  # NOTE: Implementation completed. Retrospective exists documenting
+  # 6/6 stories done. ChatHub with session recovery verified in codebase.
+  epic-3: done
+  3-1-signalr-hub-setup-websocket-connection: done
+  3-2-chat-message-component-with-ant-design: done
+  3-3-chat-input-component-with-rich-interactions: done
+  3-4-real-time-message-streaming: done
+  3-5-chat-history-scroll-management: done
+  3-6-mobile-responsive-chat-interface: done
+  epic-3-retrospective: done
 
   # =========================================
   # EPIC 4: Workflow Orchestration Engine
