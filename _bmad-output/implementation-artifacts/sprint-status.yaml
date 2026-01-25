@@ -50,13 +50,13 @@ development_status:
   # =========================================================
   # EPIC 2: User Authentication & Session Management
   # =========================================================
-  epic-2: in-progress
+  epic-2: done
   2-1-user-registration-auth: done
   2-2-jwt-token-generation: done
   2-3-refresh-token-flow: done
   2-4-session-persistence-recovery: done
-  2-5-rbac-implementation: review
-  2-6-idle-timeout-security: review
+  2-5-rbac-implementation: done
+  2-6-idle-timeout-security: done
   epic-2-retrospective: optional
 
   # ===================================
