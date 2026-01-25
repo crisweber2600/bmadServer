@@ -97,7 +97,7 @@ public class Decision
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public int Version { get; set; } // For optimistic concurrency (Story 6.2)
-    public DecisionStatus Status { get; set; } // Draft, UnderReview, Locked, etc. (Stories 6.3-6.4)
+    public DecisionStatus Status { get; set; } = DecisionStatus.Draft; // Default to Draft for new decisions; can change to UnderReview/Locked in Stories 6.3-6.4
     
     // Navigation properties
     public WorkflowInstance WorkflowInstance { get; set; }
@@ -134,6 +134,9 @@ builder.Entity<Decision>(entity =>
     entity.HasIndex(e => e.Context).HasMethod("gin");
     entity.HasIndex(e => new { e.WorkflowInstanceId, e.DecidedAt }); // For chronological retrieval
     entity.Property(e => e.Version).IsConcurrencyToken(); // Optimistic concurrency
+    entity.Property(e => e.Status)
+        .HasConversion<string>()
+        .HasDefaultValue(DecisionStatus.Draft);
 });
 ```
 

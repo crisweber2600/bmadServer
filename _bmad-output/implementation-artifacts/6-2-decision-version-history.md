@@ -112,7 +112,7 @@ public class DecisionVersion
     public string Value { get; set; } // JSONB - snapshot of decision value at this version
     public Guid ModifiedBy { get; set; }
     public DateTime ModifiedAt { get; set; }
-    public string ChangeReason { get; set; } // Optional: "Updated by user", "Reverted to version 2", etc.
+    public string? ChangeReason { get; set; } // Optional: "Updated by user", "Reverted to version 2", etc.
     public DateTime CreatedAt { get; set; }
     
     // Navigation properties
