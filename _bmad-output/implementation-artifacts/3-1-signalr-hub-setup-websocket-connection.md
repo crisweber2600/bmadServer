@@ -40,15 +40,15 @@ As a user (Sarah), I want to establish a persistent WebSocket connection to bmad
 
 ## Tasks / Subtasks
 
-- [ ] Analyze acceptance criteria and create detailed implementation plan
-- [ ] Design data models and database schema if needed
-- [ ] Implement core business logic
-- [ ] Create API endpoints and/or UI components
-- [ ] Write unit tests for critical paths
-- [ ] Write integration tests for key scenarios
-- [ ] Update API documentation
-- [ ] Perform manual testing and validation
-- [ ] Code review and address feedback
+- [x] Analyze acceptance criteria and create detailed implementation plan
+- [x] Design data models and database schema if needed
+- [x] Implement core business logic
+- [x] Create API endpoints and/or UI components
+- [x] Write unit tests for critical paths
+- [x] Write integration tests for key scenarios
+- [x] Update API documentation
+- [x] Perform manual testing and validation
+- [x] Code review and address feedback
 
 ## Dev Notes
 
@@ -77,12 +77,18 @@ Review the acceptance criteria for dependencies on:
 
 ## Files to Create/Modify
 
-Files will be determined during implementation based on:
-- Data models and entities needed
-- API endpoints required
-- Service layer components
-- Database migrations
-- Test files
+### Dev Agent Record
+
+**Files Created:**
+- `src/bmadServer.ApiService/Hubs/ChatHub.cs` - SignalR hub with SendMessage, JoinWorkflow, LeaveWorkflow methods
+- `src/bmadServer.Tests/Integration/ChatHubPerformanceTests.cs` - NFR1 performance validation tests
+- `docs/examples/signalr-client-reconnection.ts` - Client-side reconnection example with automatic reconnect
+- `docs/api/signalr-chathub-api.md` - Complete API documentation for SignalR hub endpoints
+
+**Files Modified:**
+- `src/bmadServer.ApiService/bmadServer.ApiService.csproj` - Added Microsoft.AspNetCore.SignalR package reference
+- `src/bmadServer.ApiService/Program.cs` - Added OnMessageReceived event handler for WebSocket JWT authentication
+- `src/bmadServer.ApiService/Hubs/ChatHub.cs` - Added connection ID logging, performance logging, JoinWorkflow, and LeaveWorkflow methods
 
 ---
 

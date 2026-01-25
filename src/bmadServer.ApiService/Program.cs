@@ -101,6 +101,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 }
                 return Task.CompletedTask;
             },
+            OnMessageReceived = context =>
+            {
+                // Allow SignalR to pass JWT via query string for WebSocket connections
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                {
+                    context.Token = accessToken;
+                }
+                
+                return Task.CompletedTask;
+            },
             OnChallenge = context =>
             {
                 // Suppress default challenge response to allow ProblemDetails
