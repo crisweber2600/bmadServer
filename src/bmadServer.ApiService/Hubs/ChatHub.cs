@@ -1,4 +1,5 @@
 using bmadServer.ApiService.Services;
+using bmadServer.ApiService.Services.Workflows;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using System.Security.Claims;
@@ -8,16 +9,22 @@ namespace bmadServer.ApiService.Hubs;
 /// <summary>
 /// SignalR hub for real-time chat communication.
 /// Manages session lifecycle: connection, disconnection, and recovery.
+/// Routes chat messages to workflow engine when an active workflow exists.
 /// </summary>
 [Authorize]
 public class ChatHub : Hub
 {
     private readonly ISessionService _sessionService;
+    private readonly IStepExecutor _stepExecutor;
     private readonly ILogger<ChatHub> _logger;
 
-    public ChatHub(ISessionService sessionService, ILogger<ChatHub> logger)
+    public ChatHub(
+        ISessionService sessionService, 
+        IStepExecutor stepExecutor,
+        ILogger<ChatHub> logger)
     {
         _sessionService = sessionService;
+        _stepExecutor = stepExecutor;
         _logger = logger;
     }
 
@@ -102,7 +109,7 @@ public class ChatHub : Hub
     }
 
     /// <summary>
-    /// Sends a chat message and updates session activity.
+    /// Sends a chat message and routes to workflow engine if active workflow exists.
     /// </summary>
     public async Task SendMessage(string message)
     {
@@ -140,12 +147,72 @@ public class ChatHub : Hub
         _logger.LogInformation("User {UserId} sent message in session {SessionId}", 
             userId, session.Id);
 
-        // Echo message back (placeholder - real implementation would invoke workflow/agent)
-        await Clients.Caller.SendAsync("ReceiveMessage", new
+        // Route to workflow engine if active workflow exists
+        var workflowInstanceId = session.WorkflowState?.ActiveWorkflowInstanceId;
+        if (workflowInstanceId.HasValue)
         {
-            Role = "user",
-            Content = message,
-            Timestamp = DateTime.UtcNow
-        });
+            await ExecuteWorkflowStepAsync(workflowInstanceId.Value, message);
+        }
+        else
+        {
+            // No active workflow - send acknowledgment that message was received
+            await Clients.Caller.SendAsync("ReceiveMessage", new
+            {
+                Role = "system",
+                Content = "Message received. No active workflow - start a workflow to begin.",
+                Timestamp = DateTime.UtcNow
+            });
+        }
+    }
+
+    private async Task ExecuteWorkflowStepAsync(Guid workflowInstanceId, string userInput)
+    {
+        try
+        {
+            var result = await _stepExecutor.ExecuteStepAsync(workflowInstanceId, userInput);
+            
+            if (result.Success)
+            {
+                await Clients.Caller.SendAsync("ReceiveMessage", new
+                {
+                    Role = "agent",
+                    Content = $"Step '{result.StepName}' completed successfully.",
+                    StepId = result.StepId,
+                    NextStep = result.NextStep,
+                    WorkflowStatus = result.NewWorkflowStatus?.ToString(),
+                    Timestamp = DateTime.UtcNow
+                });
+                
+                _logger.LogInformation(
+                    "Workflow step {StepId} executed successfully for instance {InstanceId}", 
+                    result.StepId, workflowInstanceId);
+            }
+            else
+            {
+                await Clients.Caller.SendAsync("ReceiveMessage", new
+                {
+                    Role = "system",
+                    Content = $"Step execution failed: {result.ErrorMessage}",
+                    StepId = result.StepId,
+                    WorkflowStatus = result.NewWorkflowStatus?.ToString(),
+                    Timestamp = DateTime.UtcNow
+                });
+                
+                _logger.LogWarning(
+                    "Workflow step {StepId} failed for instance {InstanceId}: {Error}", 
+                    result.StepId, workflowInstanceId, result.ErrorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error executing workflow step for instance {InstanceId}", workflowInstanceId);
+            
+            await Clients.Caller.SendAsync("ReceiveMessage", new
+            {
+                Role = "system",
+                Content = "An error occurred while processing your message. Please try again.",
+                Timestamp = DateTime.UtcNow
+            });
+        }
     }
 }

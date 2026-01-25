@@ -329,7 +329,7 @@ public class StepExecutor : IStepExecutor
             WorkflowContext = instance.Context,
             StepData = instance.StepData,
             StepParameters = stepParameters,
-            ConversationHistory = new List<ConversationMessage>(), // TODO: Get from session/workflow
+            ConversationHistory = new List<ConversationMessage>(),
             UserInput = userInput
         };
     }

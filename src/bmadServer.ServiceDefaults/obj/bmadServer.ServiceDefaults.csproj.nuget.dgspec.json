@@ -1,25 +1,26 @@
 {
   "format": 1,
   "restore": {
-    "/home/runner/work/bmadServer/bmadServer/src/bmadServer.ServiceDefaults/bmadServer.ServiceDefaults.csproj": {}
+    "/Users/cris/bmadServer/src/bmadServer.ServiceDefaults/bmadServer.ServiceDefaults.csproj": {}
   },
   "projects": {
-    "/home/runner/work/bmadServer/bmadServer/src/bmadServer.ServiceDefaults/bmadServer.ServiceDefaults.csproj": {
+    "/Users/cris/bmadServer/src/bmadServer.ServiceDefaults/bmadServer.ServiceDefaults.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/runner/work/bmadServer/bmadServer/src/bmadServer.ServiceDefaults/bmadServer.ServiceDefaults.csproj",
+        "projectUniqueName": "/Users/cris/bmadServer/src/bmadServer.ServiceDefaults/bmadServer.ServiceDefaults.csproj",
         "projectName": "bmadServer.ServiceDefaults",
-        "projectPath": "/home/runner/work/bmadServer/bmadServer/src/bmadServer.ServiceDefaults/bmadServer.ServiceDefaults.csproj",
-        "packagesPath": "/home/runner/.nuget/packages/",
-        "outputPath": "/home/runner/work/bmadServer/bmadServer/src/bmadServer.ServiceDefaults/obj/",
+        "projectPath": "/Users/cris/bmadServer/src/bmadServer.ServiceDefaults/bmadServer.ServiceDefaults.csproj",
+        "packagesPath": "/Users/cris/.nuget/packages/",
+        "outputPath": "/Users/cris/bmadServer/src/bmadServer.ServiceDefaults/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/home/runner/.nuget/NuGet/NuGet.Config"
+          "/Users/cris/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net10.0"
         ],
         "sources": {
+          "/opt/homebrew/Cellar/dotnet/10.0.102/libexec/library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -92,7 +93,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/10.0.102/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "/opt/homebrew/Cellar/dotnet/10.0.102/libexec/sdk/10.0.102/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.AspNetCore": "(,10.0.32767]",
             "Microsoft.AspNetCore.Antiforgery": "(,10.0.32767]",

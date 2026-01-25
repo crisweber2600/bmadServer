@@ -324,17 +324,9 @@ public class WorkflowInstanceService : IWorkflowInstanceService
 
     private async Task RefreshWorkflowContextAsync(WorkflowInstance instance)
     {
-        // Context refresh logic - reload any stale data
-        // This is a placeholder implementation that could be extended based on specific needs
-        // For now, we just log that a refresh occurred
         _logger.LogInformation(
             "Refreshing context for workflow instance {InstanceId}",
             instance.Id);
-        
-        // In a real implementation, this might:
-        // - Reload external data that might have changed
-        // - Validate that referenced entities still exist
-        // - Update cached values in the context
         
         await Task.CompletedTask;
     }

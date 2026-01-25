@@ -82,7 +82,7 @@ development_status:
   4-5-workflow-exit-cancellation: done
   4-6-workflow-step-navigation-skip: done
   4-7-workflow-status-progress-api: done
-  epic-4-retrospective: optional
+  epic-4-retrospective: done
 
   # ====================================
   # EPIC 5: Multi-Agent Collaboration

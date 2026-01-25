@@ -13,6 +13,12 @@ public class WorkflowState
     public string? PendingInput { get; set; }
     public string? AgentContext { get; set; }
     
+    /// <summary>
+    /// Reference to the active WorkflowInstance for this session.
+    /// When set, chat messages are routed to the workflow's StepExecutor.
+    /// </summary>
+    public Guid? ActiveWorkflowInstanceId { get; set; }
+    
     // Concurrency control fields per architecture.md
     public int _version { get; set; } = 1;
     public Guid _lastModifiedBy { get; set; }

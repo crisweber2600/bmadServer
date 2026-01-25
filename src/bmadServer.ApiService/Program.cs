@@ -182,38 +182,8 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// Sample data for demonstration purposes
-string[] summaries = ["Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"];
+app.MapGet("/", () => "bmadServer API service is running. See /swagger for API documentation.");
 
-// Root endpoint - simple health status message
-app.MapGet("/", () => "API service is running. Navigate to /weatherforecast to see sample data.");
-
-// Sample weather forecast endpoint - demonstrates basic endpoint structure
-// Remove this in production and replace with domain-specific endpoints
-// Future integration points (from Architecture.md):
-//   - POST /api/workflows - Create workflow (Epic 4)
-//   - POST /api/chat - Send chat message (Epic 3 with SignalR hub at /hubs/chat)
-//   - POST /api/auth/login - User authentication (Epic 2)
-//   - GET /api/sessions - Retrieve user sessions (Epic 2)
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
-
-// Map default Aspire endpoints (health checks)
-// Calls MapHealthChecks("/health") and MapHealthChecks("/alive") from ServiceDefaults
-// These endpoints indicate:
-//   - /health: All health checks pass, service is ready for traffic
-//   - /alive: Service is running (liveness probe, subset of health checks)
 app.MapDefaultEndpoints();
 
 // Map controllers
@@ -227,10 +197,3 @@ app.Run();
 
 // Make Program class accessible to tests
 public partial class Program { }
-
-
-// Simple record for demonstration - remove in production
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
