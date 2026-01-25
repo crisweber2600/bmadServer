@@ -1,6 +1,6 @@
 # Story 3.4: Real-Time Message Streaming
 
-**Status:** ready-for-dev
+**Status:** done
 
 ## Story
 
@@ -34,15 +34,26 @@ As a user (Marcus), I want to see agent responses stream in real-time, so that I
 
 ## Tasks / Subtasks
 
-- [ ] Analyze acceptance criteria and create detailed implementation plan
-- [ ] Design data models and database schema if needed
-- [ ] Implement core business logic
-- [ ] Create API endpoints and/or UI components
-- [ ] Write unit tests for critical paths
-- [ ] Write integration tests for key scenarios
-- [ ] Update API documentation
-- [ ] Perform manual testing and validation
-- [ ] Code review and address feedback
+- [x] Analyze acceptance criteria and create detailed implementation plan
+- [x] Design data models and database schema if needed
+- [x] Implement core business logic
+  - [x] ChatHub MESSAGE_CHUNK streaming with messageId, chunk, isComplete, agentId
+  - [x] Server-side streaming simulation with token-by-token delivery
+  - [x] Partial message persistence for interruption recovery
+  - [x] StopGenerating endpoint for cancellation
+- [x] Create API endpoints and/or UI components
+  - [x] useStreamingMessage React hook for client-side streaming
+  - [x] Token-by-token UI updates with smooth rendering
+  - [x] Stop Generating button integration
+- [x] Write unit tests for critical paths
+  - [x] useStreamingMessage hook tests (chunk handling, completion, stopping)
+- [x] Write integration tests for key scenarios
+  - [x] ChatHubStreamingTests for MESSAGE_CHUNK events
+  - [x] Partial message recovery tests
+  - [x] Conversation history limit tests
+- [x] Update API documentation
+- [x] Perform manual testing and validation
+- [x] Code review and address feedback
 
 ## Dev Notes
 
@@ -71,12 +82,14 @@ Review the acceptance criteria for dependencies on:
 
 ## Files to Create/Modify
 
-Files will be determined during implementation based on:
-- Data models and entities needed
-- API endpoints required
-- Service layer components
-- Database migrations
-- Test files
+**Backend:**
+- `/src/bmadServer.ApiService/Hubs/ChatHub.cs` - Added MESSAGE_CHUNK streaming, StopGenerating, partial message persistence
+- `/src/bmadServer.Tests/Integration/ChatHubStreamingTests.cs` - Comprehensive streaming tests
+
+**Frontend:**
+- `/src/frontend/src/hooks/useStreamingMessage.ts` - React hook for streaming message handling
+- `/src/frontend/src/hooks/useStreamingMessage.test.ts` - Hook unit tests
+- `/src/frontend/src/hooks/index.ts` - Hook exports
 
 ---
 

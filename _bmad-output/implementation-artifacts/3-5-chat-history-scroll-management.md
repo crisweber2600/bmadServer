@@ -1,6 +1,6 @@
 # Story 3.5: Chat History & Scroll Management
 
-**Status:** ready-for-dev
+**Status:** done
 
 ## Story
 
@@ -30,15 +30,29 @@ As a user (Sarah), I want to review previous messages in our conversation, so th
 
 ## Tasks / Subtasks
 
-- [ ] Analyze acceptance criteria and create detailed implementation plan
-- [ ] Design data models and database schema if needed
-- [ ] Implement core business logic
-- [ ] Create API endpoints and/or UI components
-- [ ] Write unit tests for critical paths
-- [ ] Write integration tests for key scenarios
-- [ ] Update API documentation
-- [ ] Perform manual testing and validation
-- [ ] Code review and address feedback
+- [x] Analyze acceptance criteria and create detailed implementation plan
+- [x] Design data models and database schema if needed
+  - [x] Reused existing WorkflowState.ConversationHistory model
+- [x] Implement core business logic
+  - [x] ChatController with paginated history endpoints
+  - [x] GetChatHistory endpoint with 50 messages per page
+  - [x] GetRecentMessages endpoint for initial load
+  - [x] Scroll position management logic
+- [x] Create API endpoints and/or UI components
+  - [x] useScrollManagement React hook for scroll tracking
+  - [x] Auto-scroll to bottom on new messages
+  - [x] "Load More" button at top for pagination
+  - [x] "New message" badge when scrolled up
+  - [x] Welcome message for empty chats
+- [x] Write unit tests for critical paths
+  - [x] useScrollManagement hook tests (scroll detection, badge display)
+- [x] Write integration tests for key scenarios
+  - [x] ChatControllerTests for pagination and history retrieval
+  - [x] Empty state handling tests
+  - [x] Validation tests for invalid parameters
+- [x] Update API documentation
+- [x] Perform manual testing and validation
+- [x] Code review and address feedback
 
 ## Dev Notes
 
@@ -67,12 +81,14 @@ Review the acceptance criteria for dependencies on:
 
 ## Files to Create/Modify
 
-Files will be determined during implementation based on:
-- Data models and entities needed
-- API endpoints required
-- Service layer components
-- Database migrations
-- Test files
+**Backend:**
+- `/src/bmadServer.ApiService/Controllers/ChatController.cs` - Paginated chat history endpoints
+- `/src/bmadServer.Tests/Integration/ChatControllerTests.cs` - Comprehensive controller tests
+
+**Frontend:**
+- `/src/frontend/src/hooks/useScrollManagement.ts` - React hook for scroll position management
+- `/src/frontend/src/hooks/useScrollManagement.test.ts` - Hook unit tests
+- `/src/frontend/src/hooks/index.ts` - Hook exports (updated)
 
 ---
 
