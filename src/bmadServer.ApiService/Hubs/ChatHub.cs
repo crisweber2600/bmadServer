@@ -1,6 +1,7 @@
 using bmadServer.ApiService.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Configuration;
 using System.Security.Claims;
 
 namespace bmadServer.ApiService.Hubs;
@@ -14,11 +15,13 @@ public class ChatHub : Hub
 {
     private readonly ISessionService _sessionService;
     private readonly ILogger<ChatHub> _logger;
+    private readonly IConfiguration _configuration;
 
-    public ChatHub(ISessionService sessionService, ILogger<ChatHub> logger)
+    public ChatHub(ISessionService sessionService, ILogger<ChatHub> logger, IConfiguration configuration)
     {
         _sessionService = sessionService;
         _logger = logger;
+        _configuration = configuration;
     }
 
     /// <summary>
@@ -197,8 +200,10 @@ public class ChatHub : Hub
                 await SavePartialMessage(sessionId, userId, messageId, streamedContent, agentId);
             }
 
-            // Simulate streaming delay (50-100ms per token for realism)
-            await Task.Delay(Random.Shared.Next(50, 100));
+            // Simulate streaming delay (configurable via appsettings)
+            var minDelay = _configuration.GetValue<int>("Streaming:MinDelayMs", 50);
+            var maxDelay = _configuration.GetValue<int>("Streaming:MaxDelayMs", 100);
+            await Task.Delay(Random.Shared.Next(minDelay, maxDelay));
         }
 
         // Save complete message to session history

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useRef, useCallback } from 'react';
+import { copyToClipboard } from '../utils/clipboard';
 
 export interface TouchGestureOptions {
   onLongPress?: (element: HTMLElement) => void;
@@ -103,16 +104,6 @@ export function useTouchGestures(options?: TouchGestureOptions) {
     },
     [handleTouchStart, handleTouchMove, handleTouchEnd]
   );
-
-  const copyToClipboard = useCallback(async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch (error) {
-      console.error('Failed to copy to clipboard:', error);
-      return false;
-    }
-  }, []);
 
   return {
     attachGestureListeners,

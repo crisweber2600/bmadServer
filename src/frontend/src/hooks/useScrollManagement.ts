@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 
 export interface ScrollPosition {
   scrollTop: number;
@@ -58,7 +58,7 @@ export function useScrollManagement(options?: UseScrollManagementOptions) {
 
     const atBottom = checkIfAtBottom();
 
-    // Check if scrolled to top (for load more)
+    // Check if scrolled to top (for load more) - only trigger if not already loading
     if (scrollTop === 0 && onScrollToTop) {
       onScrollToTop();
     }

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 
 export interface StreamingMessage {
   messageId: string;
@@ -11,9 +11,16 @@ export interface StreamingMessage {
 export interface UseStreamingMessageOptions {
   onComplete?: (message: StreamingMessage) => void;
   onChunk?: (chunk: string) => void;
+  stoppedMessageSuffix?: string;
 }
 
 export function useStreamingMessage(options?: UseStreamingMessageOptions) {
+  const {
+    onComplete,
+    onChunk,
+    stoppedMessageSuffix = ' (Stopped)',
+  } = options || {};
+  
   const [streamingMessages, setStreamingMessages] = useState<Map<string, StreamingMessage>>(
     new Map()
   );
@@ -50,9 +57,9 @@ export function useStreamingMessage(options?: UseStreamingMessageOptions) {
         newMap.set(messageId, updated);
 
         // Call callbacks
-        options?.onChunk?.(data.Chunk);
+        onChunk?.(data.Chunk);
         if (data.IsComplete) {
-          options?.onComplete?.(updated);
+          onComplete?.(updated);
           // Clean up completed message after callback
           setTimeout(() => {
             setStreamingMessages((current) => {
@@ -69,7 +76,7 @@ export function useStreamingMessage(options?: UseStreamingMessageOptions) {
         return newMap;
       });
     },
-    [options]
+    [onComplete, onChunk]
   );
 
   const handleGenerationStopped = useCallback((data: { MessageId: string }) => {
@@ -83,13 +90,13 @@ export function useStreamingMessage(options?: UseStreamingMessageOptions) {
       if (existing) {
         const stopped: StreamingMessage = {
           ...existing,
-          content: existing.content + ' (Stopped)',
+          content: existing.content + stoppedMessageSuffix,
           isComplete: true,
         };
         newMap.set(messageId, stopped);
 
         // Call onComplete callback
-        options?.onComplete?.(stopped);
+        onComplete?.(stopped);
 
         // Clean up stopped message
         setTimeout(() => {
@@ -105,7 +112,7 @@ export function useStreamingMessage(options?: UseStreamingMessageOptions) {
 
       return newMap;
     });
-  }, [options]);
+  }, [onComplete, stoppedMessageSuffix]);
 
   const clearStreaming = useCallback(() => {
     setStreamingMessages(new Map());
