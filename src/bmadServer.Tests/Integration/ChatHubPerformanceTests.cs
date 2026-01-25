@@ -118,17 +118,18 @@ public class ChatHubPerformanceTests : IClassFixture<TestWebApplicationFactory>,
         // Arrange
         const int messageCount = 5;
         var times = new List<double>();
+        TaskCompletionSource<bool>? messageReceived = null;
+
+        _connection!.On<object>("ReceiveMessage", _ =>
+        {
+            messageReceived?.TrySetResult(true);
+        });
 
         // Act
         for (int i = 0; i < messageCount; i++)
         {
-            var messageReceived = new TaskCompletionSource<bool>();
+            messageReceived = new TaskCompletionSource<bool>();
             var startTime = DateTime.UtcNow;
-            
-            _connection!.On<object>($"ReceiveMessage_{i}", _ =>
-            {
-                messageReceived.SetResult(true);
-            });
 
             await _connection.InvokeAsync("SendMessage", $"Message {i}");
             

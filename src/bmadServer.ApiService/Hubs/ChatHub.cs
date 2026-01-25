@@ -2,7 +2,9 @@ using bmadServer.ApiService.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
+using System.Collections.Concurrent;
 using System.Security.Claims;
+using System.Text;
 
 namespace bmadServer.ApiService.Hubs;
 
@@ -15,6 +17,9 @@ public class ChatHub : Hub
     private readonly int _maxHistoryMessages;
     private readonly int _partialSaveThrottleMs;
     private readonly int _partialSaveChunkInterval;
+    
+    // Track active streaming tasks per connection to prevent concurrent streams
+    private static readonly ConcurrentDictionary<string, CancellationTokenSource> _activeStreams = new();
 
     public ChatHub(ISessionService sessionService, ILogger<ChatHub> logger, IConfiguration configuration)
     {
@@ -73,6 +78,14 @@ public class ChatHub : Hub
         var userId = GetUserIdFromClaims();
         var connectionId = Context.ConnectionId;
 
+        // Clean up any active streaming for this connection
+        if (_activeStreams.TryRemove(connectionId, out var cts))
+        {
+            cts.Cancel();
+            cts.Dispose();
+            _logger.LogInformation("Cleaned up active stream for disconnected connection {ConnectionId}", connectionId);
+        }
+
         _logger.LogInformation(
             "User {UserId} disconnected from connection {ConnectionId}. Exception: {Exception}", 
             userId, connectionId, exception?.Message);
@@ -102,6 +115,14 @@ public class ChatHub : Hub
         if (session == null)
         {
             throw new HubException("No active session found");
+        }
+
+        // Cancel any existing stream for this connection
+        var streamKey = Context.ConnectionId;
+        if (_activeStreams.TryRemove(streamKey, out var existingCts))
+        {
+            existingCts.Cancel();
+            existingCts.Dispose();
         }
 
         var userMessageId = Guid.NewGuid().ToString();
@@ -139,65 +160,92 @@ public class ChatHub : Hub
             MessageId = userMessageId
         });
 
-        await StreamAgentResponse(userId, session.Id, message);
+        // Create new cancellation token for this stream
+        var cts = new CancellationTokenSource();
+        _activeStreams[streamKey] = cts;
+
+        try
+        {
+            await StreamAgentResponse(userId, session.Id, message, cts.Token);
+        }
+        finally
+        {
+            _activeStreams.TryRemove(streamKey, out _);
+            cts.Dispose();
+        }
     }
 
-    private async Task StreamAgentResponse(Guid userId, Guid sessionId, string userMessage)
+    private async Task StreamAgentResponse(Guid userId, Guid sessionId, string userMessage, CancellationToken cancellationToken)
     {
         var messageId = Guid.NewGuid().ToString();
         var agentId = "bmad-agent-1";
         var fullResponse = GenerateSimulatedResponse(userMessage);
         
         var words = fullResponse.Split(' ');
-        var streamedContent = "";
+        var streamedContent = new StringBuilder();
         var lastSaveTime = DateTime.UtcNow;
         var chunksSinceLastSave = 0;
 
-        for (int i = 0; i < words.Length; i++)
+        try
         {
-            var chunk = (i == 0 ? "" : " ") + words[i];
-            streamedContent += chunk;
-            var isComplete = i == words.Length - 1;
-            chunksSinceLastSave++;
-
-            await Clients.Caller.SendAsync("MESSAGE_CHUNK", new
+            for (int i = 0; i < words.Length; i++)
             {
-                MessageId = messageId,
-                Chunk = chunk,
-                IsComplete = isComplete,
-                AgentId = agentId,
-                Timestamp = DateTime.UtcNow
-            });
+                // Check for cancellation
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    _logger.LogInformation("Streaming cancelled for message {MessageId}", messageId);
+                    return;
+                }
 
-            var timeSinceLastSave = (DateTime.UtcNow - lastSaveTime).TotalMilliseconds;
-            var shouldSave = !isComplete && 
-                (timeSinceLastSave >= _partialSaveThrottleMs || chunksSinceLastSave >= _partialSaveChunkInterval);
+                var chunk = (i == 0 ? "" : " ") + words[i];
+                streamedContent.Append(chunk);
+                var isComplete = i == words.Length - 1;
+                chunksSinceLastSave++;
 
-            if (shouldSave)
-            {
-                await SavePartialMessage(sessionId, userId, messageId, streamedContent, agentId);
-                lastSaveTime = DateTime.UtcNow;
-                chunksSinceLastSave = 0;
+                await Clients.Caller.SendAsync("MESSAGE_CHUNK", new
+                {
+                    MessageId = messageId,
+                    Chunk = chunk,
+                    IsComplete = isComplete,
+                    AgentId = agentId,
+                    Timestamp = DateTime.UtcNow
+                }, cancellationToken);
+
+                var timeSinceLastSave = (DateTime.UtcNow - lastSaveTime).TotalMilliseconds;
+                var shouldSave = !isComplete && 
+                    (timeSinceLastSave >= _partialSaveThrottleMs || chunksSinceLastSave >= _partialSaveChunkInterval);
+
+                if (shouldSave)
+                {
+                    await SavePartialMessage(sessionId, userId, messageId, streamedContent.ToString(), agentId);
+                    lastSaveTime = DateTime.UtcNow;
+                    chunksSinceLastSave = 0;
+                }
+
+                var minDelay = _configuration.GetValue<int>("Streaming:MinDelayMs", 50);
+                var maxDelay = _configuration.GetValue<int>("Streaming:MaxDelayMs", 100);
+                await Task.Delay(Random.Shared.Next(minDelay, maxDelay + 1), cancellationToken);
             }
 
-            var minDelay = _configuration.GetValue<int>("Streaming:MinDelayMs", 50);
-            var maxDelay = _configuration.GetValue<int>("Streaming:MaxDelayMs", 100);
-            await Task.Delay(Random.Shared.Next(minDelay, maxDelay + 1));
-        }
-
-        await _sessionService.UpdateSessionStateAsync(sessionId, userId, s =>
-        {
-            s.WorkflowState ??= new Models.WorkflowState();
-            s.WorkflowState.ConversationHistory.Add(new Models.ChatMessage
+            await _sessionService.UpdateSessionStateAsync(sessionId, userId, s =>
             {
-                Id = messageId,
-                Role = "agent",
-                Content = fullResponse,
-                Timestamp = DateTime.UtcNow,
-                AgentId = agentId
+                s.WorkflowState ??= new Models.WorkflowState();
+                s.WorkflowState.ConversationHistory.Add(new Models.ChatMessage
+                {
+                    Id = messageId,
+                    Role = "agent",
+                    Content = fullResponse,
+                    Timestamp = DateTime.UtcNow,
+                    AgentId = agentId
+                });
+                s.WorkflowState.PendingInput = null;
             });
-            s.WorkflowState.PendingInput = null;
-        });
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Streaming operation cancelled for message {MessageId}", messageId);
+            // Don't save partial message on cancellation
+        }
     }
 
     private async Task SavePartialMessage(Guid sessionId, Guid userId, string messageId, 
@@ -220,6 +268,15 @@ public class ChatHub : Hub
     {
         var userId = GetUserIdFromClaims();
         _logger.LogInformation("User {UserId} requested to stop message {MessageId}", userId, messageId);
+
+        // Cancel the active streaming task for this connection
+        var streamKey = Context.ConnectionId;
+        if (_activeStreams.TryRemove(streamKey, out var cts))
+        {
+            cts.Cancel();
+            cts.Dispose();
+            _logger.LogInformation("Cancelled streaming for connection {ConnectionId}", streamKey);
+        }
 
         await Clients.Caller.SendAsync("GENERATION_STOPPED", new
         {

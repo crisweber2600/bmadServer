@@ -31,8 +31,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const [error, setError] = useState<string | null>(null);
   
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const cancelTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimerRef = useRef<number | null>(null);
+  const cancelTimerRef = useRef<number | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Load draft from localStorage on mount
@@ -87,7 +87,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       const textarea = textAreaRef.current;
       if (textarea && typeof textarea.getBoundingClientRect === 'function') {
         const rect = textarea.getBoundingClientRect();
-        // Simple position calculation - in a real app, you'd calculate exact caret position
         setCommandPalettePosition({
           top: rect.top - 200,
           left: rect.left,
