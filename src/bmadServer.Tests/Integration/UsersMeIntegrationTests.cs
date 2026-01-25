@@ -188,11 +188,20 @@ public class UsersMeIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
         var validToken = jwtTokenService.GenerateAccessToken(user);
         
-        // Tamper with the token (modify payload)
+        // Tamper with the token by modifying the payload (change user ID)
         var parts = validToken.Split('.');
         if (parts.Length == 3)
         {
-            parts[1] = "tampered_payload";
+            // Decode, modify, and re-encode the payload
+            var payloadBytes = Convert.FromBase64String(parts[1].Replace('-', '+').Replace('_', '/').PadRight(parts[1].Length + (4 - parts[1].Length % 4) % 4, '='));
+            var payload = System.Text.Encoding.UTF8.GetString(payloadBytes);
+            
+            // Modify the user ID in the payload
+            payload = payload.Replace(user.Id.ToString(), Guid.NewGuid().ToString());
+            
+            // Re-encode the modified payload
+            var modifiedPayloadBytes = System.Text.Encoding.UTF8.GetBytes(payload);
+            parts[1] = Convert.ToBase64String(modifiedPayloadBytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
         }
         var tamperedToken = string.Join('.', parts);
 

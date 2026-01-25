@@ -24,6 +24,9 @@ public class AuthController : ControllerBase
     private readonly IValidator<LoginRequest> _loginValidator;
     private readonly JwtSettings _jwtSettings;
     private readonly ILogger<AuthController> _logger;
+    
+    // Pre-computed dummy hash to prevent timing attacks without performance penalty
+    private static readonly string _dummyPasswordHash = BCrypt.Net.BCrypt.HashPassword("dummy-password-for-timing-safety", 12);
 
     public AuthController(
         ApplicationDbContext dbContext,
@@ -163,9 +166,8 @@ public class AuthController : ControllerBase
             .FirstOrDefaultAsync(u => u.Email.ToLower() == request.Email.ToLower());
 
         // Always perform hash verification to prevent timing attacks
-        // even if user doesn't exist
-        var dummyHash = _passwordHasher.Hash("dummy-password-for-timing-safety");
-        var hashToVerify = user?.PasswordHash ?? dummyHash;
+        // Use pre-computed dummy hash if user doesn't exist
+        var hashToVerify = user?.PasswordHash ?? _dummyPasswordHash;
         var isValid = _passwordHasher.Verify(request.Password, hashToVerify);
 
         if (user == null || !isValid)

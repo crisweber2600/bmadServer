@@ -15,9 +15,10 @@ public class JwtTokenServiceTests
 
     public JwtTokenServiceTests()
     {
+        // NOTE: This key is for TESTING ONLY - never use in production
         _jwtSettings = new JwtSettings
         {
-            SecretKey = "ThisIsASecureKeyForTestingPurposes12345",
+            SecretKey = "TEST_SECRET_KEY_32_CHARACTERS_MINIMUM_FOR_HS256_SIGNING",
             Issuer = "bmadServer",
             Audience = "bmadServer-api",
             AccessTokenExpirationMinutes = 15

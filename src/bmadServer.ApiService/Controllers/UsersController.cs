@@ -40,6 +40,7 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> GetCurrentUser()
     {
         // Extract user ID from JWT claims
+        // JWT middleware maps 'sub' claim to both ClaimTypes.NameIdentifier and 'sub'
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
             ?? User.FindFirst("sub")?.Value;
 
