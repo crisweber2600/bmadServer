@@ -1,6 +1,6 @@
 # Story 2.6: Idle Timeout & Security
 
-**Status:** review
+**Status:** done
 
 ## Story
 
