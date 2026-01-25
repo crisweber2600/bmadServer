@@ -1,0 +1,19 @@
+import '@testing-library/jest-dom';
+
+// Mock window.matchMedia for Ant Design components
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {}, // deprecated
+    removeListener: () => {}, // deprecated
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => {},
+  }),
+});
+
+// Mock scrollTo for ChatContainer
+Element.prototype.scrollTo = function() {};
