@@ -55,7 +55,7 @@ development_status:
   2-2-jwt-token-generation: done
   2-3-refresh-token-flow: done
   2-4-session-persistence-recovery: done
-  2-5-rbac-implementation: ready-for-dev
+  2-5-rbac-implementation: review
   2-6-idle-timeout-security: ready-for-dev
   epic-2-retrospective: optional
 

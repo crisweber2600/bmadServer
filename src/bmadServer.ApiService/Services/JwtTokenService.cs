@@ -25,6 +25,11 @@ public class JwtTokenService : IJwtTokenService
     {
         return GenerateAccessToken(user, Enumerable.Empty<string>());
     }
+
+    public string GenerateAccessToken(User user, IEnumerable<Role> roles)
+    {
+        return GenerateAccessToken(user, roles.Select(r => r.ToString()));
+    }
     
     public string GenerateAccessToken(User user, IEnumerable<string> roles)
     {

@@ -21,6 +21,7 @@ public class AuthController : ControllerBase
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IRefreshTokenService _refreshTokenService;
+    private readonly IRoleService _roleService;
     private readonly IValidator<RegisterRequest> _registerValidator;
     private readonly IValidator<LoginRequest> _loginValidator;
     private readonly JwtSettings _jwtSettings;
@@ -34,6 +35,7 @@ public class AuthController : ControllerBase
         IPasswordHasher passwordHasher,
         IJwtTokenService jwtTokenService,
         IRefreshTokenService refreshTokenService,
+        IRoleService roleService,
         IValidator<RegisterRequest> registerValidator,
         IValidator<LoginRequest> loginValidator,
         IOptions<JwtSettings> jwtSettings,
@@ -43,6 +45,7 @@ public class AuthController : ControllerBase
         _passwordHasher = passwordHasher;
         _jwtTokenService = jwtTokenService;
         _refreshTokenService = refreshTokenService;
+        _roleService = roleService;
         _registerValidator = registerValidator;
         _loginValidator = loginValidator;
         _jwtSettings = jwtSettings.Value;
@@ -115,6 +118,9 @@ public class AuthController : ControllerBase
         _dbContext.Users.Add(user);
         await _dbContext.SaveChangesAsync();
 
+        // Assign default role (Participant)
+        await _roleService.AssignDefaultRoleAsync(user.Id);
+
         _logger.LogInformation("User registered successfully: {Email}", user.Email);
 
         // Return user response
@@ -185,8 +191,11 @@ public class AuthController : ControllerBase
             });
         }
 
-        // Generate JWT token
-        var token = _jwtTokenService.GenerateAccessToken(user);
+        // Get user roles for JWT claims
+        var roles = await _roleService.GetUserRolesAsync(user.Id);
+        
+        // Generate JWT token with roles
+        var token = _jwtTokenService.GenerateAccessToken(user, roles);
 
         // Generate and store refresh token
         var (refreshToken, plainRefreshToken) = await _refreshTokenService.CreateRefreshTokenAsync(user);
@@ -260,8 +269,9 @@ public class AuthController : ControllerBase
             });
         }
 
-        // Generate new access token
-        var accessToken = _jwtTokenService.GenerateAccessToken(newToken.User);
+        // Get user roles and generate new access token
+        var roles = await _roleService.GetUserRolesAsync(newToken.UserId);
+        var accessToken = _jwtTokenService.GenerateAccessToken(newToken.User, roles);
 
         // Set new refresh token cookie with the plain token
         Response.Cookies.Append("refreshToken", newPlainToken, GetRefreshTokenCookieOptions());

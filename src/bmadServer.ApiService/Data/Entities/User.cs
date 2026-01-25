@@ -11,4 +11,7 @@ public class User
 
     public ICollection<Session> Sessions { get; set; } = new List<Session>();
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+    public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
+
+    public IEnumerable<Role> Roles => UserRoles.Select(ur => ur.Role);
 }

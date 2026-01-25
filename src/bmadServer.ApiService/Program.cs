@@ -61,6 +61,9 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.IRefreshTokenService, 
 // Register session service
 builder.Services.AddScoped<bmadServer.ApiService.Services.ISessionService, bmadServer.ApiService.Services.SessionService>();
 
+// Register role service
+builder.Services.AddScoped<bmadServer.ApiService.Services.IRoleService, bmadServer.ApiService.Services.RoleService>();
+
 // Register session cleanup background service
 builder.Services.AddHostedService<bmadServer.ApiService.BackgroundServices.SessionCleanupService>();
 
