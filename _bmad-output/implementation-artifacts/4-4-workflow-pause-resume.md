@@ -1,6 +1,6 @@
 # Story 4.4: Workflow Pause & Resume
 
-**Status:** completed
+**Status:** done
 
 ## Story
 

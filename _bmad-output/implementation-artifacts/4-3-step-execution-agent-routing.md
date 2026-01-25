@@ -1,6 +1,6 @@
 # Story 4.3: Step Execution & Agent Routing
 
-**Status:** completed
+**Status:** done
 
 ## Story
 

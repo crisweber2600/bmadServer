@@ -1,6 +1,6 @@
 # Story 4.2: Workflow Instance Creation & State Machine
 
-**Status:** ready-for-dev
+**Status:** done
 
 ## Story
 
