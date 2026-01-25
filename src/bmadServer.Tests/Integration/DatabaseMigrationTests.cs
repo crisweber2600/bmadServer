@@ -20,13 +20,15 @@ public class DatabaseMigrationTests
         var user = new User
         {
             Email = "test@example.com",
-            PasswordHash = "hashed_password_value"
+            PasswordHash = "hashed_password_value",
+            DisplayName = "Test User"
         };
 
         // Act & Assert - verify required properties can be set
         Assert.NotNull(user);
         Assert.Equal("test@example.com", user.Email);
         Assert.Equal("hashed_password_value", user.PasswordHash);
+        Assert.Equal("Test User", user.DisplayName);
         Assert.NotEqual(Guid.Empty, user.Id);
     }
 
@@ -37,7 +39,8 @@ public class DatabaseMigrationTests
         var user = new User
         {
             Email = "test@example.com",
-            PasswordHash = "hashed"
+            PasswordHash = "hashed",
+            DisplayName = "Test User"
         };
 
         // Act & Assert - verify navigation property exists and is empty

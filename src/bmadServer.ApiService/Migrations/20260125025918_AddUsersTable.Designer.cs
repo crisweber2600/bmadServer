@@ -2,19 +2,21 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using bmadServer.ApiService.Data;
-using bmadServer.ApiService.Models;
 
 #nullable disable
 
 namespace bmadServer.ApiService.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260125025918_AddUsersTable")]
+    partial class AddUsersTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -23,46 +25,6 @@ namespace bmadServer.ApiService.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("bmadServer.ApiService.Data.Entities.RefreshToken", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ReplacedByTokenId")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("RevokedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("RevokedReason")
-                        .HasColumnType("text");
-
-                    b.Property<string>("TokenHash")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ExpiresAt");
-
-                    b.HasIndex("TokenHash")
-                        .IsUnique();
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("refresh_tokens", (string)null);
-                });
-
             modelBuilder.Entity("bmadServer.ApiService.Data.Entities.Session", b =>
                 {
                     b.Property<Guid>("Id")
@@ -70,50 +32,23 @@ namespace bmadServer.ApiService.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("ConnectionId")
+                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime>("LastActivityAt")
+                    b.Property<DateTime?>("ExpiresAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
-                    b.Property<WorkflowState>("WorkflowState")
-                        .HasColumnType("jsonb");
-
-                    b.Property<uint>("xmin")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("ConnectionId");
-
-                    b.HasIndex("ExpiresAt");
-
-                    b.HasIndex("IsActive");
 
                     b.HasIndex("UserId");
 
-                    b.HasIndex("WorkflowState");
-
-                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("WorkflowState"), "gin");
-
-                    b.ToTable("sessions", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_Session_Expiry", "\"ExpiresAt\" > \"CreatedAt\"");
-                        });
+                    b.ToTable("sessions", (string)null);
                 });
 
             modelBuilder.Entity("bmadServer.ApiService.Data.Entities.User", b =>
@@ -174,17 +109,6 @@ namespace bmadServer.ApiService.Migrations
                     b.ToTable("workflows", (string)null);
                 });
 
-            modelBuilder.Entity("bmadServer.ApiService.Data.Entities.RefreshToken", b =>
-                {
-                    b.HasOne("bmadServer.ApiService.Data.Entities.User", "User")
-                        .WithMany("RefreshTokens")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("bmadServer.ApiService.Data.Entities.Session", b =>
                 {
                     b.HasOne("bmadServer.ApiService.Data.Entities.User", "User")
@@ -198,8 +122,6 @@ namespace bmadServer.ApiService.Migrations
 
             modelBuilder.Entity("bmadServer.ApiService.Data.Entities.User", b =>
                 {
-                    b.Navigation("RefreshTokens");
-
                     b.Navigation("Sessions");
                 });
 #pragma warning restore 612, 618
