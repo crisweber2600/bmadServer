@@ -1,0 +1,53 @@
+.chat-input-container {
+  width: 100%;
+  padding: 16px;
+  background: #fff;
+  border-top: 1px solid #f0f0f0;
+}
+
+.chat-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.chat-input-over-limit {
+  border-color: #ff4d4f !important;
+}
+
+.chat-input-over-limit:focus {
+  border-color: #ff4d4f !important;
+  box-shadow: 0 0 0 2px rgba(255, 77, 79, 0.2) !important;
+}
+
+.chat-input-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.char-count {
+  font-size: 12px;
+  user-select: none;
+}
+
+.char-count-over-limit {
+  font-size: 12px;
+  font-weight: 600;
+  user-select: none;
+}
+
+.keyboard-hint {
+  font-size: 12px;
+  user-select: none;
+}
+
+@media (max-width: 768px) {
+  .chat-input-container {
+    padding: 12px;
+  }
+
+  .keyboard-hint {
+    display: none;
+  }
+}
