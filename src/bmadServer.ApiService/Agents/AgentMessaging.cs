@@ -47,20 +47,6 @@ public class AgentMessaging : IAgentMessaging
             "Agent request initiated: MessageId={MessageId}, Source={SourceAgent}, Target={TargetAgent}, RequestType={RequestType}",
             messageId, request.SourceAgentId, targetAgentId, request.RequestType);
 
-        // Create message for tracking
-        var message = new AgentMessage
-        {
-            MessageId = messageId,
-            Timestamp = DateTime.UtcNow,
-            SourceAgent = request.SourceAgentId,
-            TargetAgent = targetAgentId,
-            MessageType = "request",
-            Content = request,
-            WorkflowInstanceId = context.TryGetValue("workflowInstanceId", out var wfId) 
-                ? wfId.ToString() ?? "unknown"
-                : "unknown"
-        };
-
         // Execute with timeout and retry
         var retryCount = 0;
         while (retryCount <= MaxRetries)

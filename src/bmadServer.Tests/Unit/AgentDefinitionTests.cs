@@ -61,21 +61,11 @@ public class AgentDefinitionTests
     [Fact]
     public void AgentDefinition_ShouldBeImmutable()
     {
-        // Arrange
-        var agent = new AgentDefinition
-        {
-            AgentId = "immutable-agent",
-            Name = "Immutable Agent",
-            Description = "Test immutability",
-            Capabilities = new List<string> { "test" },
-            SystemPrompt = "Original prompt",
-            ModelPreference = "gpt-4"
-        };
-
-        // Act & Assert - Properties should be init-only, not settable after construction
+        // Arrange & Act - Properties should be init-only, not settable after construction
         var agentType = typeof(AgentDefinition);
         var properties = agentType.GetProperties();
         
+        // Assert
         foreach (var property in properties)
         {
             Assert.NotNull(property.GetSetMethod(nonPublic: true));

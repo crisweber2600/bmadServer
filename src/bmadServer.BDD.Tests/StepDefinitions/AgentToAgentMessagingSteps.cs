@@ -16,7 +16,6 @@ public class AgentToAgentMessagingSteps
     private AgentMessage? _message;
     private string? _sourceAgentId;
     private string? _targetAgentId;
-    private bool _canCallRequestFromAgent;
     private Exception? _lastException;
 
     [Given(@"an agent ""(.*)"" is processing a step")]
@@ -40,24 +39,6 @@ public class AgentToAgentMessagingSteps
         Assert.NotNull(_agentMessaging);
         Assert.NotNull(_sourceAgentId);
         Assert.NotNull(_targetAgentId);
-
-        var request = new AgentRequest
-        {
-            SourceAgentId = _sourceAgentId,
-            RequestType = "test-request",
-            Payload = new { question = "What are the requirements?" },
-            WorkflowContext = new Dictionary<string, object> { { "workflowInstanceId", "test-workflow-123" } },
-            ConversationHistory = new List<string> { "User: I need help", "Agent: Sure, let me check" }
-        };
-
-        var context = new Dictionary<string, object>
-        {
-            { "workflowInstanceId", "test-workflow-123" }
-        };
-
-        // Verify we can call the method without exception
-        _canCallRequestFromAgent = true;
-        Assert.NotNull(_agentMessaging);
     }
 
     [Given(@"an agent request is made from ""(.*)"" to ""(.*)""")]

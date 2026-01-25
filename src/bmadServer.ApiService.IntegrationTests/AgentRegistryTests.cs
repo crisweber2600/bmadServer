@@ -29,8 +29,7 @@ public class AgentRegistryTests : IAsyncLifetime
     public async Task DisposeAsync()
     {
         _client?.Dispose();
-        _factory?.Dispose();
-        await Task.CompletedTask;
+        await _factory.DisposeAsync();
     }
 
     /// <summary>

@@ -150,7 +150,7 @@ public class SharedContextServiceTests
         await using var dbContext = CreateInMemoryContext();
         var service = new SharedContextService(dbContext);
         var workflowId = Guid.NewGuid();
-        var context = await service.CreateContextAsync(workflowId);
+        _ = await service.CreateContextAsync(workflowId); // Create initial context in DB
 
         // Simulate version mismatch by creating a context with wrong version
         var staleCopy = new SharedContext
