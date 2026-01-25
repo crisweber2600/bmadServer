@@ -605,8 +605,8 @@ public class ConflictsController : ControllerBase
         if (workflow == null)
             return NotFound();
         
-        var userId = User.GetUserId();
-        var isOwner = workflow.OwnerId == userId;
+        var userId = GetUserIdFromClaims();
+        var isOwner = workflow.UserId == userId;
         var isAdmin = User.IsInRole("Admin");
         
         if (!isOwner && !isAdmin)
@@ -648,12 +648,25 @@ public class ConflictsController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return Problem(
-                statusCode = 400,
+                statusCode: 400,
                 title: "Invalid Operation",
                 detail: ex.Message,
                 type: "https://bmadserver.api/errors/conflict-already-resolved"
             );
         }
+    }
+    
+    private Guid GetUserIdFromClaims()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("sub")?.Value;
+
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim, out var userId))
+        {
+            throw new UnauthorizedAccessException("User ID not found in claims");
+        }
+
+        return userId;
     }
 }
 ```

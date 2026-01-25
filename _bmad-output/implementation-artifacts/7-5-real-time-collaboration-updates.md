@@ -149,7 +149,13 @@ private readonly Timer _batchTimer; // 50ms interval
 
 private void QueueUpdate(Guid workflowId, WorkflowEvent evt)
 {
-    _pendingUpdates.GetOrCreate(workflowId).Add(evt);
+    if (!_pendingUpdates.TryGetValue(workflowId, out var events))
+    {
+        events = new List<WorkflowEvent>();
+        _pendingUpdates[workflowId] = events;
+    }
+
+    events.Add(evt);
 }
 
 private async Task FlushBatch()
@@ -283,7 +289,7 @@ Scenario: User receives message from collaborator within 500ms
 
 ### Agent Model Used
 
-Claude 3.7 Sonnet (2025-01-25)
+claude-3-7-sonnet-20250219
 
 ### Debug Log References
 
