@@ -724,11 +724,7 @@ public class WorkflowsControllerTests : IClassFixture<WebApplicationFactory<Prog
     [Fact]
     public async Task SkipCurrentStep_WithoutAuthentication_ShouldReturn401()
     {
-        // Arrange
-        var createRequest = new CreateWorkflowRequest
-        {
-            WorkflowId = "create-architecture"
-        };
+        // Arrange - No createRequest needed for this test
 
         // Act
         var response = await _client.PostAsJsonAsync(

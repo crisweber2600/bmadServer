@@ -685,7 +685,8 @@ public class WorkflowOrchestrationSteps : IDisposable
     public void ThenTheCurrentStepShouldBeSetToStep(int stepNumber)
     {
         Assert.NotNull(_currentInstance);
-        Assert.Contains(stepNumber.ToString(), _currentInstance.CurrentStep ?? "");
+        Assert.NotNull(_currentInstance.CurrentStep);
+        Assert.Contains(stepNumber.ToString(), _currentInstance.CurrentStep);
     }
 
     [Then(@"the previous step output should be available")]
