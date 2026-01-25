@@ -92,8 +92,8 @@ development_status:
   # ====================================
   # EPIC 5: Multi-Agent Collaboration
   # ====================================
-  epic-5: backlog
-  5-1-agent-registry-configuration: backlog
+  epic-5: in-progress
+  5-1-agent-registry-configuration: done
   5-2-agent-to-agent-messaging: backlog
   5-3-shared-workflow-context: backlog
   5-4-agent-handoff-attribution: backlog
