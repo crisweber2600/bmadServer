@@ -1,3 +1,4 @@
+using bmadServer.ApiService.Models;
 using bmadServer.ApiService.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
@@ -8,16 +9,22 @@ namespace bmadServer.ApiService.Hubs;
 /// <summary>
 /// SignalR hub for real-time chat communication.
 /// Manages session lifecycle: connection, disconnection, and recovery.
+/// Supports real-time message streaming with interruption recovery.
 /// </summary>
 [Authorize]
 public class ChatHub : Hub
 {
     private readonly ISessionService _sessionService;
+    private readonly IMessageStreamingService _streamingService;
     private readonly ILogger<ChatHub> _logger;
 
-    public ChatHub(ISessionService sessionService, ILogger<ChatHub> logger)
+    public ChatHub(
+        ISessionService sessionService, 
+        IMessageStreamingService streamingService,
+        ILogger<ChatHub> logger)
     {
         _sessionService = sessionService;
+        _streamingService = streamingService;
         _logger = logger;
     }
 
@@ -103,6 +110,7 @@ public class ChatHub : Hub
 
     /// <summary>
     /// Sends a chat message and updates session activity.
+    /// Message is acknowledged within 2 seconds per NFR1.
     /// </summary>
     public async Task SendMessage(string message)
     {
@@ -147,5 +155,126 @@ public class ChatHub : Hub
             Content = message,
             Timestamp = DateTime.UtcNow
         });
+    }
+
+    /// <summary>
+    /// Joins a specific workflow context.
+    /// Groups are used for workflow-specific broadcasting.
+    /// </summary>
+    public async Task JoinWorkflow(string workflowName)
+    {
+        var userId = GetUserIdFromClaims();
+        
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"workflow-{workflowName}");
+        
+        _logger.LogInformation("User {UserId} joined workflow {WorkflowName}", 
+            userId, workflowName);
+        
+        await Clients.Caller.SendAsync("JoinedWorkflow", new
+        {
+            WorkflowName = workflowName,
+            Timestamp = DateTime.UtcNow
+        });
+    }
+
+    /// <summary>
+    /// Leaves a specific workflow context.
+    /// </summary>
+    public async Task LeaveWorkflow(string workflowName)
+    {
+        var userId = GetUserIdFromClaims();
+        
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"workflow-{workflowName}");
+        
+        _logger.LogInformation("User {UserId} left workflow {WorkflowName}", 
+            userId, workflowName);
+        
+        await Clients.Caller.SendAsync("LeftWorkflow", new
+        {
+            WorkflowName = workflowName,
+            Timestamp = DateTime.UtcNow
+        });
+    }
+
+    /// <summary>
+    /// Sends a message with streaming response.
+    /// Streams tokens via MESSAGE_CHUNK events with first token within 5 seconds (NFR2).
+    /// </summary>
+    public async Task SendMessageStreaming(string message)
+    {
+        var userId = GetUserIdFromClaims();
+        
+        // Get active session
+        var session = await _sessionService.GetActiveSessionAsync(userId, Context.ConnectionId);
+        if (session == null)
+        {
+            throw new HubException("No active session found");
+        }
+
+        // Generate message ID
+        var messageId = Guid.NewGuid().ToString();
+
+        _logger.LogInformation("User {UserId} sent message in session {SessionId}, starting streaming", 
+            userId, session.Id);
+
+        // Stream response with callbacks
+        await _streamingService.StreamResponseAsync(
+            message,
+            messageId,
+            async (chunk, msgId, isComplete, agentId) =>
+            {
+                // Send MESSAGE_CHUNK to client
+                await Clients.Caller.SendAsync("MESSAGE_CHUNK", new
+                {
+                    MessageId = msgId,
+                    Chunk = chunk,
+                    IsComplete = isComplete,
+                    AgentId = agentId,
+                    Timestamp = DateTime.UtcNow
+                });
+            },
+            Context.ConnectionAborted);
+
+        _logger.LogInformation("Streaming completed for message {MessageId} in session {SessionId}", 
+            messageId, session.Id);
+    }
+
+    /// <summary>
+    /// Gets paginated chat history for the current session.
+    /// Returns last 50 messages by default, supports pagination for older messages.
+    /// </summary>
+    public async Task<ChatHistoryResponse> GetChatHistory(int pageSize = 50, int offset = 0)
+    {
+        var userId = GetUserIdFromClaims();
+        
+        var session = await _sessionService.GetActiveSessionAsync(userId, Context.ConnectionId);
+        if (session == null)
+        {
+            throw new HubException("No active session found");
+        }
+
+        var chatHistoryService = Context.GetHttpContext()
+            ?.RequestServices.GetRequiredService<IChatHistoryService>();
+        
+        if (chatHistoryService == null)
+        {
+            throw new HubException("Chat history service not available");
+        }
+
+        return await chatHistoryService.GetChatHistoryAsync(userId, session.Id, pageSize, offset);
+    }
+
+    /// <summary>
+    /// Stops an ongoing streaming response.
+    /// Sends (Stopped) indicator to client.
+    /// </summary>
+    public async Task StopGenerating(string messageId)
+    {
+        var userId = GetUserIdFromClaims();
+        
+        _logger.LogInformation("User {UserId} stopping generation for message {MessageId}", 
+            userId, messageId);
+
+        await _streamingService.CancelStreamingAsync(messageId);
     }
 }

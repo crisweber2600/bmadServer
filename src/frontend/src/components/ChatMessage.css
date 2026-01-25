@@ -1,0 +1,343 @@
+/* Chat Message Styles */
+.chat-message {
+  margin-bottom: 16px;
+  width: 100%;
+  display: flex;
+  animation: fadeIn 0.3s ease-in;
+}
+
+@media (max-width: 768px) {
+  .chat-message {
+    margin-bottom: 12px;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chat-message-user {
+  justify-content: flex-end;
+}
+
+.chat-message-agent {
+  justify-content: flex-start;
+}
+
+.chat-message-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 70%;
+  min-height: 44px; /* Touch-friendly minimum */
+}
+
+/* Mobile: Full width messages */
+@media (max-width: 768px) {
+  .chat-message-content {
+    max-width: 90%;
+    min-height: 48px;
+  }
+}
+
+.chat-message-avatar {
+  flex-shrink: 0;
+  margin-top: 4px;
+  width: 32px;
+  height: 32px;
+}
+
+/* Mobile: Larger avatars for touch */
+@media (max-width: 768px) {
+  .chat-message-avatar {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+.chat-message-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Mobile: Adjusted padding */
+@media (max-width: 768px) {
+  .chat-message-bubble {
+    padding: 14px 18px;
+    border-radius: 16px;
+  }
+}
+
+.chat-message-user .chat-message-bubble {
+  background-color: #1890ff;
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.chat-message-agent .chat-message-bubble {
+  background-color: #f0f0f0;
+  color: rgba(0, 0, 0, 0.85);
+  border-bottom-left-radius: 4px;
+}
+
+/* Mobile: Darker background for better contrast */
+@media (max-width: 768px) {
+  .chat-message-agent .chat-message-bubble {
+    background-color: #e8e8e8;
+  }
+}
+
+.chat-message-agent-name {
+  font-size: 12px;
+  color: #52c41a;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .chat-message-agent-name {
+    font-size: 13px;
+  }
+}
+
+.chat-message-text {
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+/* Mobile: Larger text for readability */
+@media (max-width: 768px) {
+  .chat-message-text {
+    font-size: 16px;
+    line-height: 1.5;
+  }
+}
+
+/* Markdown styles */
+.chat-message-text p {
+  margin: 0 0 8px 0;
+}
+
+.chat-message-text p:last-child {
+  margin-bottom: 0;
+}
+
+.chat-message-text code {
+  background-color: rgba(0, 0, 0, 0.06);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  .chat-message-text code {
+    font-size: 14px;
+    padding: 3px 8px;
+  }
+}
+
+.chat-message-user .chat-message-text code {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.chat-message-text pre {
+  background-color: #282c34;
+  color: #abb2bf;
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 8px 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+  .chat-message-text pre {
+    padding: 16px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+}
+
+.chat-message-text pre code {
+  background-color: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.chat-message-text a {
+  color: #1890ff;
+  text-decoration: underline;
+  cursor: pointer;
+  min-height: 44px; /* Touch-friendly link target */
+  display: inline-flex;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .chat-message-text a {
+    min-height: 48px;
+    padding: 4px 0;
+  }
+}
+
+.chat-message-user .chat-message-text a {
+  color: white;
+  text-decoration: underline;
+}
+
+.chat-message-text a:hover {
+  opacity: 0.8;
+}
+
+/* Mobile: Active state for touch feedback */
+@media (max-width: 768px) {
+  .chat-message-text a:active {
+    opacity: 0.6;
+  }
+}
+
+.chat-message-text ul,
+.chat-message-text ol {
+  margin: 8px 0;
+  padding-left: 24px;
+}
+
+@media (max-width: 768px) {
+  .chat-message-text ul,
+  .chat-message-text ol {
+    padding-left: 20px;
+  }
+}
+
+.chat-message-text li {
+  margin-bottom: 4px;
+}
+
+.chat-message-timestamp {
+  font-size: 11px;
+  align-self: flex-end;
+  margin-top: 4px;
+}
+
+@media (max-width: 768px) {
+  .chat-message-timestamp {
+    font-size: 12px;
+  }
+}
+
+.chat-message-user .chat-message-timestamp {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Typing Indicator */
+.typing-indicator {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.typing-dots {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.typing-dots .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #999;
+  animation: typing 1.4s infinite;
+}
+
+@media (max-width: 768px) {
+  .typing-dots .dot {
+    width: 10px;
+    height: 10px;
+  }
+}
+
+.typing-dots .dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dots .dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typing {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.7;
+  }
+  30% {
+    transform: translateY(-10px);
+    opacity: 1;
+  }
+}
+
+/* Accessibility: High contrast mode support */
+@media (prefers-contrast: high) {
+  .chat-message-user .chat-message-bubble {
+    border: 2px solid #0050b3;
+  }
+
+  .chat-message-agent .chat-message-bubble {
+    border: 2px solid #595959;
+  }
+  
+  .chat-message-text a {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+  }
+}
+
+/* Accessibility: Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .chat-message,
+  .typing-dots .dot {
+    animation: none;
+  }
+}
+
+/* Touch gestures: Long press to copy */
+@media (max-width: 768px) {
+  .chat-message-bubble {
+    -webkit-touch-callout: text; /* Enable long-press on iOS */
+  }
+}
+
+/* VoiceOver/TalkBack: Screen reader optimizations */
+.chat-message[role="article"] {
+  position: relative;
+}
+
+/* Focus visible for keyboard navigation */
+.chat-message-bubble:focus-visible,
+.chat-message-text a:focus-visible {
+  outline: 2px solid #1890ff;
+  outline-offset: 2px;
+}
