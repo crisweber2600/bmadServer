@@ -23,13 +23,18 @@ public class SharedContextService : ISharedContextService
         await _lock.WaitAsync(cancellationToken);
         try
         {
-            _contexts.TryGetValue(workflowInstanceId, out var context);
-            return context;
+            return GetContextInternal(workflowInstanceId);
         }
         finally
         {
             _lock.Release();
         }
+    }
+
+    private SharedContext? GetContextInternal(Guid workflowInstanceId)
+    {
+        _contexts.TryGetValue(workflowInstanceId, out var context);
+        return context;
     }
 
     public async Task<SharedContext> CreateContextAsync(Guid workflowInstanceId, CancellationToken cancellationToken = default)
@@ -62,15 +67,23 @@ public class SharedContextService : ISharedContextService
 
     public async Task<JsonDocument?> GetStepOutputAsync(Guid workflowInstanceId, string stepId, CancellationToken cancellationToken = default)
     {
-        var context = await GetContextAsync(workflowInstanceId, cancellationToken);
-        if (context == null)
+        await _lock.WaitAsync(cancellationToken);
+        try
         {
-            _logger.LogWarning("No context found for workflow {WorkflowInstanceId}", workflowInstanceId);
-            return null;
-        }
+            var context = GetContextInternal(workflowInstanceId);
+            if (context == null)
+            {
+                _logger.LogWarning("No context found for workflow {WorkflowInstanceId}", workflowInstanceId);
+                return null;
+            }
 
-        context.StepOutputs.TryGetValue(stepId, out var output);
-        return output;
+            context.StepOutputs.TryGetValue(stepId, out var output);
+            return output;
+        }
+        finally
+        {
+            _lock.Release();
+        }
     }
 
     public async Task<bool> AddStepOutputAsync(Guid workflowInstanceId, string stepId, JsonDocument output, CancellationToken cancellationToken = default)
@@ -78,7 +91,7 @@ public class SharedContextService : ISharedContextService
         await _lock.WaitAsync(cancellationToken);
         try
         {
-            var context = await GetContextAsync(workflowInstanceId, cancellationToken);
+            var context = GetContextInternal(workflowInstanceId);
             if (context == null)
             {
                 _logger.LogError("No context found for workflow {WorkflowInstanceId}", workflowInstanceId);
@@ -107,7 +120,7 @@ public class SharedContextService : ISharedContextService
         await _lock.WaitAsync(cancellationToken);
         try
         {
-            var context = await GetContextAsync(workflowInstanceId, cancellationToken);
+            var context = GetContextInternal(workflowInstanceId);
             if (context == null)
             {
                 _logger.LogError("No context found for workflow {WorkflowInstanceId}", workflowInstanceId);
@@ -137,7 +150,8 @@ public class SharedContextService : ISharedContextService
         await _lock.WaitAsync(cancellationToken);
         try
         {
-            if (!_contexts.TryGetValue(context.WorkflowInstanceId, out var existingContext))
+            var existingContext = GetContextInternal(context.WorkflowInstanceId);
+            if (existingContext == null)
             {
                 _logger.LogError("No context found for workflow {WorkflowInstanceId}", context.WorkflowInstanceId);
                 return false;

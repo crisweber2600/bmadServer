@@ -46,7 +46,7 @@ public class AgentMessaging : IAgentMessaging
             TargetAgent = targetAgentId,
             MessageType = "request",
             Content = request.Payload.RootElement.GetRawText(),
-            WorkflowInstanceId = Guid.NewGuid() // In real implementation, this would come from context
+            WorkflowInstanceId = request.WorkflowInstanceId
         };
 
         // Log the message

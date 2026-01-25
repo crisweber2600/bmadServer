@@ -42,6 +42,7 @@ public class AgentMessagingTests
         {
             SourceAgentId = "developer",
             RequestType = "architecture-query",
+            WorkflowInstanceId = Guid.NewGuid(),
             Payload = payload,
             WorkflowContext = null,
             ConversationHistory = new List<ConversationEntry>()
@@ -69,6 +70,7 @@ public class AgentMessagingTests
         {
             SourceAgentId = "developer",
             RequestType = "test",
+            WorkflowInstanceId = Guid.NewGuid(),
             Payload = payload,
             WorkflowContext = null,
             ConversationHistory = new List<ConversationEntry>()
@@ -105,6 +107,7 @@ public class AgentMessagingTests
         {
             SourceAgentId = "orchestrator",
             RequestType = "data-analysis",
+            WorkflowInstanceId = Guid.NewGuid(),
             Payload = payload,
             WorkflowContext = null,
             ConversationHistory = new List<ConversationEntry>()
@@ -151,6 +154,7 @@ public class AgentMessagingTests
         {
             SourceAgentId = "product-manager",
             RequestType = "ui-design",
+            WorkflowInstanceId = Guid.NewGuid(),
             Payload = payload,
             WorkflowContext = null,
             ConversationHistory = new List<ConversationEntry>()
@@ -190,6 +194,7 @@ public class AgentMessagingTests
         {
             SourceAgentId = "architect",
             RequestType = "implementation",
+            WorkflowInstanceId = Guid.NewGuid(),
             Payload = payload,
             WorkflowContext = null,
             ConversationHistory = new List<ConversationEntry>
@@ -234,6 +239,7 @@ public class AgentMessagingTests
         {
             SourceAgentId = "product-manager",
             RequestType = "coordination",
+            WorkflowInstanceId = Guid.NewGuid(),
             Payload = payload,
             WorkflowContext = JsonDocument.Parse("{\"workflowId\": \"test-123\"}"),
             ConversationHistory = new List<ConversationEntry>

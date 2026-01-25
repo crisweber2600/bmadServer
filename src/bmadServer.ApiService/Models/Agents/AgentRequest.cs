@@ -28,6 +28,11 @@ public class AgentRequest
     public required JsonDocument? WorkflowContext { get; init; }
 
     /// <summary>
+    /// Workflow instance ID
+    /// </summary>
+    public required Guid WorkflowInstanceId { get; init; }
+
+    /// <summary>
     /// Conversation history up to this point
     /// </summary>
     public required List<ConversationEntry> ConversationHistory { get; init; }
