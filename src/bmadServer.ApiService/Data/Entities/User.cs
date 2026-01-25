@@ -10,4 +10,5 @@ public class User
     public DateTime? UpdatedAt { get; set; }
 
     public ICollection<Session> Sessions { get; set; } = new List<Session>();
+    public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }

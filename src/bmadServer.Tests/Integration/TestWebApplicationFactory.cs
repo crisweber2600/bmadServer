@@ -22,6 +22,7 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
             services.AddDbContext<ApplicationDbContext>(options =>
             {
                 options.UseInMemoryDatabase(_databaseName);
+                options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning));
             });
 
             // Build the service provider and ensure database is created

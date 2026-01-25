@@ -51,6 +51,9 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.IJwtTokenService, bmad
 // Register password hashing service
 builder.Services.AddScoped<bmadServer.ApiService.Services.IPasswordHasher, bmadServer.ApiService.Services.PasswordHasher>();
 
+// Register refresh token service
+builder.Services.AddScoped<bmadServer.ApiService.Services.IRefreshTokenService, bmadServer.ApiService.Services.RefreshTokenService>();
+
 // Register FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<bmadServer.ApiService.Validators.RegisterRequestValidator>();
 

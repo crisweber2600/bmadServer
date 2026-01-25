@@ -20,6 +20,7 @@ public class AuthController : ControllerBase
     private readonly ApplicationDbContext _dbContext;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenService _jwtTokenService;
+    private readonly IRefreshTokenService _refreshTokenService;
     private readonly IValidator<RegisterRequest> _registerValidator;
     private readonly IValidator<LoginRequest> _loginValidator;
     private readonly JwtSettings _jwtSettings;
@@ -32,6 +33,7 @@ public class AuthController : ControllerBase
         ApplicationDbContext dbContext,
         IPasswordHasher passwordHasher,
         IJwtTokenService jwtTokenService,
+        IRefreshTokenService refreshTokenService,
         IValidator<RegisterRequest> registerValidator,
         IValidator<LoginRequest> loginValidator,
         IOptions<JwtSettings> jwtSettings,
@@ -40,6 +42,7 @@ public class AuthController : ControllerBase
         _dbContext = dbContext;
         _passwordHasher = passwordHasher;
         _jwtTokenService = jwtTokenService;
+        _refreshTokenService = refreshTokenService;
         _registerValidator = registerValidator;
         _loginValidator = loginValidator;
         _jwtSettings = jwtSettings.Value;
@@ -185,6 +188,12 @@ public class AuthController : ControllerBase
         // Generate JWT token
         var token = _jwtTokenService.GenerateAccessToken(user);
 
+        // Generate and store refresh token
+        var (refreshToken, plainRefreshToken) = await _refreshTokenService.CreateRefreshTokenAsync(user);
+
+        // Set HttpOnly cookie for refresh token
+        Response.Cookies.Append("refreshToken", plainRefreshToken, GetRefreshTokenCookieOptions());
+
         _logger.LogInformation("User logged in successfully: {Email}", user.Email);
 
         // Return login response
@@ -203,5 +212,107 @@ public class AuthController : ControllerBase
         };
 
         return Ok(response);
+    }
+
+    private CookieOptions GetRefreshTokenCookieOptions() => new()
+    {
+        HttpOnly = true,
+        Secure = true,
+        SameSite = SameSiteMode.Strict,
+        Path = "/api/v1/auth/refresh",
+        MaxAge = TimeSpan.FromDays(7)
+    };
+
+    /// <summary>
+    /// Refresh access token using refresh token from HttpOnly cookie
+    /// </summary>
+    /// <returns>New access token with rotated refresh token in cookie</returns>
+    /// <response code="200">Token refreshed successfully</response>
+    /// <response code="401">Invalid, expired, or revoked refresh token</response>
+    [HttpPost("refresh")]
+    [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> Refresh()
+    {
+        // Extract refresh token from cookie
+        if (!Request.Cookies.TryGetValue("refreshToken", out var refreshToken) || string.IsNullOrEmpty(refreshToken))
+        {
+            return Unauthorized(new ProblemDetails
+            {
+                Type = "https://bmadserver.dev/errors/missing-refresh-token",
+                Title = "Missing Refresh Token",
+                Status = StatusCodes.Status401Unauthorized,
+                Detail = "Refresh token not found. Please login again."
+            });
+        }
+
+        // Validate and rotate refresh token
+        var (newToken, error) = await _refreshTokenService.ValidateAndRotateAsync(refreshToken);
+
+        if (error != null || newToken == null)
+        {
+            return Unauthorized(new ProblemDetails
+            {
+                Type = "https://bmadserver.dev/errors/invalid-refresh-token",
+                Title = "Invalid Refresh Token",
+                Status = StatusCodes.Status401Unauthorized,
+                Detail = error ?? "Invalid refresh token"
+            });
+        }
+
+        // Generate new access token
+        var accessToken = _jwtTokenService.GenerateAccessToken(newToken.User);
+
+        // Set new refresh token cookie (plain token is in TokenHash temporarily)
+        Response.Cookies.Append("refreshToken", newToken.TokenHash, GetRefreshTokenCookieOptions());
+
+        _logger.LogInformation("Token refreshed successfully for user: {UserId}", newToken.UserId);
+
+        // Return new access token
+        var response = new LoginResponse
+        {
+            AccessToken = accessToken,
+            TokenType = "Bearer",
+            ExpiresIn = _jwtSettings.AccessTokenExpirationMinutes * 60,
+            User = new UserResponse
+            {
+                Id = newToken.User.Id,
+                Email = newToken.User.Email,
+                DisplayName = newToken.User.DisplayName,
+                CreatedAt = newToken.User.CreatedAt
+            }
+        };
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Logout and revoke refresh token
+    /// </summary>
+    /// <returns>No content on successful logout</returns>
+    /// <response code="204">Logout successful</response>
+    [HttpPost("logout")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Logout()
+    {
+        // Extract refresh token from cookie
+        if (Request.Cookies.TryGetValue("refreshToken", out var refreshToken) && !string.IsNullOrEmpty(refreshToken))
+        {
+            var tokenHash = _refreshTokenService.HashToken(refreshToken);
+            await _refreshTokenService.RevokeRefreshTokenAsync(tokenHash, "logout");
+        }
+
+        // Clear refresh token cookie
+        Response.Cookies.Delete("refreshToken", new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Strict,
+            Path = "/api/v1/auth/refresh"
+        });
+
+        _logger.LogInformation("User logged out successfully");
+
+        return NoContent();
     }
 }
