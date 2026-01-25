@@ -8,7 +8,7 @@ using Xunit;
 
 namespace bmadServer.Tests.Unit;
 
-public class ApprovalServiceTests
+public class ApprovalServiceTests : IDisposable
 {
     private readonly ApplicationDbContext _context;
     private readonly IApprovalService _approvalService;
