@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.8.0.0
@@ -8,8 +8,6 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "bmadServer.ServiceDefaults", "bmadServer.ServiceDefaults\bmadServer.ServiceDefaults.csproj", "{F6019860-2613-4D36-9175-8FEEA091D11B}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "bmadServer.ApiService", "bmadServer.ApiService\bmadServer.ApiService.csproj", "{0FC70485-34A7-41C9-B91A-FC675989FB31}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "bmadServer.Web", "bmadServer.Web\bmadServer.Web.csproj", "{86683004-3FC6-4D1B-AF11-0842FB98FDCB}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "bmadServer.ApiService.IntegrationTests", "bmadServer.ApiService.IntegrationTests\bmadServer.ApiService.IntegrationTests.csproj", "{45ABE8CC-8CA9-4472-844A-E98A2E32C762}"
 EndProject
@@ -63,18 +61,6 @@ Global
 		{0FC70485-34A7-41C9-B91A-FC675989FB31}.Release|x64.Build.0 = Release|Any CPU
 		{0FC70485-34A7-41C9-B91A-FC675989FB31}.Release|x86.ActiveCfg = Release|Any CPU
 		{0FC70485-34A7-41C9-B91A-FC675989FB31}.Release|x86.Build.0 = Release|Any CPU
-		{86683004-3FC6-4D1B-AF11-0842FB98FDCB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{86683004-3FC6-4D1B-AF11-0842FB98FDCB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{86683004-3FC6-4D1B-AF11-0842FB98FDCB}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{86683004-3FC6-4D1B-AF11-0842FB98FDCB}.Debug|x64.Build.0 = Debug|Any CPU
-		{86683004-3FC6-4D1B-AF11-0842FB98FDCB}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{86683004-3FC6-4D1B-AF11-0842FB98FDCB}.Debug|x86.Build.0 = Debug|Any CPU
-		{86683004-3FC6-4D1B-AF11-0842FB98FDCB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{86683004-3FC6-4D1B-AF11-0842FB98FDCB}.Release|Any CPU.Build.0 = Release|Any CPU
-		{86683004-3FC6-4D1B-AF11-0842FB98FDCB}.Release|x64.ActiveCfg = Release|Any CPU
-		{86683004-3FC6-4D1B-AF11-0842FB98FDCB}.Release|x64.Build.0 = Release|Any CPU
-		{86683004-3FC6-4D1B-AF11-0842FB98FDCB}.Release|x86.ActiveCfg = Release|Any CPU
-		{86683004-3FC6-4D1B-AF11-0842FB98FDCB}.Release|x86.Build.0 = Release|Any CPU
 		{45ABE8CC-8CA9-4472-844A-E98A2E32C762}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{45ABE8CC-8CA9-4472-844A-E98A2E32C762}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{45ABE8CC-8CA9-4472-844A-E98A2E32C762}.Debug|x64.ActiveCfg = Debug|Any CPU

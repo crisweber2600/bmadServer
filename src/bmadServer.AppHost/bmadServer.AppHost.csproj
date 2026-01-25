@@ -10,11 +10,11 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.1.0" />
+    <PackageReference Include="Aspire.Hosting.JavaScript" Version="13.1.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\bmadServer.ApiService\bmadServer.ApiService.csproj" />
-    <ProjectReference Include="..\bmadServer.Web\bmadServer.Web.csproj" />
   </ItemGroup>
 
 </Project>
