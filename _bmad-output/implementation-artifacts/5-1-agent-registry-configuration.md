@@ -1,6 +1,6 @@
 # Story 5.1: Agent Registry & Configuration
 
-**Status:** review
+**Status:** done
 
 ## Story
 
@@ -38,7 +38,7 @@ As a developer, I want a centralized agent registry, so that the system knows al
 - [x] Write integration tests for key scenarios
 - [x] Update API documentation
 - [x] Perform manual testing and validation
-- [ ] Code review and address feedback
+- [x] Code review and address feedback
 
 ## Dev Notes
 
