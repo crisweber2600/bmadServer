@@ -17,15 +17,18 @@ public class WorkflowsController : ControllerBase
 {
     private readonly IWorkflowInstanceService _workflowInstanceService;
     private readonly IWorkflowRegistry _workflowRegistry;
+    private readonly IStepExecutor _stepExecutor;
     private readonly ILogger<WorkflowsController> _logger;
 
     public WorkflowsController(
         IWorkflowInstanceService workflowInstanceService,
         IWorkflowRegistry workflowRegistry,
+        IStepExecutor stepExecutor,
         ILogger<WorkflowsController> logger)
     {
         _workflowInstanceService = workflowInstanceService;
         _workflowRegistry = workflowRegistry;
+        _stepExecutor = stepExecutor;
         _logger = logger;
     }
 
@@ -129,6 +132,46 @@ public class WorkflowsController : ControllerBase
 
         return NoContent();
     }
+
+    /// <summary>
+    /// Execute the current step of a workflow instance
+    /// </summary>
+    /// <param name="id">Workflow instance ID</param>
+    /// <param name="request">Step execution request</param>
+    /// <returns>Step execution result</returns>
+    [HttpPost("{id}/steps/execute")]
+    [ProducesResponseType(typeof(StepExecutionResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<StepExecutionResult>> ExecuteStep(
+        Guid id, 
+        [FromBody] ExecuteStepRequest? request = null)
+    {
+        try
+        {
+            var result = await _stepExecutor.ExecuteStepAsync(
+                id, 
+                request?.UserInput);
+
+            if (!result.Success)
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Step Execution Failed",
+                    detail: result.ErrorMessage ?? "Step execution failed");
+            }
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error executing step for workflow {InstanceId}", id);
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: ex.Message);
+        }
+    }
 }
 
 /// <summary>
@@ -145,4 +188,15 @@ public class CreateWorkflowRequest
     /// Initial context data for the workflow
     /// </summary>
     public Dictionary<string, object>? InitialContext { get; set; }
+}
+
+/// <summary>
+/// Request model for executing a workflow step
+/// </summary>
+public class ExecuteStepRequest
+{
+    /// <summary>
+    /// Optional user input for the step
+    /// </summary>
+    public string? UserInput { get; set; }
 }

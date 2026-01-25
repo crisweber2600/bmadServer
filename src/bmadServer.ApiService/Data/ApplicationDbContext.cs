@@ -18,6 +18,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<WorkflowInstance> WorkflowInstances { get; set; }
     public DbSet<WorkflowEvent> WorkflowEvents { get; set; }
+    public DbSet<WorkflowStepHistory> WorkflowStepHistories { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -145,6 +146,48 @@ public class ApplicationDbContext : DbContext
             // Indexes
             entity.HasIndex(e => e.WorkflowInstanceId);
             entity.HasIndex(e => e.Timestamp);
+            
+            // Foreign key to WorkflowInstance
+            entity.HasOne(e => e.WorkflowInstance)
+                .WithMany()
+                .HasForeignKey(e => e.WorkflowInstanceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<WorkflowStepHistory>(entity =>
+        {
+            entity.ToTable("workflow_step_histories");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.StepId).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.StepName).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasConversion<string>();
+            entity.Property(e => e.ErrorMessage).HasMaxLength(2000);
+            
+            // JSONB columns for PostgreSQL with JSON value converters for compatibility
+            entity.Property(e => e.Input)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => v == null ? null : v.RootElement.GetRawText(),
+                    v => v == null ? null : JsonDocument.Parse(v));
+            entity.Property(e => e.Output)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => v == null ? null : v.RootElement.GetRawText(),
+                    v => v == null ? null : JsonDocument.Parse(v));
+            
+            // Indexes
+            entity.HasIndex(e => e.WorkflowInstanceId);
+            entity.HasIndex(e => e.StepId);
+            entity.HasIndex(e => e.StartedAt);
+            entity.HasIndex(e => e.Status);
+            
+            // GIN indexes for JSONB columns (PostgreSQL only)
+            entity.HasIndex(e => e.Input)
+                .HasMethod("gin");
+            entity.HasIndex(e => e.Output)
+                .HasMethod("gin");
             
             // Foreign key to WorkflowInstance
             entity.HasOne(e => e.WorkflowInstance)
