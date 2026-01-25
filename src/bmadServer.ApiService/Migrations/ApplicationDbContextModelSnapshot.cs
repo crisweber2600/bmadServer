@@ -223,6 +223,9 @@ namespace bmadServer.ApiService.Migrations
                     b.Property<int>("CurrentStep")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("PausedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text");
@@ -248,6 +251,8 @@ namespace bmadServer.ApiService.Migrations
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Context"), "gin");
 
                     b.HasIndex("CreatedAt");
+
+                    b.HasIndex("PausedAt");
 
                     b.HasIndex("Status");
 

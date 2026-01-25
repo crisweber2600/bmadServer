@@ -12,7 +12,7 @@ using bmadServer.ApiService.Data;
 namespace bmadServer.ApiService.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260125125019_AddPausedAtToWorkflowInstance")]
+    [Migration("20260125125952_AddPausedAtToWorkflowInstance")]
     partial class AddPausedAtToWorkflowInstance
     {
         /// <inheritdoc />
@@ -226,6 +226,9 @@ namespace bmadServer.ApiService.Migrations
                     b.Property<int>("CurrentStep")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("PausedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text");
@@ -251,6 +254,8 @@ namespace bmadServer.ApiService.Migrations
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Context"), "gin");
 
                     b.HasIndex("CreatedAt");
+
+                    b.HasIndex("PausedAt");
 
                     b.HasIndex("Status");
 
