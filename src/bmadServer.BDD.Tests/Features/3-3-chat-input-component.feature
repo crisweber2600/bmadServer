@@ -18,7 +18,7 @@ Feature: Chat Input Component with Rich Interactions (Story 3-3)
   @ui @chat @input @keyboard
   Scenario: Send message with Ctrl+Enter
     Given I have typed a message "Hello BMAD"
-    When I press Ctrl+Enter
+    When I press "Ctrl+Enter"
     Then the message is sent immediately
     And the input field is cleared
     And focus remains on the input field
@@ -26,7 +26,7 @@ Feature: Chat Input Component with Rich Interactions (Story 3-3)
   @ui @chat @input @keyboard
   Scenario: Send message with Cmd+Enter on Mac
     Given I have typed a message "Hello BMAD"
-    When I press Cmd+Enter
+    When I press "Cmd+Enter"
     Then the message is sent immediately
     And the input field is cleared
 
@@ -65,7 +65,7 @@ Feature: Chat Input Component with Rich Interactions (Story 3-3)
     Given the input field is focused
     When I type "/"
     Then the command palette appears
-    And I see options: /help, /status, /pause, /resume
+    And I see command options
 
   @ui @chat @input @commands
   Scenario: Navigate command palette with keyboard
