@@ -125,9 +125,9 @@ development_status:
   # ==================================================
   # EPIC 8: Persona Translation & Language Adaptation
   # ==================================================
-  epic-8: backlog
-  8-1-persona-profile-configuration: backlog
-  8-2-business-language-translation: backlog
+  epic-8: in-progress
+  8-1-persona-profile-configuration: ready-for-dev
+  8-2-business-language-translation: ready-for-dev
   8-3-technical-language-mode: backlog
   8-4-in-session-persona-switching: backlog
   8-5-context-aware-response-adaptation: backlog
