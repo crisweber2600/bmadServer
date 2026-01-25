@@ -63,6 +63,9 @@ builder.Services.AddSingleton<bmadServer.ApiService.Agents.IAgentRegistry, bmadS
 // Register agent messaging service as scoped (needs request-scoped logging)
 builder.Services.AddScoped<bmadServer.ApiService.Agents.IAgentMessaging, bmadServer.ApiService.Agents.AgentMessaging>();
 
+// Register agent handoff service as scoped (needs database context)
+builder.Services.AddScoped<bmadServer.ApiService.Agents.IAgentHandoffService, bmadServer.ApiService.Agents.AgentHandoffService>();
+
 // Register session cleanup background service
 builder.Services.AddHostedService<bmadServer.ApiService.BackgroundServices.SessionCleanupService>();
 
