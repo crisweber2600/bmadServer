@@ -124,11 +124,12 @@ public class RefreshTokenServiceTests : IDisposable
         var (oldToken, plainToken) = await _service.CreateRefreshTokenAsync(user);
 
         // Act
-        var (newToken, error) = await _service.ValidateAndRotateAsync(plainToken);
+        var (newToken, newPlainToken, error) = await _service.ValidateAndRotateAsync(plainToken);
 
         // Assert
         Assert.Null(error);
         Assert.NotNull(newToken);
+        Assert.NotNull(newPlainToken);
         Assert.NotEqual(oldToken.Id, newToken.Id);
         Assert.Equal(user.Id, newToken.UserId);
 
@@ -160,17 +161,18 @@ public class RefreshTokenServiceTests : IDisposable
             Id = Guid.NewGuid(),
             TokenHash = _service.HashToken(plainToken),
             UserId = user.Id,
-            ExpiresAt = DateTime.UtcNow.AddDays(-1), // Expired
+            ExpiresAt = DateTime.UtcNow.AddDays(-1),
             CreatedAt = DateTime.UtcNow.AddDays(-8)
         };
         _dbContext.RefreshTokens.Add(expiredToken);
         await _dbContext.SaveChangesAsync();
 
         // Act
-        var (token, error) = await _service.ValidateAndRotateAsync(plainToken);
+        var (token, newPlainToken, error) = await _service.ValidateAndRotateAsync(plainToken);
 
         // Assert
         Assert.Null(token);
+        Assert.Null(newPlainToken);
         Assert.NotNull(error);
         Assert.Contains("expired", error, StringComparison.OrdinalIgnoreCase);
     }
@@ -197,7 +199,7 @@ public class RefreshTokenServiceTests : IDisposable
             UserId = user.Id,
             ExpiresAt = DateTime.UtcNow.AddDays(7),
             CreatedAt = DateTime.UtcNow,
-            RevokedAt = DateTime.UtcNow.AddMinutes(-5), // Already revoked
+            RevokedAt = DateTime.UtcNow.AddMinutes(-5),
             RevokedReason = "rotation"
         };
         _dbContext.RefreshTokens.Add(revokedToken);
@@ -207,10 +209,11 @@ public class RefreshTokenServiceTests : IDisposable
         var (activeToken, _) = await _service.CreateRefreshTokenAsync(user);
 
         // Act
-        var (token, error) = await _service.ValidateAndRotateAsync(plainToken);
+        var (token, newPlainToken, error) = await _service.ValidateAndRotateAsync(plainToken);
 
         // Assert
         Assert.Null(token);
+        Assert.Null(newPlainToken);
         Assert.NotNull(error);
         Assert.Contains("revoked", error, StringComparison.OrdinalIgnoreCase);
 
@@ -225,10 +228,11 @@ public class RefreshTokenServiceTests : IDisposable
     public async Task ValidateAndRotateAsync_WithInvalidToken_ShouldReturnError()
     {
         // Act
-        var (token, error) = await _service.ValidateAndRotateAsync("invalid-token-123");
+        var (token, newPlainToken, error) = await _service.ValidateAndRotateAsync("invalid-token-123");
 
         // Assert
         Assert.Null(token);
+        Assert.Null(newPlainToken);
         Assert.NotNull(error);
         Assert.Contains("Invalid", error);
     }

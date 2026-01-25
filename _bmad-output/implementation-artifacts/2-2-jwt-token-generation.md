@@ -1,6 +1,6 @@
 # Story 2.2: JWT Token Generation & Validation
 
-**Status:** review
+**Status:** done
 
 ## Story
 

@@ -46,7 +46,13 @@ public class SessionCleanupService : BackgroundService
     private async Task CleanupExpiredSessionsAsync(CancellationToken cancellationToken)
     {
         using var scope = _serviceProvider.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var dbContext = scope.ServiceProvider.GetService<ApplicationDbContext>();
+
+        if (dbContext == null)
+        {
+            _logger.LogDebug("ApplicationDbContext not available, skipping session cleanup");
+            return;
+        }
 
         var now = DateTime.UtcNow;
 

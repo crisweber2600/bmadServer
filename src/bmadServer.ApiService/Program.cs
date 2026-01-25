@@ -45,6 +45,10 @@ builder.Services.AddProblemDetails();
 // Configure JWT settings from appsettings.json
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.SectionName));
 
+// Configure session settings from appsettings.json
+builder.Services.Configure<bmadServer.ApiService.Configuration.SessionSettings>(
+    builder.Configuration.GetSection(bmadServer.ApiService.Configuration.SessionSettings.SectionName));
+
 // Register JWT token service
 builder.Services.AddScoped<bmadServer.ApiService.Services.IJwtTokenService, bmadServer.ApiService.Services.JwtTokenService>();
 

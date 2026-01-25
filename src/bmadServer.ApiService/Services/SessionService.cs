@@ -1,25 +1,25 @@
+using bmadServer.ApiService.Configuration;
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace bmadServer.ApiService.Services;
 
-/// <summary>
-/// Implements session management with persistence and recovery capabilities.
-/// Handles 60-second recovery window (NFR6) and 30-minute idle timeout.
-/// </summary>
 public class SessionService : ISessionService
 {
     private readonly ApplicationDbContext _dbContext;
     private readonly ILogger<SessionService> _logger;
+    private readonly SessionSettings _settings;
 
-    private const int RecoveryWindowSeconds = 60;
-    private const int IdleTimeoutMinutes = 30;
-
-    public SessionService(ApplicationDbContext dbContext, ILogger<SessionService> logger)
+    public SessionService(
+        ApplicationDbContext dbContext, 
+        ILogger<SessionService> logger,
+        IOptions<SessionSettings> settings)
     {
         _dbContext = dbContext;
         _logger = logger;
+        _settings = settings.Value;
     }
 
     public async Task<Session> CreateSessionAsync(Guid userId, string connectionId)
@@ -30,7 +30,7 @@ public class SessionService : ISessionService
             ConnectionId = connectionId,
             LastActivityAt = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(IdleTimeoutMinutes),
+            ExpiresAt = DateTime.UtcNow.AddMinutes(_settings.IdleTimeoutMinutes),
             IsActive = true
         };
 
@@ -84,7 +84,7 @@ public class SessionService : ISessionService
 
             // Update session activity
             session.LastActivityAt = DateTime.UtcNow;
-            session.ExpiresAt = DateTime.UtcNow.AddMinutes(IdleTimeoutMinutes);
+            session.ExpiresAt = DateTime.UtcNow.AddMinutes(_settings.IdleTimeoutMinutes);
 
             await _dbContext.SaveChangesAsync();
             return true;
@@ -108,13 +108,13 @@ public class SessionService : ISessionService
             return (newSession, false);
         }
 
-        // Check if within 60-second recovery window (NFR6)
-        if (session.IsWithinRecoveryWindow)
+        var isWithinRecoveryWindow = DateTime.UtcNow.Subtract(session.LastActivityAt).TotalSeconds <= _settings.RecoveryWindowSeconds;
+        if (isWithinRecoveryWindow)
         {
             // Direct recovery - same session, update connection ID
             session.ConnectionId = newConnectionId;
             session.LastActivityAt = DateTime.UtcNow;
-            session.ExpiresAt = DateTime.UtcNow.AddMinutes(IdleTimeoutMinutes);
+            session.ExpiresAt = DateTime.UtcNow.AddMinutes(_settings.IdleTimeoutMinutes);
 
             await _dbContext.SaveChangesAsync();
 
@@ -125,9 +125,8 @@ public class SessionService : ISessionService
             return (session, true);
         }
 
-        // Outside recovery window - check if still within idle timeout (30 min)
         var idleMinutes = DateTime.UtcNow.Subtract(session.LastActivityAt).TotalMinutes;
-        if (idleMinutes < IdleTimeoutMinutes)
+        if (idleMinutes < _settings.IdleTimeoutMinutes)
         {
             // Create new session but restore workflow state
             var newSession = new Session
@@ -137,7 +136,7 @@ public class SessionService : ISessionService
                 WorkflowState = session.WorkflowState, // Restore state!
                 LastActivityAt = DateTime.UtcNow,
                 CreatedAt = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.AddMinutes(IdleTimeoutMinutes),
+                ExpiresAt = DateTime.UtcNow.AddMinutes(_settings.IdleTimeoutMinutes),
                 IsActive = true
             };
 
@@ -189,7 +188,7 @@ public class SessionService : ISessionService
         }
 
         session.LastActivityAt = DateTime.UtcNow;
-        session.ExpiresAt = DateTime.UtcNow.AddMinutes(IdleTimeoutMinutes);
+        session.ExpiresAt = DateTime.UtcNow.AddMinutes(_settings.IdleTimeoutMinutes);
 
         await _dbContext.SaveChangesAsync();
     }

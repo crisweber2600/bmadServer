@@ -1,6 +1,6 @@
 # Story 2.3: Refresh Token Flow with HttpOnly Cookies
 
-**Status:** review
+**Status:** done
 
 ## Story
 

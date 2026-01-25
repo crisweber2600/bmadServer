@@ -84,9 +84,9 @@ public class AuthController : ControllerBase
                 });
         }
 
-        // Check for existing user
+        // Check for existing user (case-insensitive to prevent duplicate accounts)
         var existingUser = await _dbContext.Users
-            .FirstOrDefaultAsync(u => u.Email == request.Email);
+            .FirstOrDefaultAsync(u => u.Email.ToLower() == request.Email.ToLower());
 
         if (existingUser != null)
         {
@@ -247,9 +247,9 @@ public class AuthController : ControllerBase
         }
 
         // Validate and rotate refresh token
-        var (newToken, error) = await _refreshTokenService.ValidateAndRotateAsync(refreshToken);
+        var (newToken, newPlainToken, error) = await _refreshTokenService.ValidateAndRotateAsync(refreshToken);
 
-        if (error != null || newToken == null)
+        if (error != null || newToken == null || newPlainToken == null)
         {
             return Unauthorized(new ProblemDetails
             {
@@ -263,8 +263,8 @@ public class AuthController : ControllerBase
         // Generate new access token
         var accessToken = _jwtTokenService.GenerateAccessToken(newToken.User);
 
-        // Set new refresh token cookie (plain token is in TokenHash temporarily)
-        Response.Cookies.Append("refreshToken", newToken.TokenHash, GetRefreshTokenCookieOptions());
+        // Set new refresh token cookie with the plain token
+        Response.Cookies.Append("refreshToken", newPlainToken, GetRefreshTokenCookieOptions());
 
         _logger.LogInformation("Token refreshed successfully for user: {UserId}", newToken.UserId);
 

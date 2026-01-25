@@ -1,25 +1,30 @@
+using bmadServer.ApiService.Configuration;
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.Models;
 using bmadServer.ApiService.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
 namespace bmadServer.Tests.Unit;
 
-/// <summary>
-/// Tests for optimistic concurrency control in session updates.
-/// Validates version tracking and conflict detection per AC.
-/// </summary>
 public class SessionConcurrencyTests
 {
     private readonly Mock<ILogger<SessionService>> _loggerMock;
+    private readonly IOptions<SessionSettings> _sessionSettings;
 
     public SessionConcurrencyTests()
     {
         _loggerMock = new Mock<ILogger<SessionService>>();
+        _sessionSettings = Options.Create(new SessionSettings
+        {
+            RecoveryWindowSeconds = 60,
+            IdleTimeoutMinutes = 30,
+            WarningTimeoutMinutes = 28
+        });
     }
 
     private ApplicationDbContext CreateInMemoryDbContext()
@@ -36,7 +41,7 @@ public class SessionConcurrencyTests
     {
         // Arrange
         await using var dbContext = CreateInMemoryDbContext();
-        var service = new SessionService(dbContext, _loggerMock.Object);
+        var service = new SessionService(dbContext, _loggerMock.Object, _sessionSettings);
 
         var user = new User
         {
@@ -77,7 +82,7 @@ public class SessionConcurrencyTests
     {
         // Arrange
         await using var dbContext = CreateInMemoryDbContext();
-        var service = new SessionService(dbContext, _loggerMock.Object);
+        var service = new SessionService(dbContext, _loggerMock.Object, _sessionSettings);
 
         var user = new User
         {
@@ -109,7 +114,7 @@ public class SessionConcurrencyTests
     {
         // Arrange
         await using var dbContext = CreateInMemoryDbContext();
-        var service = new SessionService(dbContext, _loggerMock.Object);
+        var service = new SessionService(dbContext, _loggerMock.Object, _sessionSettings);
 
         var user = new User
         {
@@ -143,7 +148,7 @@ public class SessionConcurrencyTests
     {
         // Arrange
         await using var dbContext = CreateInMemoryDbContext();
-        var service = new SessionService(dbContext, _loggerMock.Object);
+        var service = new SessionService(dbContext, _loggerMock.Object, _sessionSettings);
 
         var user = new User
         {

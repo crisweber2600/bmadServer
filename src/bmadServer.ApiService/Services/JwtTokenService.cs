@@ -23,12 +23,17 @@ public class JwtTokenService : IJwtTokenService
 
     public string GenerateAccessToken(User user)
     {
+        return GenerateAccessToken(user, Enumerable.Empty<string>());
+    }
+    
+    public string GenerateAccessToken(User user, IEnumerable<string> roles)
+    {
         var securityKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(_settings.SecretKey));
         var credentials = new SigningCredentials(
             securityKey, SecurityAlgorithms.HmacSha256);
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
@@ -37,6 +42,11 @@ public class JwtTokenService : IJwtTokenService
                 DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(),
                 ClaimValueTypes.Integer64)
         };
+        
+        foreach (var role in roles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role));
+        }
 
         var token = new JwtSecurityToken(
             issuer: _settings.Issuer,

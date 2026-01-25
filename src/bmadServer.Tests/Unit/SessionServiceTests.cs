@@ -1,26 +1,30 @@
+using bmadServer.ApiService.Configuration;
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.Models;
 using bmadServer.ApiService.Services;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
 namespace bmadServer.Tests.Unit;
 
-/// <summary>
-/// Unit tests for SessionService.
-/// Tests session lifecycle: create, recover, update, expire.
-/// </summary>
 public class SessionServiceTests
 {
     private readonly Mock<ILogger<SessionService>> _loggerMock;
+    private readonly IOptions<SessionSettings> _sessionSettings;
 
     public SessionServiceTests()
     {
         _loggerMock = new Mock<ILogger<SessionService>>();
+        _sessionSettings = Options.Create(new SessionSettings
+        {
+            RecoveryWindowSeconds = 60,
+            IdleTimeoutMinutes = 30,
+            WarningTimeoutMinutes = 28
+        });
     }
 
     private ApplicationDbContext CreateInMemoryDbContext()
@@ -37,7 +41,7 @@ public class SessionServiceTests
     {
         // Arrange
         await using var dbContext = CreateInMemoryDbContext();
-        var service = new SessionService(dbContext, _loggerMock.Object);
+        var service = new SessionService(dbContext, _loggerMock.Object, _sessionSettings);
 
         var user = new User
         {
@@ -66,7 +70,7 @@ public class SessionServiceTests
     {
         // Arrange
         await using var dbContext = CreateInMemoryDbContext();
-        var service = new SessionService(dbContext, _loggerMock.Object);
+        var service = new SessionService(dbContext, _loggerMock.Object, _sessionSettings);
 
         var user = new User
         {
@@ -92,7 +96,7 @@ public class SessionServiceTests
     {
         // Arrange
         await using var dbContext = CreateInMemoryDbContext();
-        var service = new SessionService(dbContext, _loggerMock.Object);
+        var service = new SessionService(dbContext, _loggerMock.Object, _sessionSettings);
 
         var user = new User
         {
@@ -118,7 +122,7 @@ public class SessionServiceTests
     {
         // Arrange
         await using var dbContext = CreateInMemoryDbContext();
-        var service = new SessionService(dbContext, _loggerMock.Object);
+        var service = new SessionService(dbContext, _loggerMock.Object, _sessionSettings);
 
         var user = new User
         {
@@ -143,7 +147,7 @@ public class SessionServiceTests
     {
         // Arrange
         await using var dbContext = CreateInMemoryDbContext();
-        var service = new SessionService(dbContext, _loggerMock.Object);
+        var service = new SessionService(dbContext, _loggerMock.Object, _sessionSettings);
 
         var user = new User
         {
@@ -177,7 +181,7 @@ public class SessionServiceTests
     {
         // Arrange
         await using var dbContext = CreateInMemoryDbContext();
-        var service = new SessionService(dbContext, _loggerMock.Object);
+        var service = new SessionService(dbContext, _loggerMock.Object, _sessionSettings);
 
         var user = new User
         {
@@ -235,7 +239,7 @@ public class SessionServiceTests
     {
         // Arrange
         await using var dbContext = CreateInMemoryDbContext();
-        var service = new SessionService(dbContext, _loggerMock.Object);
+        var service = new SessionService(dbContext, _loggerMock.Object, _sessionSettings);
 
         var user = new User
         {
@@ -278,7 +282,7 @@ public class SessionServiceTests
     {
         // Arrange
         await using var dbContext = CreateInMemoryDbContext();
-        var service = new SessionService(dbContext, _loggerMock.Object);
+        var service = new SessionService(dbContext, _loggerMock.Object, _sessionSettings);
 
         var user = new User
         {
@@ -318,7 +322,7 @@ public class SessionServiceTests
     {
         // Arrange
         await using var dbContext = CreateInMemoryDbContext();
-        var service = new SessionService(dbContext, _loggerMock.Object);
+        var service = new SessionService(dbContext, _loggerMock.Object, _sessionSettings);
 
         // Act
         var result = await service.UpdateSessionStateAsync(Guid.NewGuid(), Guid.NewGuid(), s =>
@@ -335,7 +339,7 @@ public class SessionServiceTests
     {
         // Arrange
         await using var dbContext = CreateInMemoryDbContext();
-        var service = new SessionService(dbContext, _loggerMock.Object);
+        var service = new SessionService(dbContext, _loggerMock.Object, _sessionSettings);
 
         var user = new User
         {
@@ -363,7 +367,7 @@ public class SessionServiceTests
     {
         // Arrange
         await using var dbContext = CreateInMemoryDbContext();
-        var service = new SessionService(dbContext, _loggerMock.Object);
+        var service = new SessionService(dbContext, _loggerMock.Object, _sessionSettings);
 
         var user = new User
         {
@@ -396,7 +400,7 @@ public class SessionServiceTests
     {
         // Arrange
         await using var dbContext = CreateInMemoryDbContext();
-        var service = new SessionService(dbContext, _loggerMock.Object);
+        var service = new SessionService(dbContext, _loggerMock.Object, _sessionSettings);
 
         var user = new User
         {
@@ -424,7 +428,7 @@ public class SessionServiceTests
     {
         // Arrange
         await using var dbContext = CreateInMemoryDbContext();
-        var service = new SessionService(dbContext, _loggerMock.Object);
+        var service = new SessionService(dbContext, _loggerMock.Object, _sessionSettings);
 
         var user = new User
         {

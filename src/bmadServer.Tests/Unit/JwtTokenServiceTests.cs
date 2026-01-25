@@ -119,7 +119,6 @@ public class JwtTokenServiceTests
         var jwtToken = handler.ReadJwtToken(token);
 
         var expectedExpiry = beforeGeneration.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
-        Assert.NotNull(jwtToken.ValidTo);
         
         // Allow 10 seconds tolerance for test execution time
         Assert.True(Math.Abs((jwtToken.ValidTo - expectedExpiry).TotalSeconds) < 10);

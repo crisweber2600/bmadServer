@@ -35,7 +35,7 @@ public class RegisterRequestValidatorTests
     [Theory]
     [InlineData("")]
     [InlineData(null)]
-    public void Validate_EmptyEmail_ShouldHaveError(string email)
+    public void Validate_EmptyEmail_ShouldHaveError(string? email)
     {
         // Arrange
         var request = new RegisterRequest
@@ -78,7 +78,7 @@ public class RegisterRequestValidatorTests
     [Theory]
     [InlineData("")]
     [InlineData(null)]
-    public void Validate_EmptyPassword_ShouldHaveError(string password)
+    public void Validate_EmptyPassword_ShouldHaveError(string? password)
     {
         // Arrange
         var request = new RegisterRequest
@@ -156,7 +156,7 @@ public class RegisterRequestValidatorTests
     [Theory]
     [InlineData("")]
     [InlineData(null)]
-    public void Validate_EmptyDisplayName_ShouldHaveError(string displayName)
+    public void Validate_EmptyDisplayName_ShouldHaveError(string? displayName)
     {
         // Arrange
         var request = new RegisterRequest
