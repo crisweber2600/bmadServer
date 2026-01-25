@@ -54,7 +54,7 @@ development_status:
   2-1-user-registration-auth: review
   2-2-jwt-token-generation: review
   2-3-refresh-token-flow: review
-  2-4-session-persistence-recovery: backlog
+  2-4-session-persistence-recovery: review
   2-5-rbac-implementation: backlog
   2-6-idle-timeout-security: backlog
   epic-2-retrospective: optional

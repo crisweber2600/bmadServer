@@ -54,6 +54,12 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.IPasswordHasher, bmadS
 // Register refresh token service
 builder.Services.AddScoped<bmadServer.ApiService.Services.IRefreshTokenService, bmadServer.ApiService.Services.RefreshTokenService>();
 
+// Register session service
+builder.Services.AddScoped<bmadServer.ApiService.Services.ISessionService, bmadServer.ApiService.Services.SessionService>();
+
+// Register session cleanup background service
+builder.Services.AddHostedService<bmadServer.ApiService.BackgroundServices.SessionCleanupService>();
+
 // Register FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<bmadServer.ApiService.Validators.RegisterRequestValidator>();
 
@@ -119,6 +125,9 @@ builder.Services.AddAuthorization();
 
 // Add controllers
 builder.Services.AddControllers();
+
+// Add SignalR for real-time communication
+builder.Services.AddSignalR();
 
 // Add OpenAPI/Swagger documentation (available in development environment)
 // Provides automatic API documentation at /openapi/v1.json in development
@@ -197,6 +206,9 @@ app.MapDefaultEndpoints();
 
 // Map controllers
 app.MapControllers();
+
+// Map SignalR hub endpoint
+app.MapHub<bmadServer.ApiService.Hubs.ChatHub>("/hubs/chat");
 
 // Start the application
 app.Run();

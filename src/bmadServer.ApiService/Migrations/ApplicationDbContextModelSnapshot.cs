@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using bmadServer.ApiService.Data;
+using bmadServer.ApiService.Models;
 
 #nullable disable
 
@@ -69,23 +70,50 @@ namespace bmadServer.ApiService.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("ConnectionId")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTime?>("ExpiresAt")
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("LastActivityAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
+                    b.Property<WorkflowState>("WorkflowState")
+                        .HasColumnType("jsonb");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("ConnectionId");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("IsActive");
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("sessions", (string)null);
+                    b.HasIndex("WorkflowState");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("WorkflowState"), "gin");
+
+                    b.ToTable("sessions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Session_Expiry", "\"ExpiresAt\" > \"CreatedAt\"");
+                        });
                 });
 
             modelBuilder.Entity("bmadServer.ApiService.Data.Entities.User", b =>

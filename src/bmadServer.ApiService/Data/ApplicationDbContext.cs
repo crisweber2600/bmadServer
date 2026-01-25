@@ -1,5 +1,7 @@
 using bmadServer.ApiService.Data.Entities;
+using bmadServer.ApiService.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace bmadServer.ApiService.Data;
 
@@ -30,10 +32,45 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<Session>(entity =>
         {
-            entity.ToTable("sessions");
+            entity.ToTable("sessions", t => 
+            {
+                // Check constraint: ExpiresAt must be after CreatedAt
+                t.HasCheckConstraint("CK_Session_Expiry", 
+                    "\"ExpiresAt\" > \"CreatedAt\"");
+            });
+            
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.ConnectionId).IsRequired();
-            entity.HasOne(e => e.User).WithMany(u => u.Sessions).HasForeignKey(e => e.UserId);
+            
+            // ConnectionId is nullable (cleared when session expires)
+            entity.Property(e => e.ConnectionId).IsRequired(false);
+            
+            // Configure JSONB column for WorkflowState with JSON value converter
+            // This supports both PostgreSQL JSONB and InMemory database for testing
+            entity.Property(e => e.WorkflowState)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                    v => JsonSerializer.Deserialize<WorkflowState>(v, (JsonSerializerOptions?)null));
+            
+            // GIN index for fast JSONB queries (PostgreSQL only)
+            entity.HasIndex(e => e.WorkflowState)
+                .HasMethod("gin");
+            
+            // Indexes for lookup performance
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.ConnectionId);
+            entity.HasIndex(e => e.ExpiresAt);
+            entity.HasIndex(e => e.IsActive);
+            
+            // PostgreSQL row version for optimistic concurrency
+            entity.Property<uint>("xmin")
+                .IsRowVersion();
+            
+            // Foreign key to Users table
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.Sessions)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Workflow>(entity =>
