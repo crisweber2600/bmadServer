@@ -57,26 +57,29 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
-                code({ node, inline, className, children, ...props }: any) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                code(props: any) {
+                  const { inline, className, children } = props;
                   const match = /language-(\w+)/.exec(className || '');
                   return !inline && match ? (
                     <SyntaxHighlighter
-                      style={vscDarkPlus}
+                      style={vscDarkPlus as { [key: string]: React.CSSProperties }}
                       language={match[1]}
                       PreTag="div"
-                      {...props}
                     >
                       {String(children).replace(/\n$/, '')}
                     </SyntaxHighlighter>
                   ) : (
-                    <code className={className} {...props}>
+                    <code className={className}>
                       {children}
                     </code>
                   );
                 },
-                a({ node, children, ...props }: any) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                a(props: any) {
+                  const { children, ...rest } = props;
                   return (
-                    <a {...props} target="_blank" rel="noopener noreferrer">
+                    <a {...rest} target="_blank" rel="noopener noreferrer">
                       {children}
                     </a>
                   );
