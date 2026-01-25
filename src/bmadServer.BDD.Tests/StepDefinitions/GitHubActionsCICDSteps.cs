@@ -9,6 +9,9 @@ namespace bmadServer.BDD.Tests.StepDefinitions;
 [Binding]
 public class GitHubActionsCICDSteps
 {
+    private const int TestExecutionTimeoutSeconds = 30;
+    private const int MinimumDocumentationCommentLines = 10;
+    
     private string? _workflowPath;
     private bool _workflowExists;
     private string? _workflowContent;
@@ -205,22 +208,23 @@ public class GitHubActionsCICDSteps
         using var process = new Process { StartInfo = startInfo };
         
         // Set a timeout for the test execution
-        var timeoutCancellationToken = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var timeoutCancellationToken = new CancellationTokenSource(TimeSpan.FromSeconds(TestExecutionTimeoutSeconds));
         
         process.Start();
         
         var outputTask = process.StandardOutput.ReadToEndAsync(timeoutCancellationToken.Token);
         var errorTask = process.StandardError.ReadToEndAsync(timeoutCancellationToken.Token);
         
-        var finished = process.WaitForExit(30000); // 30 second timeout
+        var timeoutMilliseconds = TestExecutionTimeoutSeconds * 1000;
+        var finished = process.WaitForExit(timeoutMilliseconds);
         
         if (!finished)
         {
             process.Kill();
-            Assert.Fail("Test execution timed out after 30 seconds");
+            Assert.Fail($"Test execution timed out after {TestExecutionTimeoutSeconds} seconds");
         }
 
-        _testOutput = outputTask.Result;
+        _testOutput = outputTask.GetAwaiter().GetResult();
         _unitTestsPassed = process.ExitCode == 0;
     }
 
@@ -298,7 +302,8 @@ public class GitHubActionsCICDSteps
         Assert.Contains("#", _workflowContent);
         // Should have multiple comment lines
         var commentLines = _workflowContent.Split('\n').Count(line => line.TrimStart().StartsWith("#"));
-        Assert.True(commentLines > 10, "Should have substantial documentation comments");
+        Assert.True(commentLines > MinimumDocumentationCommentLines, 
+            $"Should have at least {MinimumDocumentationCommentLines} documentation comment lines, found {commentLines}");
     }
 
     [Then(@"comments should explain when each job runs")]
@@ -323,13 +328,16 @@ public class GitHubActionsCICDSteps
         Assert.NotNull(_workflowContent);
         // Verify documentation about extending
         Assert.True(
-            _workflowContent.Contains("extend") || 
-            _workflowContent.Contains("add") || 
-            _workflowContent.Contains("modify") ||
-            _workflowContent.Contains("EXTENSION") ||
-            _workflowContent.Contains("GUIDE"),
+            ContainsWorkflowExtensionDocumentation(_workflowContent),
             "Workflow should contain documentation about extending it"
         );
+    }
+
+    private static bool ContainsWorkflowExtensionDocumentation(string content)
+    {
+        var extensionKeywords = new[] { "extend", "add", "modify", "EXTENSION", "GUIDE" };
+        return extensionKeywords.Any(keyword => 
+            content.Contains(keyword, StringComparison.OrdinalIgnoreCase));
     }
 
     private static string GetRepositoryRoot()
