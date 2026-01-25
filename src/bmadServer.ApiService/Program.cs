@@ -2,6 +2,7 @@ using FluentValidation;
 using System.Reflection;
 using System.Text;
 using bmadServer.ApiService.Configuration;
+using bmadServer.ApiService.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -164,6 +165,9 @@ app.UseExceptionHandler();
 // Add authentication and authorization middleware (order matters!)
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Track user activity for session idle timeout
+app.UseActivityTracking();
 
 // Map OpenAPI documentation endpoints (development only)
 if (app.Environment.IsDevelopment())
