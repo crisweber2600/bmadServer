@@ -31,52 +31,148 @@ As a user (Marcus), I want to safely exit or cancel a workflow, so that I can ab
 
 ## Tasks / Subtasks
 
-- [ ] Analyze acceptance criteria and create detailed implementation plan
-- [ ] Design data models and database schema if needed
-- [ ] Implement core business logic
-- [ ] Create API endpoints and/or UI components
-- [ ] Write unit tests for critical paths
-- [ ] Write integration tests for key scenarios
-- [ ] Update API documentation
-- [ ] Perform manual testing and validation
-- [ ] Code review and address feedback
+- [ ] Extend WorkflowInstanceService with cancel method (AC: 1)
+  - [ ] Implement CancelWorkflow(workflowId, userId) method
+  - [ ] Validate workflow is in cancellable state (Running, Paused, WaitingForInput)
+  - [ ] Transition to Cancelled state
+  - [ ] Terminate any pending operations (coordinate with StepExecutor from Story 4.3)
+  - [ ] Log cancellation event to WorkflowEvents
+- [ ] Add validation to prevent cancelling completed workflows (AC: 2, 3)
+  - [ ] Check if status is Completed, Failed, or already Cancelled
+  - [ ] Return 400 Bad Request with appropriate message
+- [ ] Ensure workflow history preservation (AC: 2)
+  - [ ] Cancelled workflows remain in database (soft delete pattern)
+  - [ ] Add CancelledAt timestamp to WorkflowInstance
+  - [ ] All WorkflowStepHistory records remain accessible
+- [ ] Prevent resuming cancelled workflows (AC: 2)
+  - [ ] Update ResumeWorkflow validation from Story 4.4
+  - [ ] Return 400 Bad Request if workflow is Cancelled
+- [ ] Add UI support for cancelled workflows (AC: 4)
+  - [ ] Update workflow list endpoint to include cancelled status
+  - [ ] Add filter query parameter: ?showCancelled=true/false
+  - [ ] Return display metadata for strikethrough/badge styling
+- [ ] Create API endpoint: POST /api/v1/workflows/{id}/cancel
+  - [ ] Require authentication and workflow ownership
+  - [ ] Return 200 OK with updated workflow state
+- [ ] Add unit tests
+  - [ ] Test cancel from each valid state (Running, Paused, WaitingForInput)
+  - [ ] Test cannot cancel Completed workflow
+  - [ ] Test cannot resume Cancelled workflow
+  - [ ] Test unauthorized cancel attempts
+- [ ] Add integration tests
+  - [ ] End-to-end cancel via API
+  - [ ] Verify workflow history preservation
+  - [ ] Test filter functionality for cancelled workflows
 
 ## Dev Notes
 
-### Implementation Guidance
+### Architecture Alignment
 
-This story should be implemented following the patterns established in the codebase:
-- Follow the architecture patterns defined in `architecture.md`
-- Use existing service patterns and dependency injection
-- Ensure proper error handling and logging
-- Add appropriate authorization checks based on user roles
-- Follow the coding standards and conventions of the project
+**Source:** [ARCHITECTURE.MD - Workflow State Management, Soft Delete Patterns]
 
-### Testing Strategy
+- Extend: `src/bmadServer.ApiService/Services/Workflows/WorkflowInstanceService.cs`
+- Extend: `src/bmadServer.ApiService/Endpoints/WorkflowsEndpoint.cs`
+- Add CancelledAt column to WorkflowInstance (migration)
+- Use soft delete pattern: do not physically delete cancelled workflows
 
-- Unit tests should cover business logic and edge cases
-- Integration tests should verify API endpoints and database interactions
-- Consider performance implications for database queries
-- Test error scenarios and validation rules
+### Technical Requirements
+
+**State Transition Rules:**
+- Running → Cancelled (valid)
+- Paused → Cancelled (valid)
+- WaitingForInput → Cancelled (valid)
+- Completed → Cancelled (INVALID - return 400)
+- Failed → Cancelled (INVALID - already terminal)
+- Cancelled → any state (INVALID - terminal state)
+
+**Termination Logic:**
+```csharp
+// Coordinate with StepExecutor to stop current step
+if (workflowInstance.Status == WorkflowStatus.Running)
+{
+    await _stepExecutor.CancelCurrentStep(workflowInstance.Id);
+}
+workflowInstance.Status = WorkflowStatus.Cancelled;
+workflowInstance.CancelledAt = DateTime.UtcNow;
+```
+
+**Filter Implementation:**
+```csharp
+// GET /api/v1/workflows?showCancelled=false (default)
+query = query.Where(w => w.Status != WorkflowStatus.Cancelled);
+```
+
+### File Structure Requirements
+
+```
+src/bmadServer.ApiService/
+├── Services/
+│   └── Workflows/
+│       └── WorkflowInstanceService.cs (extend with CancelWorkflow)
+├── Endpoints/
+│   └── WorkflowsEndpoint.cs (add cancel endpoint, update list filter)
+└── Data/
+    └── Migrations/
+        └── XXX_AddCancelledAtToWorkflowInstance.cs
+```
 
 ### Dependencies
 
-Review the acceptance criteria for dependencies on:
-- Other stories or epics that must be completed first
-- External packages or services that need to be configured
-- Database migrations that need to be created
+**From Previous Stories:**
+- Story 4.2: WorkflowInstance and state machine
+- Story 4.3: StepExecutor needs CancelCurrentStep method
+- Story 4.4: ResumeWorkflow needs validation update
 
-## Files to Create/Modify
+**Authorization:**
+- User must own workflow or have admin role
+- Reuse authorization from Stories 2.1-2.2
 
-Files will be determined during implementation based on:
-- Data models and entities needed
-- API endpoints required
-- Service layer components
-- Database migrations
-- Test files
+### Testing Requirements
 
+**Unit Tests:** `test/bmadServer.Tests/Services/Workflows/WorkflowInstanceServiceTests.cs`
 
----
+**Test Coverage:**
+- Cancel from all valid states
+- Prevent cancel from invalid states
+- Verify CancelledAt timestamp set
+- Test filter functionality
+- Resume validation for cancelled workflows
+
+### Integration Notes
+
+**Connection to Other Stories:**
+- Story 4.3: Step execution must be cancellable
+- Story 4.4: Resume should reject cancelled workflows
+- Story 4.7: Status API includes cancelled workflows with filter
+
+**UI Considerations:**
+- Frontend should display cancelled workflows with visual indication
+- Provide clear messaging that cancelled workflows cannot be resumed
+- Consider archive or cleanup job for old cancelled workflows (future epic)
+
+### References
+
+- [Source: _bmad-output/planning-artifacts/epics.md#Story 4.5]
+- [Source: ARCHITECTURE.md - State Management, Audit Patterns]
+- [Soft Delete Pattern: Industry best practice for audit trails]
+
+## Dev Agent Record
+
+### Agent Model Used
+
+_To be filled by dev agent_
+
+### Debug Log References
+
+_To be filled by dev agent_
+
+### Completion Notes List
+
+_To be filled by dev agent_
+
+### File List
+
+_To be filled by dev agent_
 
 ## Aspire Development Standards
 

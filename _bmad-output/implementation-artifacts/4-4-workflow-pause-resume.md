@@ -36,48 +36,147 @@ As a user (Sarah), I want to pause and resume a workflow, so that I can take bre
 
 ## Tasks / Subtasks
 
-- [ ] Analyze acceptance criteria and create detailed implementation plan
-- [ ] Design data models and database schema if needed
-- [ ] Implement core business logic
-- [ ] Create API endpoints and/or UI components
-- [ ] Write unit tests for critical paths
-- [ ] Write integration tests for key scenarios
-- [ ] Update API documentation
-- [ ] Perform manual testing and validation
-- [ ] Code review and address feedback
+- [ ] Extend WorkflowInstanceService with pause/resume methods (AC: 1, 2)
+  - [ ] Implement PauseWorkflow(workflowId, userId) method
+  - [ ] Implement ResumeWorkflow(workflowId, userId) method
+  - [ ] Validate state transitions (Running→Paused, Paused→Running)
+  - [ ] Log pause/resume events to WorkflowEvents table
+- [ ] Add validation for duplicate pause attempts (AC: 3)
+  - [ ] Check current state before transition
+  - [ ] Return 400 Bad Request with clear message for invalid transitions
+- [ ] Implement context refresh for long-paused workflows (AC: 4)
+  - [ ] Check pause duration (CreatedAt vs current time)
+  - [ ] If >24 hours, trigger context refresh
+  - [ ] Add PausedAt timestamp to WorkflowInstance model (migration)
+  - [ ] Return refresh notification in resume response
+- [ ] Add SignalR notifications for pause/resume (AC: 5)
+  - [ ] Broadcast WORKFLOW_PAUSED event to all participants
+  - [ ] Broadcast WORKFLOW_RESUMED event to all participants
+  - [ ] Include workflow id and updated status in event payload
+- [ ] Create API endpoints
+  - [ ] POST /api/v1/workflows/{id}/pause
+  - [ ] POST /api/v1/workflows/{id}/resume
+  - [ ] Both require authentication and workflow ownership validation
+- [ ] Add unit tests
+  - [ ] Test pause transition from Running state
+  - [ ] Test resume transition from Paused state
+  - [ ] Test duplicate pause returns 400
+  - [ ] Test context refresh for 24+ hour pause
+  - [ ] Test unauthorized pause/resume attempts
+- [ ] Add integration tests
+  - [ ] Test pause/resume via API endpoints
+  - [ ] Verify SignalR notifications are sent
+  - [ ] Test multi-user workflow pause scenario
 
 ## Dev Notes
 
-### Implementation Guidance
+### Architecture Alignment
 
-This story should be implemented following the patterns established in the codebase:
-- Follow the architecture patterns defined in `architecture.md`
-- Use existing service patterns and dependency injection
-- Ensure proper error handling and logging
-- Add appropriate authorization checks based on user roles
-- Follow the coding standards and conventions of the project
+**Source:** [ARCHITECTURE.md - Workflow State Management]
 
-### Testing Strategy
+- Extend: `src/bmadServer.ApiService/Services/Workflows/WorkflowInstanceService.cs`
+- Extend: `src/bmadServer.ApiService/Endpoints/WorkflowsEndpoint.cs`
+- Use: `src/bmadServer.ApiService/Hubs/ChatHub.cs` for SignalR notifications
+- Add PausedAt column to WorkflowInstance table (migration)
 
-- Unit tests should cover business logic and edge cases
-- Integration tests should verify API endpoints and database interactions
-- Consider performance implications for database queries
-- Test error scenarios and validation rules
+### Technical Requirements
+
+**State Transitions:**
+- Running → Paused (valid)
+- Paused → Running (valid)
+- Paused → Paused (invalid, return 400)
+- Other states → Cannot pause (invalid)
+
+**Context Refresh Logic:**
+```csharp
+var pauseDuration = DateTime.UtcNow - workflowInstance.PausedAt;
+if (pauseDuration > TimeSpan.FromHours(24))
+{
+    await RefreshWorkflowContext(workflowInstance);
+    notification = "Workflow resumed. Context has been refreshed.";
+}
+```
+
+**SignalR Event Structure:**
+```json
+{
+  "eventType": "WORKFLOW_PAUSED",
+  "workflowId": "guid",
+  "status": "Paused",
+  "userId": "guid",
+  "timestamp": "ISO8601"
+}
+```
+
+### File Structure Requirements
+
+```
+src/bmadServer.ApiService/
+├── Services/
+│   └── Workflows/
+│       └── WorkflowInstanceService.cs (extend)
+├── Endpoints/
+│   └── WorkflowsEndpoint.cs (add pause/resume endpoints)
+└── Data/
+    └── Migrations/
+        └── XXX_AddPausedAtToWorkflowInstance.cs
+```
 
 ### Dependencies
 
-Review the acceptance criteria for dependencies on:
-- Other stories or epics that must be completed first
-- External packages or services that need to be configured
-- Database migrations that need to be created
+**From Previous Stories:**
+- Story 4.2: WorkflowInstance and state machine
+- Story 3.1: SignalR ChatHub (from Epic 3) - if not available, use simple notification mechanism
 
-## Files to Create/Modify
+**Authorization:**
+- User must own the workflow or be a collaborator
+- Reuse authorization patterns from Stories 2.1-2.2
 
-Files will be determined during implementation based on:
-- Data models and entities needed
-- API endpoints required
-- Service layer components
-- Database migrations
+### Testing Requirements
+
+**Unit Tests:** `test/bmadServer.Tests/Services/Workflows/WorkflowInstanceServiceTests.cs`
+
+**Test Coverage:**
+- Valid pause/resume transitions
+- Invalid state transition errors
+- Context refresh for long pauses
+- Event logging
+
+**Integration Tests:**
+- API endpoint authorization
+- SignalR notification delivery
+- Database persistence of PausedAt timestamp
+
+### Integration Notes
+
+**Connection to Other Stories:**
+- Story 4.3: Pause should interrupt current step execution
+- Story 4.7: Status API should show Paused state
+- Epic 7: Multi-user workflows receive pause notifications
+
+### References
+
+- [Source: _bmad-output/planning-artifacts/epics.md#Story 4.4]
+- [Source: ARCHITECTURE.md - State Machine, Real-time Updates]
+- [Story 3.1: SignalR implementation patterns]
+
+## Dev Agent Record
+
+### Agent Model Used
+
+_To be filled by dev agent_
+
+### Debug Log References
+
+_To be filled by dev agent_
+
+### Completion Notes List
+
+_To be filled by dev agent_
+
+### File List
+
+_To be filled by dev agent_
 - Test files
 
 

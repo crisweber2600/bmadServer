@@ -39,45 +39,165 @@ As a user (Marcus), I want workflow steps to automatically route to the correct 
 
 ## Tasks / Subtasks
 
-- [ ] Analyze acceptance criteria and create detailed implementation plan
-- [ ] Design data models and database schema if needed
-- [ ] Implement core business logic
-- [ ] Create API endpoints and/or UI components
-- [ ] Write unit tests for critical paths
-- [ ] Write integration tests for key scenarios
-- [ ] Update API documentation
-- [ ] Perform manual testing and validation
-- [ ] Code review and address feedback
+- [ ] Create WorkflowStepHistory entity model (AC: 6)
+  - [ ] Properties: Id, WorkflowInstanceId, StepId, StepName, StartedAt, CompletedAt, Status, Input (JSONB), Output (JSONB)
+- [ ] Create database migration for WorkflowStepHistory table
+  - [ ] Add indexes on WorkflowInstanceId and StepId
+  - [ ] Add JSONB columns with GIN indexes
+- [ ] Create AgentRouter service (AC: 1)
+  - [ ] Implement RouteToAgent(agentId, context) method
+  - [ ] Use AgentId from WorkflowDefinition.Step (Story 4.1)
+  - [ ] Return appropriate agent handler interface
+- [ ] Implement StepExecutor service (AC: 2, 3)
+  - [ ] ExecuteStep method that orchestrates step execution
+  - [ ] Prepare context: workflow data, step parameters, conversation history
+  - [ ] Call agent handler via AgentRouter
+  - [ ] Validate output against OutputSchema
+  - [ ] Update WorkflowInstance.StepData and CurrentStep
+  - [ ] Log to WorkflowStepHistory
+- [ ] Add streaming support for long-running steps (AC: 4)
+  - [ ] Implement IAsyncEnumerable<StepProgress> for streaming
+  - [ ] Start streaming after 5 seconds (NFR2 requirement)
+  - [ ] Use SignalR to push progress updates to client
+- [ ] Add error handling and retry logic (AC: 5)
+  - [ ] Distinguish recoverable vs unrecoverable errors
+  - [ ] Transition to WaitingForInput for recoverable errors
+  - [ ] Transition to Failed for unrecoverable errors
+  - [ ] Log full error context to WorkflowStepHistory
+- [ ] Create API endpoint: POST /api/v1/workflows/{id}/steps/execute
+  - [ ] Execute current step
+  - [ ] Return step result or streaming response
+- [ ] Add unit tests for StepExecutor and AgentRouter
+  - [ ] Test successful step execution and state updates
+  - [ ] Test output validation
+  - [ ] Test error handling paths
+- [ ] Add integration tests
+  - [ ] End-to-end step execution with real workflow
+  - [ ] Verify WorkflowStepHistory persistence
+  - [ ] Test streaming behavior
 
 ## Dev Notes
 
-### Implementation Guidance
+### Architecture Alignment
 
-This story should be implemented following the patterns established in the codebase:
-- Follow the architecture patterns defined in `architecture.md`
-- Use existing service patterns and dependency injection
-- Ensure proper error handling and logging
-- Add appropriate authorization checks based on user roles
-- Follow the coding standards and conventions of the project
+**Source:** [ARCHITECTURE.md - Workflow Orchestration, Agent System]
 
-### Testing Strategy
+- Entity: `src/bmadServer.ApiService/Models/Workflows/WorkflowStepHistory.cs`
+- Services: `src/bmadServer.ApiService/Services/Workflows/AgentRouter.cs`, `StepExecutor.cs`
+- API: `src/bmadServer.ApiService/Endpoints/WorkflowsEndpoint.cs` (extend)
+- Use SignalR Hub from Story 3.1 for streaming
+- NFR2: Response time <3s, stream after 5s for long operations
 
-- Unit tests should cover business logic and edge cases
-- Integration tests should verify API endpoints and database interactions
-- Consider performance implications for database queries
-- Test error scenarios and validation rules
+### Technical Requirements
+
+**Framework Stack:**
+- .NET 8 with Aspire
+- SignalR for real-time streaming (from Epic 3)
+- JSON Schema validation for OutputSchema (consider NJsonSchema)
+
+**Agent Routing Strategy:**
+- Agent handlers implement IAgentHandler interface
+- AgentRouter uses factory pattern or service locator to resolve handlers
+- Each agent receives consistent context structure
+
+**Output Validation:**
+- Use JSON Schema to validate agent output against step's OutputSchema
+- Return clear validation errors if output doesn't match schema
+- Consider using FluentValidation or NJsonSchema.Validation
+
+**Streaming Implementation:**
+```csharp
+public async IAsyncEnumerable<StepProgress> ExecuteStepWithStreaming(...)
+{
+    var stopwatch = Stopwatch.StartNew();
+    // Execute step
+    while (!completed)
+    {
+        if (stopwatch.Elapsed > TimeSpan.FromSeconds(5))
+        {
+            yield return new StepProgress { ... };
+        }
+        await Task.Delay(500);
+    }
+}
+```
+
+### File Structure Requirements
+
+```
+src/bmadServer.ApiService/
+├── Models/
+│   └── Workflows/
+│       └── WorkflowStepHistory.cs
+├── Services/
+│   └── Workflows/
+│       ├── IAgentRouter.cs
+│       ├── AgentRouter.cs
+│       ├── IStepExecutor.cs
+│       ├── StepExecutor.cs
+│       └── Agents/
+│           └── IAgentHandler.cs
+└── Data/
+    └── Migrations/
+        └── XXX_CreateWorkflowStepHistory.cs
+```
 
 ### Dependencies
 
-Review the acceptance criteria for dependencies on:
-- Other stories or epics that must be completed first
-- External packages or services that need to be configured
-- Database migrations that need to be created
+**From Previous Stories:**
+- Story 4.1: WorkflowDefinition.Step with AgentId and OutputSchema
+- Story 4.2: WorkflowInstance for state management
+- Story 3.1: SignalR Hub for streaming (from Epic 3)
 
-## Files to Create/Modify
+**Future Dependencies:**
+- Epic 5: Multi-agent collaboration will extend AgentRouter
 
-Files will be determined during implementation based on:
-- Data models and entities needed
+**NuGet Packages:**
+- NJsonSchema (for JSON Schema validation) - NEW, check for vulnerabilities
+- Microsoft.AspNetCore.SignalR (already in project)
+
+### Testing Requirements
+
+**Unit Tests:** `test/bmadServer.Tests/Services/Workflows/`
+
+**Test Coverage:**
+- Agent routing to correct handler
+- Step execution with valid/invalid outputs
+- Schema validation
+- Error handling and state transitions
+- Streaming behavior
+
+### Integration Notes
+
+**Connection to Future Stories:**
+- Story 4.4: Pause will interrupt step execution
+- Story 4.5: Cancel will terminate step execution
+- Story 4.7: Status API will query WorkflowStepHistory
+- Epic 5: Agent collaboration will use AgentRouter
+
+### References
+
+- [Source: _bmad-output/planning-artifacts/epics.md#Story 4.3]
+- [Source: ARCHITECTURE.md - Agent Routing]
+- [NFR2: Response time requirements]
+
+## Dev Agent Record
+
+### Agent Model Used
+
+_To be filled by dev agent_
+
+### Debug Log References
+
+_To be filled by dev agent_
+
+### Completion Notes List
+
+_To be filled by dev agent_
+
+### File List
+
+_To be filled by dev agent_
 - API endpoints required
 - Service layer components
 - Database migrations

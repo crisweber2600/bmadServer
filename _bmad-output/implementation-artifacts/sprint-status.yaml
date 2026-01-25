@@ -74,12 +74,12 @@ development_status:
   # =========================================
   # EPIC 4: Workflow Orchestration Engine
   # =========================================
-  epic-4: backlog
-  4-1-workflow-definition-registry: backlog
-  4-2-workflow-instance-creation-state-machine: backlog
-  4-3-step-execution-agent-routing: backlog
-  4-4-workflow-pause-resume: backlog
-  4-5-workflow-exit-cancellation: backlog
+  epic-4: in-progress
+  4-1-workflow-definition-registry: ready-for-dev
+  4-2-workflow-instance-creation-state-machine: ready-for-dev
+  4-3-step-execution-agent-routing: ready-for-dev
+  4-4-workflow-pause-resume: ready-for-dev
+  4-5-workflow-exit-cancellation: ready-for-dev
   4-6-workflow-step-navigation-skip: backlog
   4-7-workflow-status-progress-api: backlog
   epic-4-retrospective: optional

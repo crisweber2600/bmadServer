@@ -33,75 +33,167 @@ As a user (Marcus), I want to start a new workflow instance, so that I can begin
 
 ## Tasks / Subtasks
 
-- [ ] Analyze acceptance criteria and create detailed implementation plan
-- [ ] Design data models and database schema if needed
-- [ ] Implement core business logic
-- [ ] Create API endpoints and/or UI components
-- [ ] Write unit tests for critical paths
-- [ ] Write integration tests for key scenarios
-- [ ] Update API documentation
-- [ ] Perform manual testing and validation
-- [ ] Code review and address feedback
+- [ ] Create WorkflowInstance entity model (AC: 1, 5)
+  - [ ] Add properties: Id (Guid), WorkflowDefinitionId (string), UserId (string)
+  - [ ] Add CurrentStep (int), Status (enum), CreatedAt (DateTime)
+  - [ ] Add StepData (JSONB), Context (JSONB)
+  - [ ] Configure EF Core entity with proper JSONB mapping
+- [ ] Create WorkflowStatus enum with state machine (AC: 2, 3)
+  - [ ] Define states: Created, Running, Paused, WaitingForInput, WaitingForApproval, Completed, Failed, Cancelled
+  - [ ] Implement ValidateTransition method to enforce state machine rules
+  - [ ] Document valid transitions in code comments
+- [ ] Create WorkflowEvents entity for audit log (AC: 4)
+  - [ ] Properties: Id, WorkflowInstanceId, EventType, OldStatus, NewStatus, Timestamp, UserId
+- [ ] Create database migration for WorkflowInstances and WorkflowEvents tables (AC: 5)
+  - [ ] Include JSONB columns with GIN indexes for performance
+  - [ ] Add foreign key to Users table
+  - [ ] Add indexes on Status and CreatedAt
+- [ ] Create WorkflowInstanceService (AC: 1, 3, 4)
+  - [ ] Implement CreateWorkflowInstance method
+  - [ ] Implement StartWorkflow method (Created -> Running transition)
+  - [ ] Add state transition validation
+  - [ ] Log all state changes to WorkflowEvents
+- [ ] Create POST /api/v1/workflows endpoint (AC: 1)
+  - [ ] Validate workflowId exists in WorkflowRegistry (from Story 4.1)
+  - [ ] Require authentication and Participant role
+  - [ ] Return created WorkflowInstance with 201 status
+- [ ] Add unit tests for state machine logic
+  - [ ] Test all valid state transitions
+  - [ ] Test invalid transitions return proper errors
+  - [ ] Test event logging occurs for each transition
+- [ ] Add integration tests
+  - [ ] Test workflow creation via API endpoint
+  - [ ] Verify database persistence of JSONB data
+  - [ ] Test authorization (requires Participant role)
 
 ## Dev Notes
 
-### Implementation Guidance
+### Architecture Alignment
 
-This story should be implemented following the patterns established in the codebase:
-- Follow the architecture patterns defined in `architecture.md`
-- Use existing service patterns and dependency injection
-- Ensure proper error handling and logging
-- Add appropriate authorization checks based on user roles
-- Follow the coding standards and conventions of the project
+**Source:** [ARCHITECTURE.md - Workflow Orchestration Engine, Database Schema]
 
-### Testing Strategy
+- Entity models: `src/bmadServer.ApiService/Models/Workflows/WorkflowInstance.cs`
+- Service layer: `src/bmadServer.ApiService/Services/Workflows/WorkflowInstanceService.cs`
+- API endpoint: `src/bmadServer.ApiService/Endpoints/WorkflowsEndpoint.cs`
+- Use Entity Framework Core with Npgsql for PostgreSQL JSONB support
+- Follow RESTful API conventions established in Stories 2.1-2.2
 
-- Unit tests should cover business logic and edge cases
-- Integration tests should verify API endpoints and database interactions
-- Consider performance implications for database queries
-- Test error scenarios and validation rules
+### Technical Requirements
+
+**Framework Stack:**
+- .NET 8 with Aspire
+- Entity Framework Core 8 with Npgsql.EntityFrameworkCore.PostgreSQL
+- PostgreSQL JSONB for flexible StepData and Context storage
+
+**Database Schema:**
+```sql
+CREATE TABLE workflow_instances (
+    id UUID PRIMARY KEY,
+    workflow_definition_id VARCHAR(100) NOT NULL,
+    user_id UUID NOT NULL REFERENCES users(id),
+    current_step INT NOT NULL DEFAULT 0,
+    status VARCHAR(50) NOT NULL,
+    step_data JSONB,
+    context JSONB,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_workflow_instances_status ON workflow_instances(status);
+CREATE INDEX idx_workflow_instances_user ON workflow_instances(user_id);
+CREATE INDEX idx_workflow_instances_step_data ON workflow_instances USING GIN(step_data);
+```
+
+**State Machine Rules:**
+- Created → Running (first step starts)
+- Running → Paused, WaitingForInput, WaitingForApproval, Completed, Failed
+- Paused → Running, Cancelled
+- WaitingForInput → Running, Cancelled
+- WaitingForApproval → Running, Cancelled
+- Completed/Failed/Cancelled → Terminal (no transitions)
+
+### File Structure Requirements
+
+```
+src/bmadServer.ApiService/
+├── Models/
+│   └── Workflows/
+│       ├── WorkflowInstance.cs
+│       ├── WorkflowStatus.cs (enum)
+│       └── WorkflowEvent.cs
+├── Services/
+│   └── Workflows/
+│       ├── IWorkflowInstanceService.cs
+│       └── WorkflowInstanceService.cs
+├── Endpoints/
+│   └── WorkflowsEndpoint.cs
+└── Data/
+    └── Migrations/
+        └── XXX_CreateWorkflowTables.cs
+
+test/bmadServer.Tests/
+└── Services/
+    └── Workflows/
+        ├── WorkflowInstanceServiceTests.cs
+        └── WorkflowStateMachineTests.cs
+```
 
 ### Dependencies
 
-Review the acceptance criteria for dependencies on:
-- Other stories or epics that must be completed first
-- External packages or services that need to be configured
-- Database migrations that need to be created
+**From Story 4.1:**
+- WorkflowRegistry to validate workflowId
+- WorkflowDefinition model
 
-## Files to Create/Modify
+**NuGet Packages:**
+- Npgsql.EntityFrameworkCore.PostgreSQL (already in project from Story 1.2)
 
-Files will be determined during implementation based on:
-- Data models and entities needed
-- API endpoints required
-- Service layer components
-- Database migrations
-- Test files
+### Testing Requirements
 
+**Unit Tests Location:** `test/bmadServer.Tests/Services/Workflows/`
 
----
+**Test Coverage:**
+- State machine transition validation (all valid and invalid paths)
+- Event logging on state changes
+- JSONB serialization/deserialization
+- Error cases: invalid workflowId, unauthorized access
 
-## Aspire Development Standards
+**Integration Tests:**
+- End-to-end workflow creation via API
+- Database persistence verification
+- Authorization checks
 
-### PostgreSQL Connection Pattern
+### Integration Notes
 
-This story uses PostgreSQL configured in Story 1.2 via Aspire:
-- Connection string automatically injected from Aspire AppHost
-- Pattern: `builder.AddServiceDefaults();` (inherits PostgreSQL reference)
-- See Story 1.2 for AppHost configuration pattern
+**Depends On:**
+- Story 4.1: WorkflowRegistry for workflow validation
+- Story 2.1: User authentication and authorization
 
-### Project-Wide Standards
+**Used By:**
+- Story 4.3: Step execution will update WorkflowInstance.CurrentStep
+- Story 4.4: Pause/resume will transition states
+- Story 4.5: Cancellation will transition to Cancelled state
+- Story 4.7: Status API will query WorkflowInstance
 
-This story follows the Aspire-first development pattern:
-- **Reference:** [PROJECT-WIDE-RULES.md](../../../PROJECT-WIDE-RULES.md)
-- **Primary Documentation:** https://aspire.dev
-- **GitHub:** https://github.com/microsoft/aspire
+### References
 
----
+- [Source: _bmad-output/planning-artifacts/epics.md#Story 4.2]
+- [Source: ARCHITECTURE.md - Database Schema, State Management]
+- [Source: Stories 2.1-2.2 - Authentication patterns]
 
-## References
-- **Aspire Rules:** [PROJECT-WIDE-RULES.md](../../../PROJECT-WIDE-RULES.md)
-- **Aspire Docs:** https://aspire.dev
+## Dev Agent Record
 
-- Source: [epics.md - Story 4.2](../planning-artifacts/epics.md)
-- Architecture: [architecture.md](../planning-artifacts/architecture.md)
-- PRD: [prd.md](../planning-artifacts/prd.md)
+### Agent Model Used
+
+_To be filled by dev agent_
+
+### Debug Log References
+
+_To be filled by dev agent_
+
+### Completion Notes List
+
+_To be filled by dev agent_
+
+### File List
+
+_To be filled by dev agent_
