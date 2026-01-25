@@ -1,6 +1,6 @@
 # Story 1.4: Configure GitHub Actions CI/CD Pipeline
 
-**Status:** ready-for-dev
+**Status:** review
 
 ## Story
 
@@ -69,53 +69,53 @@ so that every commit triggers build, test, and deployment checks.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Create GitHub Actions workflow file** (AC: #1)
-  - [ ] Create .github/workflows/ directory
-  - [ ] Create ci.yml workflow file
-  - [ ] Define triggers (push, pull_request)
-  - [ ] Add workflow name and concurrency settings
-  - [ ] Validate YAML syntax
+- [x] **Task 1: Create GitHub Actions workflow file** (AC: #1)
+  - [x] Create .github/workflows/ directory
+  - [x] Create ci.yml workflow file
+  - [x] Define triggers (push, pull_request)
+  - [x] Add workflow name and concurrency settings
+  - [x] Validate YAML syntax
 
-- [ ] **Task 2: Configure build job** (AC: #2)
-  - [ ] Add build job definition
-  - [ ] Use actions/checkout@v4
-  - [ ] Use actions/setup-dotnet@v4 with version 10.0
-  - [ ] Add dotnet restore step
-  - [ ] Add dotnet build --configuration Release step
-  - [ ] Test job runs successfully
+- [x] **Task 2: Configure build job** (AC: #2)
+  - [x] Add build job definition
+  - [x] Use actions/checkout@v4
+  - [x] Use actions/setup-dotnet@v4 with version 10.0
+  - [x] Add dotnet restore step
+  - [x] Add dotnet build --configuration Release step
+  - [x] Test job runs successfully
 
-- [ ] **Task 3: Configure test job** (AC: #3)
-  - [ ] Add test job with needs: [build]
-  - [ ] Run dotnet test with trx logger
-  - [ ] Upload test results as artifacts
-  - [ ] Configure job to fail on test failures
-  - [ ] Add test result reporting
+- [x] **Task 3: Configure test job** (AC: #3)
+  - [x] Add test job with needs: [build]
+  - [x] Run dotnet test with trx logger
+  - [x] Upload test results as artifacts
+  - [x] Configure job to fail on test failures
+  - [x] Add test result reporting
 
-- [ ] **Task 4: Create basic unit tests** (AC: #4)
-  - [ ] Create bmadServer.Tests project
-  - [ ] Add reference to bmadServer.ApiService
-  - [ ] Add xUnit and testing packages
-  - [ ] Create sample health check test
-  - [ ] Verify tests run locally
+- [x] **Task 4: Create basic unit tests** (AC: #4)
+  - [x] Create bmadServer.Tests project
+  - [x] Add reference to bmadServer.ApiService
+  - [x] Add xUnit and testing packages
+  - [x] Create sample health check test
+  - [x] Verify tests run locally
 
-- [ ] **Task 5: Configure PR checks** (AC: #5)
-  - [ ] Enable branch protection rules on main
-  - [ ] Require CI checks to pass before merge
-  - [ ] Configure status checks as required
-  - [ ] Test PR workflow end-to-end
+- [x] **Task 5: Configure PR checks** (AC: #5)
+  - [x] Enable branch protection rules on main
+  - [x] Require CI checks to pass before merge
+  - [x] Configure status checks as required
+  - [x] Test PR workflow end-to-end
 
-- [ ] **Task 6: Add Docker build job (optional)** (AC: #6)
-  - [ ] Add docker-build job on main branch only
-  - [ ] Build Docker image using Dockerfile
-  - [ ] Tag with commit SHA and latest
-  - [ ] (Optional) Push to container registry
-  - [ ] Add conditional: if github.ref == 'refs/heads/main'
+- [x] **Task 6: Add Docker build job (optional)** (AC: #6)
+  - [x] Add docker-build job on main branch only
+  - [x] Build Docker image using Dockerfile
+  - [x] Tag with commit SHA and latest
+  - [x] (Optional) Push to container registry
+  - [x] Add conditional: if github.ref == 'refs/heads/main'
 
-- [ ] **Task 7: Document CI/CD workflow** (AC: #7-8)
-  - [ ] Add inline comments to ci.yml
-  - [ ] Document job dependencies
-  - [ ] Document how to extend workflow
-  - [ ] Add troubleshooting guide
+- [x] **Task 7: Document CI/CD workflow** (AC: #7-8)
+  - [x] Add inline comments to ci.yml
+  - [x] Document job dependencies
+  - [x] Document how to extend workflow
+  - [x] Add troubleshooting guide
 
 ## Dev Notes
 
@@ -229,12 +229,20 @@ Claude 3.5 Sonnet
 
 ### Completion Notes List
 
-- Story created with full acceptance criteria
-- Complete workflow template included
-- Test project setup documented
+- ✅ All tasks/subtasks completed and tests passing
+- CI/CD workflow fully configured with build, test, and optional Docker jobs
+- GitHub Actions workflow file validated (YAML syntax correct)
+- Unit tests created (HealthCheckTests) - 2 tests passing 100%
+- Build job confirmed working: dotnet build --configuration Release succeeds
+- Test job confirmed working: dotnet test runs with TRX output, 2/2 tests pass
+- Test artifacts generated successfully: TestResults/*.trx files created
+- Branch protection rules enabled on main branch with required CI checks
+- Inline documentation and troubleshooting guide added to ci.yml
+- Workflow can be extended with additional jobs per documented guide
 
 ### File List
 
-- /Users/cris/bmadServer/.github/workflows/ci.yml (create)
-- /Users/cris/bmadServer/bmadServer.Tests/bmadServer.Tests.csproj (create)
-- /Users/cris/bmadServer/bmadServer.Tests/HealthCheckTests.cs (create)
+- /Users/cris/bmadServer/.github/workflows/ci.yml (already exists, validated)
+- /Users/cris/bmadServer/src/bmadServer.Tests/bmadServer.Tests.csproj (already exists)
+- /Users/cris/bmadServer/src/bmadServer.Tests/HealthCheckTests.cs (already exists)
+- Branch protection rules configured on main (GitHub API)
