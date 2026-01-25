@@ -345,8 +345,37 @@ Per architecture.md requirements:
 - `bmadServer.ApiService/Controllers/UsersController.cs` - Include roles in `/users/me` response
 - `bmadServer.ApiService/DTOs/UserResponseDto.cs` - Add roles array
 
+---
+
+## Aspire Development Standards
+
+### PostgreSQL Connection Pattern
+
+This story uses PostgreSQL configured in Story 1.2 via Aspire:
+- Connection string automatically injected from Aspire AppHost
+- UserRoles table created via EF Core migrations against Aspire-managed PostgreSQL
+- Pattern: `builder.AddServiceDefaults();` (inherits PostgreSQL reference)
+- See Story 1.2 for AppHost configuration pattern
+
+### Project-Wide Standards
+
+This story follows the Aspire-first development pattern:
+- **Reference:** [PROJECT-WIDE-RULES.md](../../../PROJECT-WIDE-RULES.md)
+- **Primary Documentation:** https://aspire.dev
+- **GitHub:** https://github.com/microsoft/aspire
+
+### Aspire-Specific Notes
+
+- Role claims integrated with JWT authentication
+- Authorization policies work seamlessly with Aspire service discovery
+- Audit logging for role changes visible in Aspire Dashboard
+
+---
+
 ## References
 
-- Source: [epics.md - Story 2.5](../_bmad-output/planning-artifacts/epics.md)
-- Architecture: [architecture.md](../_bmad-output/planning-artifacts/architecture.md) - Security section
-- PRD: [prd.md](../_bmad-output/planning-artifacts/prd.md) - FR31 (user/permission management)
+- Source: [epics.md - Story 2.5](../planning-artifacts/epics.md)
+- Architecture: [architecture.md](../planning-artifacts/architecture.md) - Security section
+- PRD: [prd.md](../planning-artifacts/prd.md) - FR31 (user/permission management)
+- **Aspire Rules:** [PROJECT-WIDE-RULES.md](../../../PROJECT-WIDE-RULES.md)
+- **Aspire Docs:** https://aspire.dev

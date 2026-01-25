@@ -396,8 +396,38 @@ Per architecture.md requirements:
 - `bmadServer.ApiService/Program.cs` - Register SessionService, SessionCleanupService
 - `bmadServer.ApiService/Hubs/ChatHub.cs` - Add OnConnectedAsync/OnDisconnectedAsync (created in Epic 3)
 
+---
+
+## Aspire Development Standards
+
+### PostgreSQL Connection Pattern
+
+This story uses PostgreSQL configured in Story 1.2 via Aspire:
+- Connection string automatically injected from Aspire AppHost
+- Sessions table with JSONB created via EF Core migrations against Aspire-managed PostgreSQL
+- GIN index for JSONB queries leverages PostgreSQL native features
+- Pattern: `builder.AddServiceDefaults();` (inherits PostgreSQL reference)
+- See Story 1.2 for AppHost configuration pattern
+
+### Project-Wide Standards
+
+This story follows the Aspire-first development pattern:
+- **Reference:** [PROJECT-WIDE-RULES.md](../../../PROJECT-WIDE-RULES.md)
+- **Primary Documentation:** https://aspire.dev
+- **GitHub:** https://github.com/microsoft/aspire
+
+### Aspire-Specific Notes
+
+- Background services (SessionCleanupService) run within Aspire orchestration
+- Health checks inherited from `ServiceDefaults`
+- Session recovery visible in Aspire Dashboard tracing
+
+---
+
 ## References
 
-- Source: [epics.md - Story 2.4](../_bmad-output/planning-artifacts/epics.md)
-- Architecture: [architecture.md](../_bmad-output/planning-artifacts/architecture.md) - Data architecture, JSONB section
-- PRD: [prd.md](../_bmad-output/planning-artifacts/prd.md) - FR16, FR17, NFR6
+- Source: [epics.md - Story 2.4](../planning-artifacts/epics.md)
+- Architecture: [architecture.md](../planning-artifacts/architecture.md) - Data architecture, JSONB section
+- PRD: [prd.md](../planning-artifacts/prd.md) - FR16, FR17, NFR6
+- **Aspire Rules:** [PROJECT-WIDE-RULES.md](../../../PROJECT-WIDE-RULES.md)
+- **Aspire Docs:** https://aspire.dev

@@ -1,0 +1,184 @@
+name: CI/CD Pipeline
+
+# Trigger on push and pull requests to all branches
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
+# Cancel in-progress workflows when a new commit is pushed to the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================================================
+  # BUILD JOB: Compile the .NET solution
+  # ============================================================================
+  # This job checks out the code, sets up the .NET SDK, restores dependencies,
+  # and builds the solution in Release configuration. All subsequent jobs depend
+  # on this job succeeding.
+  # ============================================================================
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Checkout the repository code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Setup the .NET SDK (version 10.0.x as per project requirements)
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # Step 3: Restore NuGet dependencies
+      - name: Restore dependencies
+        run: dotnet restore
+
+      # Step 4: Build the solution in Release configuration
+      # Using --no-restore to skip restore (already done in step 3)
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+  # ============================================================================
+  # TEST JOB: Run all unit tests and report results
+  # ============================================================================
+  # This job runs only after the build job succeeds (needs: build).
+  # It runs all unit tests with TRX (Test Results XML) logging format and
+  # uploads the test results as artifacts for later analysis.
+  # ============================================================================
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      # Step 1: Checkout the repository code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Setup the .NET SDK
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # Step 3: Restore NuGet dependencies
+      - name: Restore dependencies
+        run: dotnet restore
+
+      # Step 4: Run unit tests with TRX logger
+      # TRX format allows GitHub to parse and display test results
+      # Tests will fail the job if any tests fail (default behavior)
+      # Timeout is set to 5 minutes to prevent hanging tests
+      - name: Run tests
+        run: timeout 300 dotnet test --configuration Release --no-restore --logger trx --results-directory TestResults
+        timeout-minutes: 5
+
+      # Step 5: Upload test results as artifacts (runs even if tests fail)
+      # This allows developers to download and analyze test results from the UI
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ github.run_id }}
+          path: TestResults/*.trx
+
+  # ============================================================================
+  # DOCKER BUILD JOB (OPTIONAL): Build and tag Docker image on main branch
+  # ============================================================================
+  # This job only runs on the main branch after both build and test succeed.
+  # It builds a Docker image tagged with the commit SHA and 'latest'.
+  # 
+  # To enable Docker push to a container registry, uncomment the docker-push
+  # step below and configure your Docker registry credentials in GitHub Secrets.
+  # ============================================================================
+  docker:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [build, test]
+    # Only run this job on main branch to avoid building unnecessary images
+    if: github.ref == 'refs/heads/main'
+    steps:
+      # Step 1: Checkout the repository code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Build Docker image
+      # Tags the image with both the commit SHA (for traceability)
+      # and 'latest' (for convenient reference to the latest build)
+      - name: Build Docker image
+        run: |
+          docker build -t bmadserver:${{ github.sha }} -f src/bmadServer.ApiService/Dockerfile .
+          docker tag bmadserver:${{ github.sha }} bmadserver:latest
+
+      # Step 3 (OPTIONAL): Push Docker image to container registry
+      # Uncomment the code below to enable pushing to a registry like Docker Hub
+      # or GitHub Container Registry. You'll need to configure:
+      # - DOCKER_REGISTRY_URL (e.g., ghcr.io/your-org)
+      # - DOCKER_USERNAME (GitHub Actions secret)
+      # - DOCKER_PASSWORD (GitHub Actions secret)
+      #
+      # - name: Log in to Docker Registry
+      #   env:
+      #     REGISTRY_URL: ${{ secrets.DOCKER_REGISTRY_URL }}
+      #     REGISTRY_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      #     REGISTRY_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      #   run: |
+      #     echo "${{ env.REGISTRY_PASSWORD }}" | docker login -u "${{ env.REGISTRY_USERNAME }}" --password-stdin "${{ env.REGISTRY_URL }}"
+      #
+      # - name: Push Docker image
+      #   run: |
+      #     docker push bmadserver:${{ github.sha }}
+      #     docker push bmadserver:latest
+
+# ============================================================================
+# WORKFLOW EXTENSION GUIDE
+# ============================================================================
+# To add a new job to this workflow:
+#
+# 1. Add a new job block:
+#    ```yaml
+#    new-job:
+#      name: Display Name
+#      runs-on: ubuntu-latest
+#      needs: [build]  # List dependencies (if any)
+#      steps:
+#        - uses: actions/checkout@v4
+#        - run: echo "Your step here"
+#    ```
+#
+# 2. Add job dependencies if needed with `needs:` keyword
+#
+# 3. Use conditional execution with `if:` for branch-specific jobs
+#
+# For more information, see:
+# - https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions
+# - https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows
+# ============================================================================
+
+# ============================================================================
+# TROUBLESHOOTING GUIDE
+# ============================================================================
+# 
+# Q: Build job fails with "dotnet not found"
+# A: Ensure actions/setup-dotnet@v4 is before the dotnet commands
+#
+# Q: Tests fail locally but pass in CI
+# A: Check that test project is referenced in the solution file (bmadServer.sln)
+#    and that all test dependencies are in the csproj file
+#
+# Q: Docker build fails with "Dockerfile not found"
+# A: Verify the Dockerfile path in the `docker build` command matches your
+#    project structure. Update the path if needed.
+#
+# Q: PR checks not blocking merge
+# A: Go to GitHub Repo Settings > Branches > Branch Protection Rules
+#    Enable "Require status checks to pass before merging"
+#    Select "build" and "test" as required checks
+#
+# Q: Artifacts not uploading
+# A: Check that the path in `upload-artifact` matches where tests create files
+#    Verify `dotnet test --logger trx` is in your test command

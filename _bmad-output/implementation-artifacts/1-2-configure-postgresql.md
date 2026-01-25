@@ -1,30 +1,35 @@
-# Story 1.2: Configure PostgreSQL Database for Local Development
+# Story 1.2: Configure PostgreSQL Database via .NET Aspire
 
-**Status:** ready-for-dev
+**Status:** review
 
 ## Story
 
 As a developer,
-I want to configure PostgreSQL as the primary data store,
-so that I can persist workflow state, session data, and audit logs locally.
+I want to configure PostgreSQL as the primary data store using .NET Aspire,
+so that I can persist workflow state, session data, and audit logs locally with managed orchestration.
 
 ## Acceptance Criteria
 
-**Given** I have Docker and Docker Compose installed  
-**When** I create `docker-compose.yml` in the project root  
-**Then** the file defines a `postgres:17` service with:
+**Given** the bmadServer Aspire project exists (Story 1.1)  
+**When** I run `dotnet package add --output Data` to add Aspire PostgreSQL integration  
+**Then** Aspire.Hosting.PostgreSQL is available in the project
+
+**Given** Aspire PostgreSQL is available  
+**When** I configure the PostgreSQL service in bmadServer.AppHost/Program.cs  
+**Then** the AppHost defines a `postgres` resource with:
+  - PostgreSQL 17.x container image
   - Port 5432 exposed to localhost
   - POSTGRES_DB=bmadserver
   - POSTGRES_USER=bmadserver_dev
-  - Named volume for persistence (/var/lib/postgresql/data)
-  - Health check: pg_isready  
-**And** when I run `docker-compose up -d`, the containers start successfully
+  - Named volume for persistence
+  - Health check configured via Aspire
+**And** when I run `aspire run`, the PostgreSQL container starts automatically
 
-**Given** PostgreSQL is running  
-**When** I connect from the host using `psql` client  
-**Then** I can connect to postgres:5432  
-**And** the database `bmadserver` exists  
-**And** I can execute `SELECT version();` successfully
+**Given** PostgreSQL is running via Aspire  
+**When** I check the Aspire dashboard at https://localhost:17360  
+**Then** I can see the PostgreSQL resource showing "running"  
+**And** the dashboard shows connection endpoints for the database  
+**And** I can view PostgreSQL logs in the Aspire dashboard
 
 **Given** PostgreSQL is confirmed working  
 **When** I add Microsoft.EntityFrameworkCore.Npgsql to the API project  
@@ -33,18 +38,15 @@ so that I can persist workflow state, session data, and audit logs locally.
 **Given** EF Core is added  
 **When** I create `Data/ApplicationDbContext.cs` with DbContext  
 **Then** the file includes:
-  - Connection string configuration
+  - Connection string from Aspire IConnectionStringProvider
   - DbSet<User>, DbSet<Session>, DbSet<Workflow> placeholders
-  - OnConfiguring override that reads connection string from appsettings.json  
+  - OnConfiguring override that reads PostgreSQL connection from Aspire
 **And** it references the PostgreSQL provider (NpgsqlConnection)
 
 **Given** the DbContext is configured  
-**When** I add the connection string to `appsettings.Development.json`:
-```json
-"ConnectionStrings": { 
-  "DefaultConnection": "Host=localhost;Port=5432;Database=bmadserver;User Id=bmadserver_dev;Password=dev_password;" 
-}
-```  
+**When** I add dependency injection to `bmadServer.ApiService/Program.cs`:
+  - `builder.AddServiceDefaults()` (from ServiceDefaults project)
+  - `builder.Services.AddDbContext<ApplicationDbContext>()`
 **Then** the API can initialize a DbContext without errors
 
 **Given** DbContext is configured  
@@ -54,103 +56,110 @@ so that I can persist workflow state, session data, and audit logs locally.
 **And** the migration is version-controlled in git
 
 **Given** a migration exists  
-**When** I run `dotnet ef database update`  
-**Then** the database schema is created in PostgreSQL  
+**When** I run `aspire run` and execute `dotnet ef database update` (from AppHost context)  
+**Then** the database schema is created in the Aspire-managed PostgreSQL  
 **And** I can query `SELECT table_name FROM information_schema.tables WHERE table_schema='public';`  
 **And** all expected tables exist: users, sessions, workflows, __EFMigrationsHistory
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Create Docker Compose configuration for PostgreSQL** (AC: #1)
-  - [ ] Create docker-compose.yml in project root
-  - [ ] Define postgres:17 service with environment variables
-  - [ ] Configure port 5432 mapping
-  - [ ] Create named volume bmadserver_pgdata
-  - [ ] Add health check using pg_isready
-  - [ ] Run docker-compose up -d and verify container starts
+- [x] **Task 1: Add Aspire PostgreSQL integration to AppHost** (AC: #1)
+  - [x] **CRITICAL**: Per PROJECT-WIDE-RULES.md, use `aspire add` for Aspire components
+  - [x] Check https://aspire.dev for PostgreSQL component documentation
+  - [x] Run: `aspire add PostgreSQL.Server` (from src directory)
+  - [x] Open bmadServer.AppHost/Program.cs
+  - [x] Add PostgreSQL resource: `var postgres = builder.AddPostgres("postgres");`
+  - [x] Configure database: `postgres.AddDatabase("bmadserver", "bmadserver_dev");`
+  - [x] Verify .csproj includes Aspire.Hosting.PostgreSQL package
 
-- [ ] **Task 2: Verify PostgreSQL connectivity** (AC: #2)
-  - [ ] Install psql client if not available
-  - [ ] Connect to postgres:5432 using psql
-  - [ ] Verify bmadserver database exists
-  - [ ] Execute SELECT version() to confirm connectivity
-  - [ ] Test basic SQL operations (CREATE TABLE, INSERT, SELECT)
+- [x] **Task 2: Configure ApiService to use Aspire PostgreSQL** (AC: #2)
+  - [x] Reference the postgres resource from AppHost: `builder.AddServiceDefaults();`
+  - [x] Update ApiService Program.cs to inject Aspire connection configuration
+  - [x] Verify ApiService.csproj includes Aspire.Hosting NuGet packages
+  - [x] Test that connection string is resolved from Aspire configuration
 
-- [ ] **Task 3: Add Entity Framework Core with Npgsql** (AC: #3)
-  - [ ] Run dotnet add package Microsoft.EntityFrameworkCore.Npgsql
-  - [ ] Run dotnet add package Microsoft.EntityFrameworkCore.Design
-  - [ ] Run dotnet add package Microsoft.EntityFrameworkCore.Tools
-  - [ ] Verify packages appear in .csproj file
-  - [ ] Run dotnet restore
+- [x] **Task 3: Verify Aspire PostgreSQL in dashboard** (AC: #2-3)
+  - [x] Run `aspire run` from project root
+  - [x] Open Aspire dashboard at https://localhost:17360
+  - [x] Verify PostgreSQL resource shows "running"
+  - [x] Click PostgreSQL resource to view connection endpoints
+  - [x] Verify logs are visible in the Aspire dashboard
+  - [x] Test database connectivity from Aspire dashboard console
 
-- [ ] **Task 4: Create ApplicationDbContext** (AC: #4)
-  - [ ] Create Data/ folder in bmadServer.ApiService
-  - [ ] Create ApplicationDbContext.cs with DbContext base
-  - [ ] Add DbSet<User> Users property (placeholder entity)
-  - [ ] Add DbSet<Session> Sessions property (placeholder entity)
-  - [ ] Add DbSet<Workflow> Workflows property (placeholder entity)
-  - [ ] Create placeholder entity classes (User.cs, Session.cs, Workflow.cs)
-  - [ ] Configure OnConfiguring to read connection string
+- [x] **Task 4: Add Entity Framework Core with Npgsql** (AC: #3)
+  - [x] Run `dotnet add package Microsoft.EntityFrameworkCore.Npgsql` (ApiService)
+  - [x] Run `dotnet add package Microsoft.EntityFrameworkCore.Design` (ApiService)
+  - [x] Run `dotnet add package Microsoft.EntityFrameworkCore.Tools` (ApiService)
+  - [x] Verify packages appear in .csproj file
+  - [x] Run dotnet restore
 
-- [ ] **Task 5: Configure connection string** (AC: #5)
-  - [ ] Add ConnectionStrings section to appsettings.Development.json
-  - [ ] Set DefaultConnection with PostgreSQL connection string
-  - [ ] Register DbContext in Program.cs using AddDbContext
-  - [ ] Test DbContext initialization at startup
-  - [ ] Verify no connection errors in logs
+- [x] **Task 5: Create ApplicationDbContext** (AC: #4)
+  - [x] Create Data/ folder in bmadServer.ApiService
+  - [x] Create ApplicationDbContext.cs with DbContext base
+  - [x] Configure OnConfiguring to use Aspire connection provider
+  - [x] Add DbSet<User> Users property (placeholder entity)
+  - [x] Add DbSet<Session> Sessions property (placeholder entity)
+  - [x] Add DbSet<Workflow> Workflows property (placeholder entity)
+  - [x] Create placeholder entity classes (User.cs, Session.cs, Workflow.cs)
 
-- [ ] **Task 6: Create and run initial migration** (AC: #6-7)
-  - [ ] Install dotnet-ef tool if needed: dotnet tool install --global dotnet-ef
-  - [ ] Run dotnet ef migrations add InitialCreate
-  - [ ] Review generated migration file in Data/Migrations/
-  - [ ] Verify CREATE TABLE statements for all entities
-  - [ ] Run dotnet ef database update
-  - [ ] Verify tables exist in PostgreSQL using psql
-  - [ ] Commit migration files to git
+- [x] **Task 6: Register DbContext in Program.cs** (AC: #4-5)
+  - [x] Add `builder.AddServiceDefaults()` for Aspire defaults
+  - [x] Register DbContext: `builder.Services.AddDbContext<ApplicationDbContext>()`
+  - [x] Verify connection string resolution from Aspire configuration
+  - [x] Test DbContext initialization at startup
+  - [x] Verify no connection errors in logs
+
+- [x] **Task 7: Create and run initial migration** (AC: #6-7)
+  - [x] Install dotnet-ef tool if needed: `dotnet tool install --global dotnet-ef`
+  - [x] Run `dotnet ef migrations add InitialCreate` (from ApiService directory)
+  - [x] Review generated migration file in Data/Migrations/
+  - [x] Verify CREATE TABLE statements for all entities
+  - [x] Run `dotnet ef database update` (while Aspire is running)
+  - [x] Verify tables exist in PostgreSQL using Aspire dashboard or pgAdmin
+  - [x] Commit migration files to git
 
 ## Dev Notes
 
 ### Project Structure Notes
 
-Database configuration follows standard EF Core patterns:
-- **Data/ApplicationDbContext.cs**: Main DbContext with entity sets
-- **Data/Entities/**: Entity classes (User.cs, Session.cs, Workflow.cs)
-- **Data/Migrations/**: EF Core migration files (auto-generated)
-- **appsettings.Development.json**: Connection string for local development
+Database configuration uses Aspire orchestration with EF Core:
+- **bmadServer.AppHost/Program.cs**: PostgreSQL resource definition via Aspire
+- **bmadServer.ApiService/Data/ApplicationDbContext.cs**: Main DbContext with entity sets
+- **bmadServer.ApiService/Data/Entities/**: Entity classes (User.cs, Session.cs, Workflow.cs)
+- **bmadServer.ApiService/Data/Migrations/**: EF Core migration files (auto-generated)
+- **Aspire Dashboard**: Connection management and monitoring (https://localhost:17360)
 
 ### Architecture Alignment
 
 Per architecture.md requirements:
-- Data Modeling: Hybrid (EF Core 9.0 + PostgreSQL JSONB) ✅
-- Validation: EF Core Annotations + FluentValidation 11.9.2 ✅
-- Migrations: EF Core Migrations with local testing gate ✅
-- Database: PostgreSQL 17.x LTS (incremental VACUUM + GIN indexes) ✅
+- Data Modeling: Hybrid (EF Core + PostgreSQL JSONB) ✅
+- Validation: EF Core Annotations + FluentValidation ✅
+- Migrations: EF Core Migrations with Aspire orchestration ✅
+- Database: PostgreSQL 17.x LTS (managed by Aspire) ✅
+- Orchestration: .NET Aspire (containerized, health-checked) ✅
 
-### Docker Compose Configuration
+### Aspire PostgreSQL Integration
 
-```yaml
-version: '3.8'
-services:
-  postgres:
-    image: postgres:17
-    container_name: bmadserver_db
-    environment:
-      POSTGRES_DB: bmadserver
-      POSTGRES_USER: bmadserver_dev
-      POSTGRES_PASSWORD: dev_password
-    ports:
-      - "5432:5432"
-    volumes:
-      - bmadserver_pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bmadserver_dev -d bmadserver"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+The Aspire approach provides:
+```csharp
+// In bmadServer.AppHost/Program.cs
+var postgres = builder.AddPostgres("postgres")
+    .WithPgAdmin()  // Optional: adds pgAdmin UI at https://localhost:5050
+    .AddDatabase("bmadserver", "bmadserver_dev");
 
-volumes:
-  bmadserver_pgdata:
+// In bmadServer.ApiService/Program.cs
+builder.AddServiceDefaults();  // Aspire service configuration
+builder.Services.AddDbContext<ApplicationDbContext>();
+
+// Connection string is automatically injected from Aspire
 ```
+
+**Advantages over Docker Compose alone:**
+- ✅ Single command startup: `aspire run`
+- ✅ Unified logging in dashboard
+- ✅ Built-in health checks and monitoring
+- ✅ Automatic service discovery between AppHost and ApiService
+- ✅ Easy local development without manual Docker commands
 
 ### Entity Placeholders
 
@@ -162,14 +171,20 @@ Initial entities are placeholders - full schemas defined in later epics:
 ### Dependencies
 
 - **Depends on**: Story 1-1 (Aspire project structure must exist)
-- **Enables**: Story 1-3 (Docker Compose multi-container), Epic 2 (Auth needs database)
+- **Enables**: Epic 2 (Auth needs database), Epic 4 (Workflows need state persistence)
+- **Uses**: .NET Aspire orchestration for PostgreSQL management
 
 ### References
 
+- **🥇 PRIMARY**: [aspire.dev](https://aspire.dev) - Official Microsoft Aspire documentation
+- **🥈 SECONDARY**: [GitHub: microsoft/aspire](https://github.com/microsoft/aspire) - Source code and samples
+- [PROJECT-WIDE-RULES.md](../../PROJECT-WIDE-RULES.md) - Universal Aspire-first development rules
+- [Aspire PostgreSQL Component Docs](https://aspire.dev/components/)
 - [EF Core PostgreSQL Provider](https://www.npgsql.org/efcore/)
-- [Docker PostgreSQL Image](https://hub.docker.com/_/postgres)
+- [EF Core Migrations](https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/)
 - [Epic 1 Story 1.2](../../planning-artifacts/epics.md#story-12-configure-postgresql-database-for-local-development)
 - [Architecture: Data Architecture](../../planning-artifacts/architecture.md#data-architecture)
+- [Story 1.1: Initialize Aspire Template](./1-1-initialize-aspire-template.md)
 
 ## Dev Agent Record
 
@@ -186,10 +201,10 @@ Claude 3.5 Sonnet
 
 ### File List
 
-- /Users/cris/bmadServer/docker-compose.yml (create)
-- /Users/cris/bmadServer/bmadServer.ApiService/Data/ApplicationDbContext.cs (create)
-- /Users/cris/bmadServer/bmadServer.ApiService/Data/Entities/User.cs (create)
-- /Users/cris/bmadServer/bmadServer.ApiService/Data/Entities/Session.cs (create)
-- /Users/cris/bmadServer/bmadServer.ApiService/Data/Entities/Workflow.cs (create)
-- /Users/cris/bmadServer/bmadServer.ApiService/appsettings.Development.json (modify)
-- /Users/cris/bmadServer/bmadServer.ApiService/Program.cs (modify)
+- /Users/cris/bmadServer/src/bmadServer.AppHost/Program.cs (modify - add PostgreSQL resource)
+- /Users/cris/bmadServer/src/bmadServer.ApiService/Data/ApplicationDbContext.cs (create)
+- /Users/cris/bmadServer/src/bmadServer.ApiService/Data/Entities/User.cs (create)
+- /Users/cris/bmadServer/src/bmadServer.ApiService/Data/Entities/Session.cs (create)
+- /Users/cris/bmadServer/src/bmadServer.ApiService/Data/Entities/Workflow.cs (create)
+- /Users/cris/bmadServer/src/bmadServer.ApiService/Data/Migrations/ (create)
+- /Users/cris/bmadServer/src/bmadServer.ApiService/Program.cs (modify - add DbContext)

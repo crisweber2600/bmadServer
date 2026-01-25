@@ -227,8 +227,38 @@ Per architecture.md requirements:
 - `bmadServer.ApiService/Program.cs` - Register services, validators
 - `bmadServer.ApiService/bmadServer.ApiService.csproj` - Add NuGet packages
 
+---
+
+## Aspire Development Standards
+
+### PostgreSQL Connection Pattern
+
+This story uses PostgreSQL configured in Story 1.2 via Aspire:
+- Connection string automatically injected from Aspire AppHost
+- Pattern: `builder.AddServiceDefaults();` (inherits PostgreSQL reference)
+- EF Core migrations run against Aspire-managed PostgreSQL
+- See Story 1.2 for AppHost configuration pattern
+
+### Project-Wide Standards
+
+This story follows the Aspire-first development pattern:
+- **Reference:** [PROJECT-WIDE-RULES.md](../../../PROJECT-WIDE-RULES.md)
+- **Primary Documentation:** https://aspire.dev
+- **GitHub:** https://github.com/microsoft/aspire
+
+### Aspire-Specific Notes
+
+- Database connection string auto-injected via `IConnectionStringProvider`
+- Health checks inherited from `ServiceDefaults`
+- Structured logging via OpenTelemetry (Aspire Dashboard visible at https://localhost:17360)
+- No manual environment variables needed - Aspire handles service discovery
+
+---
+
 ## References
 
-- Source: [epics.md - Story 2.1](../_bmad-output/planning-artifacts/epics.md)
-- Architecture: [architecture.md](../_bmad-output/planning-artifacts/architecture.md) - Authentication section
-- PRD: [prd.md](../_bmad-output/planning-artifacts/prd.md) - FR16, FR17
+- Source: [epics.md - Story 2.1](../planning-artifacts/epics.md)
+- Architecture: [architecture.md](../planning-artifacts/architecture.md) - Authentication section
+- PRD: [prd.md](../planning-artifacts/prd.md) - FR16, FR17
+- **Aspire Rules:** [PROJECT-WIDE-RULES.md](../../../PROJECT-WIDE-RULES.md)
+- **Aspire Docs:** https://aspire.dev

@@ -1,5 +1,29 @@
 # Story 1.5: Set Up Prometheus and Grafana Monitoring Stack
 
+**Status:** cancelled
+
+## Cancellation Reason
+
+This story has been **superseded by .NET Aspire built-in monitoring** implemented in Stories 1.1 and 1.2.
+
+**Why?**
+- .NET Aspire (Story 1.1) includes **integrated distributed tracing and structured logging** with OpenTelemetry
+- Aspire provides the **Aspire Dashboard** (https://localhost:17360) with:
+  - Real-time service status monitoring
+  - Structured logs with full context
+  - Distributed trace viewing
+  - Metric streaming visualization
+  - Resource resource health and performance
+- Adding Prometheus + Grafana on top of Aspire would duplicate telemetry infrastructure
+- Aspire's built-in dashboard is more developer-friendly for local development
+
+**Future Consideration:**
+- For **production deployments** (beyond MVP), Prometheus + Grafana *may* be reconsidered for:
+  - Long-term metric retention (Aspire dashboard is session-based)
+  - Custom alerting rules
+  - Multi-instance monitoring across deployment clusters
+- For **MVP development**, Aspire Dashboard + structured logging meet all monitoring needs
+
 **Status:** ready-for-dev
 
 ## Story

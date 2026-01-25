@@ -478,8 +478,37 @@ Per architecture.md requirements:
 - `bmadServer.Web/src/pages/Login.tsx` - Display timeout message
 - `bmadServer.Web/src/App.tsx` - Integrate IdleTimeoutWarningModal
 
+---
+
+## Aspire Development Standards
+
+### PostgreSQL Connection Pattern
+
+This story uses PostgreSQL configured in Story 1.2 via Aspire:
+- Connection string automatically injected from Aspire AppHost
+- Session LastActivityAt updates against Aspire-managed PostgreSQL
+- Pattern: `builder.AddServiceDefaults();` (inherits PostgreSQL reference)
+- See Story 1.2 for AppHost configuration pattern
+
+### Project-Wide Standards
+
+This story follows the Aspire-first development pattern:
+- **Reference:** [PROJECT-WIDE-RULES.md](../../../PROJECT-WIDE-RULES.md)
+- **Primary Documentation:** https://aspire.dev
+- **GitHub:** https://github.com/microsoft/aspire
+
+### Aspire-Specific Notes
+
+- ActivityTrackingMiddleware runs within Aspire orchestration
+- Session timeout events logged to OpenTelemetry (visible in Aspire Dashboard)
+- Configuration via appsettings works with Aspire environment management
+
+---
+
 ## References
 
-- Source: [epics.md - Story 2.6](../_bmad-output/planning-artifacts/epics.md)
-- Architecture: [architecture.md](../_bmad-output/planning-artifacts/architecture.md) - Session management, security
-- PRD: [prd.md](../_bmad-output/planning-artifacts/prd.md) - NFR15 (2 min resume)
+- Source: [epics.md - Story 2.6](../planning-artifacts/epics.md)
+- Architecture: [architecture.md](../planning-artifacts/architecture.md) - Session management, security
+- PRD: [prd.md](../planning-artifacts/prd.md) - NFR15 (2 min resume)
+- **Aspire Rules:** [PROJECT-WIDE-RULES.md](../../../PROJECT-WIDE-RULES.md)
+- **Aspire Docs:** https://aspire.dev
