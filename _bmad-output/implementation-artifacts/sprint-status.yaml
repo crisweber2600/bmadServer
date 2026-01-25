@@ -108,7 +108,7 @@ development_status:
   6-2-decision-version-history: ready-for-dev
   6-3-decision-locking-mechanism: ready-for-dev
   6-4-decision-review-workflow: ready-for-dev
-  6-5-conflict-detection-resolution: backlog
+  6-5-conflict-detection-resolution: ready-for-dev
   epic-6-retrospective: optional
 
   # =============================================
