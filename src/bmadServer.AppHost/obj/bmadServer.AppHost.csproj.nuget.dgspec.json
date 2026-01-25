@@ -55,6 +55,10 @@
               "version": "[13.1.0, )",
               "autoReferenced": true
             },
+            "Aspire.Hosting.JavaScript": {
+              "target": "Package",
+              "version": "[13.1.0, )"
+            },
             "Aspire.Hosting.Orchestration.osx-arm64": {
               "target": "Package",
               "version": "[13.1.0, )",
