@@ -126,7 +126,7 @@ development_status:
   # EPIC 8: Persona Translation & Language Adaptation
   # ==================================================
   epic-8: done
-  8-1-persona-profile-configuration: in-progress
+  8-1-persona-profile-configuration: review
   8-2-business-language-translation: review
   8-3-technical-language-mode: review
   8-4-in-session-persona-switching: review
