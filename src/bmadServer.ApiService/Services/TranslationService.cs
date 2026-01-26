@@ -9,19 +9,28 @@ namespace bmadServer.ApiService.Services;
 public class TranslationService : ITranslationService
 {
     private readonly ApplicationDbContext _dbContext;
+    private readonly IContextAnalysisService _contextAnalysisService;
     private readonly ILogger<TranslationService> _logger;
     private Dictionary<string, string>? _translationCache;
     private DateTime _cacheLastUpdated = DateTime.MinValue;
     private readonly TimeSpan _cacheExpiry = TimeSpan.FromMinutes(5);
 
-    public TranslationService(ApplicationDbContext dbContext, ILogger<TranslationService> logger)
+    public TranslationService(
+        ApplicationDbContext dbContext, 
+        IContextAnalysisService contextAnalysisService,
+        ILogger<TranslationService> logger)
     {
         _dbContext = dbContext;
+        _contextAnalysisService = contextAnalysisService;
         _logger = logger;
     }
 
-    public async Task<TranslationResult> TranslateToBusinessLanguageAsync(string technicalContent, PersonaType personaType)
+    public async Task<TranslationResult> TranslateToBusinessLanguageAsync(string technicalContent, PersonaType personaType, string? workflowStep = null)
     {
+        // Analyze context
+        var context = _contextAnalysisService.AnalyzeContext(technicalContent, workflowStep);
+
+        // Technical persona: always return original
         if (personaType == PersonaType.Technical)
         {
             return new TranslationResult
@@ -29,11 +38,18 @@ public class TranslationService : ITranslationService
                 Content = technicalContent,
                 OriginalContent = technicalContent,
                 WasTranslated = false,
-                PersonaType = personaType
+                PersonaType = personaType,
+                Context = context,
+                AdaptationReason = "Technical persona: no translation applied"
             };
         }
 
-        if (personaType == PersonaType.Business || personaType == PersonaType.Hybrid)
+        // Business persona: always translate
+        // Hybrid persona: translate based on context
+        bool shouldTranslate = personaType == PersonaType.Business || 
+                               (personaType == PersonaType.Hybrid && _contextAnalysisService.ShouldTranslateForHybrid(context));
+
+        if (shouldTranslate)
         {
             await EnsureCacheLoadedAsync();
             
@@ -45,16 +61,17 @@ public class TranslationService : ITranslationService
                     Content = technicalContent,
                     OriginalContent = technicalContent,
                     WasTranslated = false,
-                    PersonaType = personaType
+                    PersonaType = personaType,
+                    Context = context,
+                    AdaptationReason = "No translation mappings available"
                 };
             }
 
             var translatedContent = technicalContent;
 
-            // Sort by length descending to replace longer phrases first (e.g., "409 Conflict" before "API")
+            // Sort by length descending to replace longer phrases first
             foreach (var (technicalTerm, businessTerm) in _translationCache.OrderByDescending(kvp => kvp.Key.Length))
             {
-                // Use word boundaries for whole-word matching to avoid partial replacements
                 var pattern = $@"\b{Regex.Escape(technicalTerm)}\b";
                 translatedContent = Regex.Replace(
                     translatedContent,
@@ -65,6 +82,10 @@ public class TranslationService : ITranslationService
             }
 
             var wasTranslated = translatedContent != technicalContent;
+            var adaptationReason = personaType == PersonaType.Hybrid
+                ? $"Hybrid mode: {context.AdaptationReason} - translation applied"
+                : $"Business persona: translation applied";
+
             _logger.LogDebug("Translated content for {PersonaType} persona (Changed: {WasTranslated})", personaType, wasTranslated);
             
             return new TranslationResult
@@ -72,16 +93,21 @@ public class TranslationService : ITranslationService
                 Content = translatedContent,
                 OriginalContent = technicalContent,
                 WasTranslated = wasTranslated,
-                PersonaType = personaType
+                PersonaType = personaType,
+                Context = context,
+                AdaptationReason = adaptationReason
             };
         }
 
+        // Hybrid mode but content is business-oriented: no translation
         return new TranslationResult
         {
             Content = technicalContent,
             OriginalContent = technicalContent,
             WasTranslated = false,
-            PersonaType = personaType
+            PersonaType = personaType,
+            Context = context,
+            AdaptationReason = $"Hybrid mode: {context.AdaptationReason} - no translation needed"
         };
     }
 

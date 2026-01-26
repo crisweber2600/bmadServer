@@ -12,6 +12,8 @@ public class TranslationServiceTests : IDisposable
 {
     private readonly ApplicationDbContext _dbContext;
     private readonly Mock<ILogger<TranslationService>> _loggerMock;
+    private readonly Mock<ILogger<ContextAnalysisService>> _contextLoggerMock;
+    private readonly ContextAnalysisService _contextAnalysisService;
     private readonly TranslationService _translationService;
 
     public TranslationServiceTests()
@@ -22,7 +24,9 @@ public class TranslationServiceTests : IDisposable
 
         _dbContext = new ApplicationDbContext(options);
         _loggerMock = new Mock<ILogger<TranslationService>>();
-        _translationService = new TranslationService(_dbContext, _loggerMock.Object);
+        _contextLoggerMock = new Mock<ILogger<ContextAnalysisService>>();
+        _contextAnalysisService = new ContextAnalysisService(_contextLoggerMock.Object);
+        _translationService = new TranslationService(_dbContext, _contextAnalysisService, _loggerMock.Object);
         
         SeedTestData();
     }

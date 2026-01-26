@@ -60,6 +60,9 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.ISessionService, bmadS
 // Register translation service
 builder.Services.AddScoped<bmadServer.ApiService.Services.ITranslationService, bmadServer.ApiService.Services.TranslationService>();
 
+// Register context analysis service
+builder.Services.AddScoped<bmadServer.ApiService.Services.IContextAnalysisService, bmadServer.ApiService.Services.ContextAnalysisService>();
+
 // Register response metadata service
 builder.Services.AddScoped<bmadServer.ApiService.Services.IResponseMetadataService, bmadServer.ApiService.Services.ResponseMetadataService>();
 
