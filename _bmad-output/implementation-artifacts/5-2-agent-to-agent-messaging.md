@@ -1,6 +1,7 @@
 # Story 5.2: Agent-to-Agent Messaging
 
-Status: ready-for-dev
+Status: done
+Completed: 2026-01-26 06:30 UTC
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -37,71 +38,71 @@ so that I can gather inputs needed for my work.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create AgentMessage model (AC: 4)
-  - [ ] Define messageId (Guid)
-  - [ ] Define timestamp (DateTime)
-  - [ ] Define sourceAgent (string)
-  - [ ] Define targetAgent (string)
-  - [ ] Define messageType (enum: Request, Response, Error)
-  - [ ] Define content (object/JsonDocument)
-  - [ ] Define workflowInstanceId (Guid)
-  - [ ] Add validation attributes
-- [ ] Task 2: Create AgentRequest model (AC: 2)
-  - [ ] Define sourceAgentId (string)
-  - [ ] Define requestType (string)
-  - [ ] Define payload (JsonDocument)
-  - [ ] Define workflowContext (WorkflowContext)
-  - [ ] Define conversationHistory (List<AgentMessage>)
-  - [ ] Add validation
-- [ ] Task 3: Create AgentResponse model (AC: 3)
-  - [ ] Define success (bool)
-  - [ ] Define content (JsonDocument)
-  - [ ] Define metadata (Dictionary<string, string>)
-  - [ ] Define errorMessage (string?)
-- [ ] Task 4: Create IAgentMessaging interface (AC: 1, 5)
-  - [ ] Define RequestFromAgent method signature
-  - [ ] Define async Task<AgentResponse> return type
-  - [ ] Define timeout and retry parameters
-  - [ ] Add CancellationToken support
-- [ ] Task 5: Implement AgentMessaging service (AC: 1-5)
-  - [ ] Implement RequestFromAgent with AgentRouter integration
-  - [ ] Implement timeout logic (30 seconds)
-  - [ ] Implement retry logic (1 retry)
-  - [ ] Implement message logging
-  - [ ] Create error handling for missing agents
-  - [ ] Add correlation IDs for traceability
-- [ ] Task 6: Integrate with AgentRegistry (from Story 5.1)
-  - [ ] Validate target agent exists before sending
-  - [ ] Retrieve agent capabilities
-  - [ ] Use agent metadata in request context
-- [ ] Task 7: Create message logging repository (AC: 3)
-  - [ ] Create AgentMessageLog entity
-  - [ ] Define DbSet in ApplicationDbContext
-  - [ ] Create EF Core migration
-  - [ ] Implement save message method
-  - [ ] Add indexes for querying (workflowInstanceId, timestamp)
-- [ ] Task 8: Write unit tests
-  - [ ] Test AgentMessaging.RequestFromAgent success path
-  - [ ] Test timeout behavior (> 30 seconds)
-  - [ ] Test retry logic
-  - [ ] Test error handling (agent not found)
-  - [ ] Test message format validation
-  - [ ] Test logging
-- [ ] Task 9: Write integration tests
-  - [ ] Test end-to-end agent-to-agent communication
-  - [ ] Test with real AgentRouter and AgentRegistry
-  - [ ] Test message persistence to database
-  - [ ] Test concurrent requests
-  - [ ] Test timeout with real async operations
-- [ ] Task 10: Update dependency injection
-  - [ ] Register IAgentMessaging service
-  - [ ] Configure timeout settings
-  - [ ] Configure retry policy
-- [ ] Task 11: Add monitoring and observability
-  - [ ] Add logging for agent requests
-  - [ ] Add metrics for message count
-  - [ ] Add metrics for timeout/retry rates
-  - [ ] Add distributed tracing support
+- [x] Task 1: Create AgentMessage model (AC: 4)
+  - [x] Define messageId (Guid)
+  - [x] Define timestamp (DateTime)
+  - [x] Define sourceAgent (string)
+  - [x] Define targetAgent (string)
+  - [x] Define messageType (enum: Request, Response, Error)
+  - [x] Define content (object/JsonDocument)
+  - [x] Define workflowInstanceId (Guid)
+  - [x] Add validation attributes
+- [x] Task 2: Create AgentRequest model (AC: 2)
+  - [x] Define sourceAgentId (string)
+  - [x] Define requestType (string)
+  - [x] Define payload (JsonDocument)
+  - [x] Define workflowContext (WorkflowContext)
+  - [x] Define conversationHistory (List<AgentMessage>)
+  - [x] Add validation
+- [x] Task 3: Create AgentResponse model (AC: 3)
+  - [x] Define success (bool)
+  - [x] Define content (JsonDocument)
+  - [x] Define metadata (Dictionary<string, string>)
+  - [x] Define errorMessage (string?)
+- [x] Task 4: Create IAgentMessaging interface (AC: 1, 5)
+  - [x] Define RequestFromAgent method signature
+  - [x] Define async Task<AgentResponse> return type
+  - [x] Define timeout and retry parameters
+  - [x] Add CancellationToken support
+- [x] Task 5: Implement AgentMessaging service (AC: 1-5)
+  - [x] Implement RequestFromAgent with AgentRouter integration
+  - [x] Implement timeout logic (30 seconds)
+  - [x] Implement retry logic (1 retry)
+  - [x] Implement message logging
+  - [x] Create error handling for missing agents
+  - [x] Add correlation IDs for traceability
+- [x] Task 6: Integrate with AgentRegistry (from Story 5.1)
+  - [x] Validate target agent exists before sending
+  - [x] Retrieve agent capabilities
+  - [x] Use agent metadata in request context
+- [x] Task 7: Create message logging repository (AC: 3)
+  - [x] Create AgentMessageLog entity
+  - [x] Define DbSet in ApplicationDbContext
+  - [x] Create EF Core migration
+  - [x] Implement save message method
+  - [x] Add indexes for querying (workflowInstanceId, timestamp)
+- [x] Task 8: Write unit tests
+  - [x] Test AgentMessaging.RequestFromAgent success path
+  - [x] Test timeout behavior (> 30 seconds)
+  - [x] Test retry logic
+  - [x] Test error handling (agent not found)
+  - [x] Test message format validation
+  - [x] Test logging
+- [x] Task 9: Write integration tests
+  - [x] Test end-to-end agent-to-agent communication
+  - [x] Test with real AgentRouter and AgentRegistry
+  - [x] Test message persistence to database
+  - [x] Test concurrent requests
+  - [x] Test timeout with real async operations
+- [x] Task 10: Update dependency injection
+  - [x] Register IAgentMessaging service
+  - [x] Configure timeout settings
+  - [x] Configure retry policy
+- [x] Task 11: Add monitoring and observability
+  - [x] Add logging for agent requests
+  - [x] Add metrics for message count
+  - [x] Add metrics for timeout/retry rates
+  - [x] Add distributed tracing support
 
 ## Dev Notes
 
