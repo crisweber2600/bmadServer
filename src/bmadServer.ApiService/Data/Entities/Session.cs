@@ -12,6 +12,8 @@ public class Session
     public Guid UserId { get; set; }
     public string? ConnectionId { get; set; } // SignalR connection ID, nullable for expired sessions
     public WorkflowState? WorkflowState { get; set; } // JSONB column storing workflow context
+    public PersonaType? SessionPersona { get; set; } // Session-level persona override (Story 8.4)
+    public int PersonaSwitchCount { get; set; } = 0; // Track persona switches for analytics
     public DateTime LastActivityAt { get; set; } = DateTime.UtcNow;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime ExpiresAt { get; set; } = DateTime.UtcNow.AddMinutes(30);

@@ -62,4 +62,31 @@ public interface ISessionService
     /// </summary>
     /// <param name="sessionId">Session ID</param>
     Task UpdateActivityAsync(Guid sessionId);
+
+    /// <summary>
+    /// Switches the session-level persona for the current session.
+    /// Does not affect the user's default persona setting.
+    /// </summary>
+    /// <param name="sessionId">Session ID</param>
+    /// <param name="userId">User ID for authorization</param>
+    /// <param name="newPersona">New persona to switch to</param>
+    /// <returns>Result with success status and switch details</returns>
+    Task<SwitchPersonaResult> SwitchSessionPersonaAsync(Guid sessionId, Guid userId, PersonaType newPersona);
+
+    /// <summary>
+    /// Gets the effective persona for a session (session persona if set, otherwise user default).
+    /// </summary>
+    /// <param name="sessionId">Session ID</param>
+    /// <param name="userId">User ID</param>
+    /// <returns>Effective persona type</returns>
+    Task<PersonaType> GetEffectivePersonaAsync(Guid sessionId, Guid userId);
+}
+
+public record SwitchPersonaResult
+{
+    public bool Success { get; init; }
+    public PersonaType NewPersona { get; init; }
+    public PersonaType PreviousPersona { get; init; }
+    public int SwitchCount { get; init; }
+    public string? SuggestionMessage { get; init; }
 }

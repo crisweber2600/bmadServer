@@ -129,7 +129,7 @@ development_status:
   8-1-persona-profile-configuration: in-progress
   8-2-business-language-translation: review
   8-3-technical-language-mode: review
-  8-4-in-session-persona-switching: ready-for-dev
+  8-4-in-session-persona-switching: review
   8-5-context-aware-response-adaptation: ready-for-dev
   epic-8-retrospective: optional
 

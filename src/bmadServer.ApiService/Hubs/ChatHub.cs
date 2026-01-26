@@ -179,10 +179,12 @@ public class ChatHub : Hub
         {
             var result = await _stepExecutor.ExecuteStepAsync(workflowInstanceId, userInput);
             
-            // Get user's persona type for translation
+            // Get effective persona (session-level if set, otherwise user default)
             var userId = GetUserIdFromClaims();
-            var user = await _dbContext.Users.FindAsync(userId);
-            var personaType = user?.PersonaType ?? Data.Entities.PersonaType.Hybrid;
+            var session = await _sessionService.GetActiveSessionAsync(userId, Context.ConnectionId);
+            var personaType = session != null 
+                ? await _sessionService.GetEffectivePersonaAsync(session.Id, userId)
+                : Data.Entities.PersonaType.Hybrid;
             
             if (result.Success)
             {
@@ -248,6 +250,49 @@ public class ChatHub : Hub
                 Content = "An error occurred while processing your message. Please try again.",
                 Timestamp = DateTime.UtcNow
             });
+        }
+    }
+
+    /// <summary>
+    /// Switches the session persona in real-time via SignalR.
+    /// </summary>
+    public async Task SwitchPersona(string personaType)
+    {
+        var userId = GetUserIdFromClaims();
+        var session = await _sessionService.GetActiveSessionAsync(userId, Context.ConnectionId);
+        
+        if (session == null)
+        {
+            throw new HubException("No active session found");
+        }
+
+        if (!Enum.TryParse<Data.Entities.PersonaType>(personaType, true, out var newPersona))
+        {
+            throw new HubException($"Invalid persona type: {personaType}");
+        }
+
+        var result = await _sessionService.SwitchSessionPersonaAsync(session.Id, userId, newPersona);
+
+        if (result.Success)
+        {
+            await Clients.Caller.SendAsync("PERSONA_SWITCHED", new
+            {
+                SessionId = session.Id,
+                NewPersona = result.NewPersona.ToString(),
+                PreviousPersona = result.PreviousPersona.ToString(),
+                SwitchCount = result.SwitchCount,
+                SuggestionMessage = result.SuggestionMessage,
+                Message = $"Switched to {result.NewPersona} mode",
+                Timestamp = DateTime.UtcNow
+            });
+
+            _logger.LogInformation(
+                "User {UserId} switched persona to {NewPersona} in session {SessionId}",
+                userId, newPersona, session.Id);
+        }
+        else
+        {
+            throw new HubException("Failed to switch persona");
         }
     }
 }
