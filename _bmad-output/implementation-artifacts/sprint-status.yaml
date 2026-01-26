@@ -28,7 +28,7 @@
 # - SM typically creates next story ONLY after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then Dev runs code-review (fresh context)
 
-generated: 2026-01-24
+generated: 2026-01-26
 project: bmadServer
 project_key: bmads
 tracking_system: file-system
@@ -94,7 +94,7 @@ development_status:
   # ====================================
   epic-5: in-progress
   5-1-agent-registry-configuration: done
-  5-2-agent-to-agent-messaging: ready-for-dev
+   5-2-agent-to-agent-messaging: done
   5-3-shared-workflow-context: ready-for-dev
   5-4-agent-handoff-attribution: ready-for-dev
   5-5-human-approval-for-low-confidence-decisions: ready-for-dev
