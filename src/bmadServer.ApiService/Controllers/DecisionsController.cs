@@ -197,6 +197,7 @@ public class DecisionsController : ControllerBase
     [ProducesResponseType(typeof(DecisionResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<DecisionResponse>> UpdateDecision(
         Guid id,
@@ -214,6 +215,28 @@ public class DecisionsController : ControllerBase
                     Title = "Unauthorized",
                     Detail = "User ID not found in claims",
                     Status = StatusCodes.Status401Unauthorized
+                });
+            }
+
+            // Check if decision is locked
+            var decision = await _decisionService.GetDecisionByIdAsync(id, cancellationToken);
+            if (decision == null)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Decision not found",
+                    Detail = $"Decision with ID {id} was not found",
+                    Status = StatusCodes.Status404NotFound
+                });
+            }
+
+            if (decision.IsLocked)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new ProblemDetails
+                {
+                    Title = "Decision is locked",
+                    Detail = "Cannot update a locked decision",
+                    Status = StatusCodes.Status403Forbidden
                 });
             }
 
@@ -361,6 +384,53 @@ public class DecisionsController : ControllerBase
                 new ProblemDetails
                 {
                     Title = "Error reverting decision",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status500InternalServerError
+                });
+        }
+    }
+
+    /// <summary>
+    /// Get the diff between two versions of a decision
+    /// </summary>
+    /// <param name="id">The decision ID</param>
+    /// <param name="from">The from version number</param>
+    /// <param name="to">The to version number</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Diff showing changes between versions</returns>
+    [HttpGet("decisions/{id:guid}/diff")]
+    [ProducesResponseType(typeof(DecisionVersionDiffResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<DecisionVersionDiffResponse>> GetVersionDiff(
+        Guid id,
+        [FromQuery] int from,
+        [FromQuery] int to,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var diff = await _decisionService.GetVersionDiffAsync(id, from, to, cancellationToken);
+            return Ok(diff);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation when getting diff for decision {DecisionId}", id);
+            return NotFound(new ProblemDetails
+            {
+                Title = "Version not found",
+                Detail = ex.Message,
+                Status = StatusCodes.Status404NotFound
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting diff for decision {DecisionId}", id);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ProblemDetails
+                {
+                    Title = "Error getting version diff",
                     Detail = ex.Message,
                     Status = StatusCodes.Status500InternalServerError
                 });
@@ -761,15 +831,118 @@ public class DecisionsController : ControllerBase
     }
 
     /// <summary>
+    /// Submit a review response for a decision
+    /// </summary>
+    /// <param name="id">The decision ID</param>
+    /// <param name="request">The review response</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The updated review</returns>
+    [HttpPost("decisions/{id:guid}/review-response")]
+    [ProducesResponseType(typeof(Models.Decisions.DecisionReviewResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<Models.Decisions.DecisionReviewResponse>> SubmitReviewResponseForDecision(
+        Guid id,
+        [FromBody] Models.Decisions.SubmitReviewResponse request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Get the authenticated user ID
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return Unauthorized(new ProblemDetails
+                {
+                    Title = "Unauthorized",
+                    Detail = "User ID not found in claims",
+                    Status = StatusCodes.Status401Unauthorized
+                });
+            }
+
+            var review = await _decisionService.GetDecisionReviewAsync(id, cancellationToken);
+            if (review == null)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Review not found",
+                    Detail = $"No review found for decision {id}",
+                    Status = StatusCodes.Status404NotFound
+                });
+            }
+
+            var updatedReview = await _decisionService.SubmitReviewResponseAsync(
+                review.Id,
+                userId,
+                request.Status,
+                request.Comments,
+                cancellationToken);
+
+            var response = new Models.Decisions.DecisionReviewResponse
+            {
+                Id = updatedReview.Id,
+                DecisionId = updatedReview.DecisionId,
+                RequestedBy = updatedReview.RequestedBy,
+                RequestedAt = updatedReview.RequestedAt,
+                Deadline = updatedReview.Deadline,
+                Status = updatedReview.Status,
+                CompletedAt = updatedReview.CompletedAt,
+                Responses = updatedReview.Responses.Select(r => new ReviewerResponseInfo
+                {
+                    ReviewerId = r.ReviewerId,
+                    ResponseType = r.ResponseType,
+                    Comments = r.Comments,
+                    RespondedAt = r.RespondedAt
+                }).ToList()
+            };
+
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation when submitting review response for decision {DecisionId}", id);
+            
+            if (ex.Message.Contains("not found"))
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Review not found",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status404NotFound
+                });
+            }
+            
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Cannot submit review response",
+                Detail = ex.Message,
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error submitting review response for decision {DecisionId}", id);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ProblemDetails
+                {
+                    Title = "Error submitting review response",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status500InternalServerError
+                });
+        }
+    }
+
+    /// <summary>
     /// Get conflicts for a workflow
     /// </summary>
     /// <param name="workflowId">The workflow instance ID</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of conflicts</returns>
     [HttpGet("workflows/{workflowId:guid}/conflicts")]
-    [ProducesResponseType(typeof(List<ConflictResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<DecisionConflictResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<List<ConflictResponse>>> GetWorkflowConflicts(
+    public async Task<ActionResult<List<DecisionConflictResponse>>> GetWorkflowConflicts(
         Guid workflowId,
         CancellationToken cancellationToken)
     {
@@ -777,7 +950,7 @@ public class DecisionsController : ControllerBase
         {
             var conflicts = await _decisionService.GetConflictsForWorkflowAsync(workflowId, cancellationToken);
 
-            var responses = conflicts.Select(c => new ConflictResponse
+            var responses = conflicts.Select(c => new DecisionConflictResponse
             {
                 Id = c.Id,
                 DecisionId1 = c.DecisionId1,
@@ -790,7 +963,8 @@ public class DecisionsController : ControllerBase
                 ResolvedAt = c.ResolvedAt,
                 ResolvedBy = c.ResolvedBy,
                 Resolution = c.Resolution,
-                OverrideJustification = c.OverrideJustification
+                OverrideJustification = c.OverrideJustification,
+                Nature = c.ConflictType
             }).ToList();
 
             return Ok(responses);
@@ -998,6 +1172,42 @@ public class DecisionsController : ControllerBase
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of conflict rules</returns>
+    [HttpGet("conflict-rules")]
+    [ProducesResponseType(typeof(List<ConflictRuleResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<List<ConflictRuleResponse>>> GetConflictRulesList(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var rules = await _decisionService.GetConflictRulesAsync(cancellationToken);
+
+            var responses = rules.Select(r => new ConflictRuleResponse
+            {
+                Id = r.Id,
+                Name = r.Name,
+                ConflictType = r.ConflictType,
+                Description = r.Description,
+                Configuration = r.Configuration?.RootElement,
+                IsActive = r.IsActive,
+                Severity = r.Severity,
+                CreatedAt = r.CreatedAt,
+                UpdatedAt = r.UpdatedAt
+            }).ToList();
+
+            return Ok(responses);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving conflict rules");
+            return StatusCode(StatusCodes.Status500InternalServerError);
+        }
+    }
+
+    /// <summary>
+    /// Get all active conflict rules (alias route for backward compatibility)
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of conflict rules</returns>
     [HttpGet("conflicts/rules")]
     [ProducesResponseType(typeof(List<ConflictRuleResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
@@ -1043,7 +1253,15 @@ public class DecisionsController : ControllerBase
             Question = decision.Question,
             Options = decision.Options?.RootElement,
             Reasoning = decision.Reasoning,
-            Context = decision.Context?.RootElement
+            Context = decision.Context?.RootElement,
+            CurrentVersion = decision.CurrentVersion,
+            UpdatedAt = decision.UpdatedAt,
+            UpdatedBy = decision.UpdatedBy,
+            IsLocked = decision.IsLocked,
+            LockedBy = decision.LockedBy,
+            LockedAt = decision.LockedAt,
+            LockReason = decision.LockReason,
+            Status = decision.Status.ToString()
         };
     }
 }

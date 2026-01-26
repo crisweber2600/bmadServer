@@ -1,5 +1,6 @@
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
+using bmadServer.ApiService.Models.Decisions;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
@@ -36,12 +37,21 @@ public class DecisionService : IDecisionService
             _context.Decisions.Add(decision);
             await _context.SaveChangesAsync(cancellationToken);
 
+            // Detect conflicts automatically
+            var conflicts = await DetectConflictsAsync(decision, cancellationToken);
+            if (conflicts.Count > 0)
+            {
+                _context.DecisionConflicts.AddRange(conflicts);
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+
             _logger.LogInformation(
-                "Decision {DecisionId} created for workflow {WorkflowInstanceId}, step {StepId}, type {DecisionType}",
+                "Decision {DecisionId} created for workflow {WorkflowInstanceId}, step {StepId}, type {DecisionType}. Detected {ConflictCount} conflicts",
                 decision.Id,
                 decision.WorkflowInstanceId,
                 decision.StepId,
-                decision.DecisionType
+                decision.DecisionType,
+                conflicts.Count
             );
 
             return decision;
@@ -241,6 +251,90 @@ public class DecisionService : IDecisionService
                 "Failed to retrieve version {Version} for decision {DecisionId}",
                 versionNumber,
                 id);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Get the diff between two versions of a decision
+    /// </summary>
+    public async Task<DecisionVersionDiffResponse> GetVersionDiffAsync(Guid decisionId, int fromVersion, int toVersion, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var fromVersionData = await _context.DecisionVersions
+                .FirstOrDefaultAsync(v => v.DecisionId == decisionId && v.VersionNumber == fromVersion, cancellationToken);
+            
+            var toVersionData = await _context.DecisionVersions
+                .FirstOrDefaultAsync(v => v.DecisionId == decisionId && v.VersionNumber == toVersion, cancellationToken);
+
+            if (fromVersionData == null || toVersionData == null)
+            {
+                throw new InvalidOperationException($"One or both versions not found for decision {decisionId}");
+            }
+
+            var changes = new List<FieldChange>();
+
+            // Compare main value field (compare JSON strings)
+            var fromValueStr = fromVersionData.Value?.RootElement.ToString() ?? "";
+            var toValueStr = toVersionData.Value?.RootElement.ToString() ?? "";
+            
+            if (fromValueStr != toValueStr)
+            {
+                changes.Add(new FieldChange
+                {
+                    FieldName = "Value",
+                    ChangeType = "modified",
+                    OldValue = fromVersionData.Value?.RootElement,
+                    NewValue = toVersionData.Value?.RootElement
+                });
+            }
+
+            // Compare question
+            if (fromVersionData.Question != toVersionData.Question)
+            {
+                changes.Add(new FieldChange
+                {
+                    FieldName = "Question",
+                    ChangeType = "modified",
+                    OldValue = fromVersionData.Question != null ? JsonDocument.Parse($"\"{fromVersionData.Question}\"").RootElement : null,
+                    NewValue = toVersionData.Question != null ? JsonDocument.Parse($"\"{toVersionData.Question}\"").RootElement : null
+                });
+            }
+
+            // Compare reasoning
+            if (fromVersionData.Reasoning != toVersionData.Reasoning)
+            {
+                changes.Add(new FieldChange
+                {
+                    FieldName = "Reasoning",
+                    ChangeType = "modified",
+                    OldValue = fromVersionData.Reasoning != null ? JsonDocument.Parse($"\"{fromVersionData.Reasoning}\"").RootElement : null,
+                    NewValue = toVersionData.Reasoning != null ? JsonDocument.Parse($"\"{toVersionData.Reasoning}\"").RootElement : null
+                });
+            }
+
+            _logger.LogInformation(
+                "Diff generated between versions {FromVersion} and {ToVersion} for decision {DecisionId}. {ChangeCount} changes found.",
+                fromVersion,
+                toVersion,
+                decisionId,
+                changes.Count);
+
+            return new DecisionVersionDiffResponse
+            {
+                FromVersion = fromVersion,
+                ToVersion = toVersion,
+                Changes = changes
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to generate diff between versions {FromVersion} and {ToVersion} for decision {DecisionId}",
+                fromVersion,
+                toVersion,
+                decisionId);
             throw;
         }
     }
@@ -450,7 +544,8 @@ public class DecisionService : IDecisionService
                 RequestedBy = userId,
                 RequestedAt = DateTime.UtcNow,
                 Deadline = deadline,
-                Status = "Pending"
+                Status = "Pending",
+                ReviewerIds = string.Join(",", reviewerIds)
             };
 
             _context.DecisionReviews.Add(review);
@@ -511,7 +606,7 @@ public class DecisionService : IDecisionService
             }
 
             // Create the response
-            var response = new DecisionReviewResponse
+            var response = new Data.Entities.DecisionReviewResponse
             {
                 ReviewId = reviewId,
                 ReviewerId = userId,
@@ -542,35 +637,49 @@ public class DecisionService : IDecisionService
             else if (responseType == "Approved")
             {
                 // Check if all reviewers have approved
-                var totalResponses = review.Responses.Count + 1; // +1 for the new response
+                var requiredApprovals = !string.IsNullOrEmpty(review.ReviewerIds) 
+                    ? review.ReviewerIds.Split(",").Length 
+                    : 1;
                 var approvedCount = review.Responses.Count(r => r.ResponseType == "Approved") + 1;
 
-                // For simplicity, we'll assume all invited reviewers must approve
-                // In a real system, you'd track the invited reviewers explicitly
                 _logger.LogInformation(
-                    "Review {ReviewId}: {ApprovedCount} approvals received",
+                    "Review {ReviewId}: {ApprovedCount}/{RequiredApprovals} approvals received",
                     reviewId,
-                    approvedCount
+                    approvedCount,
+                    requiredApprovals
                 );
 
-                // Mark review as completed and auto-lock decision
-                review.Status = "Completed";
-                review.CompletedAt = DateTime.UtcNow;
-
-                if (review.Decision != null)
+                // Only lock if all required reviewers have approved
+                if (approvedCount == requiredApprovals && requiredApprovals > 0)
                 {
-                    review.Decision.Status = DecisionStatus.Approved;
-                    review.Decision.IsLocked = true;
-                    review.Decision.LockedBy = userId;
-                    review.Decision.LockedAt = DateTime.UtcNow;
-                    review.Decision.LockReason = "Auto-locked after review approval";
-                }
+                    // Mark review as completed and auto-lock decision
+                    review.Status = "Completed";
+                    review.CompletedAt = DateTime.UtcNow;
 
-                _logger.LogInformation(
-                    "Review {ReviewId} completed and decision {DecisionId} auto-locked",
-                    reviewId,
-                    review.DecisionId
-                );
+                    if (review.Decision != null)
+                    {
+                        review.Decision.Status = DecisionStatus.Approved;
+                        review.Decision.IsLocked = true;
+                        review.Decision.LockedBy = userId;
+                        review.Decision.LockedAt = DateTime.UtcNow;
+                        review.Decision.LockReason = "Auto-locked after all reviewers approved";
+                    }
+
+                    _logger.LogInformation(
+                        "Review {ReviewId} completed and decision {DecisionId} auto-locked after all approvals",
+                        reviewId,
+                        review.DecisionId
+                    );
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        "Review {ReviewId} awaiting remaining approvals ({ApprovedCount}/{RequiredApprovals})",
+                        reviewId,
+                        approvedCount,
+                        requiredApprovals
+                    );
+                }
             }
 
             await _context.SaveChangesAsync(cancellationToken);
@@ -753,6 +862,170 @@ public class DecisionService : IDecisionService
             _logger.LogError(ex, "Failed to override conflict {ConflictId}", conflictId);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Detects conflicts between the given decision and other decisions in the workflow
+    /// </summary>
+    private async Task<List<DecisionConflict>> DetectConflictsAsync(Decision decision, CancellationToken cancellationToken)
+    {
+        var conflicts = new List<DecisionConflict>();
+
+        try
+        {
+            // Load all active conflict rules
+            var rules = await _context.ConflictRules
+                .Where(r => r.IsActive)
+                .ToListAsync(cancellationToken);
+
+            if (rules.Count == 0)
+            {
+                return conflicts;
+            }
+
+            // Load other decisions in the same workflow for comparison
+            var otherDecisions = await _context.Decisions
+                .Where(d => d.WorkflowInstanceId == decision.WorkflowInstanceId && d.Id != decision.Id)
+                .ToListAsync(cancellationToken);
+
+            // Evaluate each rule against this decision
+            foreach (var rule in rules)
+            {
+                if (EvaluateRule(rule, decision))
+                {
+                    // Find conflicting decisions with other decisions if applicable
+                    foreach (var otherDecision in otherDecisions)
+                    {
+                        if (ShouldCreateConflict(rule, decision, otherDecision))
+                        {
+                            var conflict = new DecisionConflict
+                            {
+                                DecisionId1 = decision.Id,
+                                DecisionId2 = otherDecision.Id,
+                                ConflictType = rule.ConflictType,
+                                Description = $"Rule '{rule.Name}' violated",
+                                Severity = rule.Severity,
+                                DetectedAt = DateTime.UtcNow,
+                                Status = "Open"
+                            };
+
+                            conflicts.Add(conflict);
+                        }
+                    }
+                }
+            }
+
+            if (conflicts.Count > 0)
+            {
+                _logger.LogInformation(
+                    "Detected {ConflictCount} conflicts for decision {DecisionId}",
+                    conflicts.Count,
+                    decision.Id
+                );
+            }
+
+            return conflicts;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error detecting conflicts for decision {DecisionId}", decision.Id);
+            return conflicts;
+        }
+    }
+
+    /// <summary>
+    /// Evaluates whether a rule is violated by the given decision
+    /// </summary>
+    private bool EvaluateRule(ConflictRule rule, Decision decision)
+    {
+        try
+        {
+            if (decision.Value == null)
+            {
+                return false;
+            }
+
+            // Parse the decision value
+            var decisionValue = decision.Value.RootElement;
+
+            // Simple rule evaluation based on common patterns
+            // Examples: "Budget > 1000000", "Timeline < 30", "Status == Urgent"
+            if (rule.Configuration != null)
+            {
+                var config = rule.Configuration.RootElement;
+                
+                // Check if configuration has a field to evaluate
+                if (config.TryGetProperty("field", out var fieldProperty) &&
+                    config.TryGetProperty("operator", out var operatorProperty) &&
+                    config.TryGetProperty("value", out var valueProperty))
+                {
+                    var field = fieldProperty.GetString();
+                    var op = operatorProperty.GetString();
+                    
+                    if (!string.IsNullOrEmpty(field) && decisionValue.TryGetProperty(field, out var decisionFieldValue))
+                    {
+                        return EvaluateCondition(decisionFieldValue, op, valueProperty);
+                    }
+                }
+            }
+
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error evaluating rule {RuleName}", rule.Name);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Evaluates a condition between a decision field value and a target value
+    /// </summary>
+    private bool EvaluateCondition(JsonElement fieldValue, string? op, JsonElement valueProperty)
+    {
+        try
+        {
+            return op switch
+            {
+                ">" => fieldValue.TryGetInt64(out var num) && 
+                       valueProperty.TryGetInt64(out var target) && 
+                       num > target,
+                "<" => fieldValue.TryGetInt64(out var num2) && 
+                       valueProperty.TryGetInt64(out var target2) && 
+                       num2 < target2,
+                "==" => fieldValue.GetString() == valueProperty.GetString(),
+                "!=" => fieldValue.GetString() != valueProperty.GetString(),
+                ">=" => fieldValue.TryGetInt64(out var num3) && 
+                        valueProperty.TryGetInt64(out var target3) && 
+                        num3 >= target3,
+                "<=" => fieldValue.TryGetInt64(out var num4) && 
+                        valueProperty.TryGetInt64(out var target4) && 
+                        num4 <= target4,
+                _ => false
+            };
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Determines if two decisions should be marked as conflicting
+    /// </summary>
+    private bool ShouldCreateConflict(ConflictRule rule, Decision decision1, Decision decision2)
+    {
+        // Check if both decisions are affected by the conflict rule
+        if (decision1.Value == null || decision2.Value == null)
+        {
+            return false;
+        }
+
+        // Only create conflict if both decisions violate the rule or are related
+        // For now, we create conflict if they have overlapping concerns based on decision type
+        return decision1.DecisionType == decision2.DecisionType ||
+               rule.ConflictType.ToLower().Contains(decision1.DecisionType.ToLower()) ||
+               rule.ConflictType.ToLower().Contains(decision2.DecisionType.ToLower());
     }
 
     /// <inheritdoc/>

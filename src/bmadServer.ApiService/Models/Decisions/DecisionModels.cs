@@ -107,4 +107,44 @@ public class DecisionResponse
     /// Contextual information at the time of decision
     /// </summary>
     public JsonElement? Context { get; set; }
+
+    /// <summary>
+    /// Current version number of this decision
+    /// </summary>
+    public required int CurrentVersion { get; set; }
+
+    /// <summary>
+    /// Timestamp when this decision was last updated
+    /// </summary>
+    public DateTime? UpdatedAt { get; set; }
+
+    /// <summary>
+    /// User ID who last updated this decision
+    /// </summary>
+    public Guid? UpdatedBy { get; set; }
+
+    /// <summary>
+    /// Whether this decision is locked (cannot be modified)
+    /// </summary>
+    public required bool IsLocked { get; set; }
+
+    /// <summary>
+    /// User ID who locked this decision
+    /// </summary>
+    public Guid? LockedBy { get; set; }
+
+    /// <summary>
+    /// Timestamp when this decision was locked
+    /// </summary>
+    public DateTime? LockedAt { get; set; }
+
+    /// <summary>
+    /// Reason for locking
+    /// </summary>
+    public string? LockReason { get; set; }
+
+    /// <summary>
+    /// Current workflow status of the decision
+    /// </summary>
+    public required string Status { get; set; }
 }

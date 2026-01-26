@@ -1,4 +1,5 @@
 using bmadServer.ApiService.Data.Entities;
+using bmadServer.ApiService.Models.Decisions;
 using System.Text.Json;
 
 namespace bmadServer.ApiService.Services.Decisions;
@@ -72,6 +73,16 @@ public interface IDecisionService
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The version, or null if not found</returns>
     Task<DecisionVersion?> GetDecisionVersionAsync(Guid id, int versionNumber, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get the diff between two versions of a decision
+    /// </summary>
+    /// <param name="decisionId">The decision ID</param>
+    /// <param name="fromVersion">The from version number</param>
+    /// <param name="toVersion">The to version number</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Diff response showing changes</returns>
+    Task<DecisionVersionDiffResponse> GetVersionDiffAsync(Guid decisionId, int fromVersion, int toVersion, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Revert a decision to a previous version

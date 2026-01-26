@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 
 namespace bmadServer.ApiService.Models.Decisions;
@@ -10,6 +11,7 @@ public class UpdateDecisionRequest
     /// <summary>
     /// The new decision value (can be any valid JSON)
     /// </summary>
+    [Required(ErrorMessage = "Decision value is required")]
     public required JsonElement Value { get; set; }
 
     /// <summary>

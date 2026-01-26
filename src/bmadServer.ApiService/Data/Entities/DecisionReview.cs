@@ -67,6 +67,11 @@ public class DecisionReview
     public string Status { get; set; } = "Pending";
 
     /// <summary>
+    /// List of reviewer IDs invited for this review, stored as comma-separated values
+    /// </summary>
+    public string? ReviewerIds { get; set; }
+
+    /// <summary>
     /// When the review was completed
     /// </summary>
     public DateTime? CompletedAt { get; set; }

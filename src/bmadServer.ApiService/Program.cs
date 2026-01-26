@@ -89,6 +89,9 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.ISharedConte
 // Preserves decision history and recent outputs while summarizing older steps
 builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IContextSummarizationService, bmadServer.ApiService.Services.Workflows.ContextSummarizationService>();
 
+// Register decision service for workflow decision management
+builder.Services.AddScoped<bmadServer.ApiService.Services.Decisions.IDecisionService, bmadServer.ApiService.Services.Decisions.DecisionService>();
+
 // Register FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<bmadServer.ApiService.Validators.RegisterRequestValidator>();
 
