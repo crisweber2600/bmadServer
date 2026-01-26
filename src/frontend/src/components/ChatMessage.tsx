@@ -7,6 +7,7 @@ import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { AgentAttribution, type AgentAttributionProps } from './AgentAttribution';
+import { DecisionAttributionBanner, type DecisionAttributionBannerProps } from './DecisionAttributionBanner';
 import './ChatMessage.css';
 
 const { Text } = Typography;
@@ -17,6 +18,7 @@ export interface ChatMessageProps {
   timestamp: Date;
   agentName?: string;
   agentAttribution?: Omit<AgentAttributionProps, 'timestamp' | 'variant'>;
+  decisionAttribution?: Omit<DecisionAttributionBannerProps, 'timestamp'>;
 }
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({
@@ -25,6 +27,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   timestamp,
   agentName = 'BMAD Agent',
   agentAttribution,
+  decisionAttribution,
 }) => {
   const formattedTime = new Intl.DateTimeFormat('en-US', {
     hour: '2-digit',
@@ -42,6 +45,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       role="article"
       aria-label={ariaLabel}
     >
+      {decisionAttribution && (
+        <DecisionAttributionBanner
+          {...decisionAttribution}
+          timestamp={timestamp}
+        />
+      )}
       {!isUser && (
         <Avatar
           icon={<RobotOutlined />}

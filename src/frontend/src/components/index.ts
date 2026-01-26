@@ -19,5 +19,8 @@ export type { AgentAttributionProps } from './AgentAttribution';
 export { AgentHandoffIndicator } from './AgentHandoffIndicator';
 export type { AgentHandoffIndicatorProps } from './AgentHandoffIndicator';
 
+export { DecisionAttributionBanner } from './DecisionAttributionBanner';
+export type { DecisionAttributionBannerProps } from './DecisionAttributionBanner';
+
 export { ChatWithHandoffs } from './ChatWithHandoffs';
 export type { ChatWithHandoffsProps } from './ChatWithHandoffs';
