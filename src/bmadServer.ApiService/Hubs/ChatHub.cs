@@ -1,7 +1,9 @@
+using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Services;
 using bmadServer.ApiService.Services.Workflows;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace bmadServer.ApiService.Hubs;
@@ -16,15 +18,21 @@ public class ChatHub : Hub
 {
     private readonly ISessionService _sessionService;
     private readonly IStepExecutor _stepExecutor;
+    private readonly ITranslationService _translationService;
+    private readonly ApplicationDbContext _dbContext;
     private readonly ILogger<ChatHub> _logger;
 
     public ChatHub(
         ISessionService sessionService, 
         IStepExecutor stepExecutor,
+        ITranslationService translationService,
+        ApplicationDbContext dbContext,
         ILogger<ChatHub> logger)
     {
         _sessionService = sessionService;
         _stepExecutor = stepExecutor;
+        _translationService = translationService;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -171,12 +179,22 @@ public class ChatHub : Hub
         {
             var result = await _stepExecutor.ExecuteStepAsync(workflowInstanceId, userInput);
             
+            // Get user's persona type for translation
+            var userId = GetUserIdFromClaims();
+            var user = await _dbContext.Users.FindAsync(userId);
+            var personaType = user?.PersonaType ?? Data.Entities.PersonaType.Hybrid;
+            
             if (result.Success)
             {
+                // Translate content based on persona
+                var content = $"Step '{result.StepName}' completed successfully.";
+                var translatedContent = await _translationService.TranslateToBusinessLanguageAsync(content, personaType);
+                
                 await Clients.Caller.SendAsync("ReceiveMessage", new
                 {
                     Role = "agent",
-                    Content = $"Step '{result.StepName}' completed successfully.",
+                    Content = translatedContent,
+                    OriginalContent = content, // Keep original for "Show Technical Details" feature
                     StepId = result.StepId,
                     NextStep = result.NextStep,
                     WorkflowStatus = result.NewWorkflowStatus?.ToString(),
@@ -189,10 +207,15 @@ public class ChatHub : Hub
             }
             else
             {
+                // Translate error messages for business users
+                var errorContent = $"Step execution failed: {result.ErrorMessage}";
+                var translatedError = await _translationService.TranslateToBusinessLanguageAsync(errorContent, personaType);
+                
                 await Clients.Caller.SendAsync("ReceiveMessage", new
                 {
                     Role = "system",
-                    Content = $"Step execution failed: {result.ErrorMessage}",
+                    Content = translatedError,
+                    OriginalContent = errorContent,
                     StepId = result.StepId,
                     WorkflowStatus = result.NewWorkflowStatus?.ToString(),
                     Timestamp = DateTime.UtcNow

@@ -127,7 +127,7 @@ development_status:
   # ==================================================
   epic-8: in-progress
   8-1-persona-profile-configuration: in-progress
-  8-2-business-language-translation: ready-for-dev
+  8-2-business-language-translation: review
   8-3-technical-language-mode: ready-for-dev
   8-4-in-session-persona-switching: ready-for-dev
   8-5-context-aware-response-adaptation: ready-for-dev

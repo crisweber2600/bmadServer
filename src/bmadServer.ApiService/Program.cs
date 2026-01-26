@@ -57,6 +57,9 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.IRefreshTokenService, 
 // Register session service
 builder.Services.AddScoped<bmadServer.ApiService.Services.ISessionService, bmadServer.ApiService.Services.SessionService>();
 
+// Register translation service
+builder.Services.AddScoped<bmadServer.ApiService.Services.ITranslationService, bmadServer.ApiService.Services.TranslationService>();
+
 // Register session cleanup background service
 builder.Services.AddHostedService<bmadServer.ApiService.BackgroundServices.SessionCleanupService>();
 
