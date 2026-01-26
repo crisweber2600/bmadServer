@@ -20,6 +20,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<WorkflowInstance> WorkflowInstances { get; set; }
     public DbSet<WorkflowEvent> WorkflowEvents { get; set; }
     public DbSet<WorkflowStepHistory> WorkflowStepHistories { get; set; }
+    public DbSet<AgentMessageLog> AgentMessageLogs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -183,7 +184,6 @@ public class ApplicationDbContext : DbContext
                 .HasConversion<string>();
             entity.Property(e => e.ErrorMessage).HasMaxLength(2000);
             
-            // JSONB columns for PostgreSQL with JSON value converters for compatibility
             entity.Property(e => e.Input)
                 .HasColumnType("jsonb")
                 .HasConversion(
@@ -195,19 +195,42 @@ public class ApplicationDbContext : DbContext
                     v => v == null ? null : v.RootElement.GetRawText(),
                     v => v == null ? null : JsonDocument.Parse(v));
             
-            // Indexes
             entity.HasIndex(e => e.WorkflowInstanceId);
             entity.HasIndex(e => e.StepId);
             entity.HasIndex(e => e.StartedAt);
             entity.HasIndex(e => e.Status);
             
-            // GIN indexes for JSONB columns (PostgreSQL only)
             entity.HasIndex(e => e.Input)
                 .HasMethod("gin");
             entity.HasIndex(e => e.Output)
                 .HasMethod("gin");
             
-            // Foreign key to WorkflowInstance
+            entity.HasOne(e => e.WorkflowInstance)
+                .WithMany()
+                .HasForeignKey(e => e.WorkflowInstanceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AgentMessageLog>(entity =>
+        {
+            entity.ToTable("agent_message_logs");
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.SourceAgent).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.TargetAgent).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Content)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => v.RootElement.GetRawText(),
+                    v => JsonDocument.Parse(v));
+            
+            entity.HasIndex(e => e.WorkflowInstanceId);
+            entity.HasIndex(e => e.Timestamp);
+            entity.HasIndex(e => e.CorrelationId);
+            
+            entity.HasIndex(e => e.Content)
+                .HasMethod("gin");
+            
             entity.HasOne(e => e.WorkflowInstance)
                 .WithMany()
                 .HasForeignKey(e => e.WorkflowInstanceId)

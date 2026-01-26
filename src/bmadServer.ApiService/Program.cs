@@ -69,6 +69,12 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IWorkflowIns
 // Register agent router as singleton (shared agent handler registry)
 builder.Services.AddSingleton<bmadServer.ApiService.Services.Workflows.IAgentRouter, bmadServer.ApiService.Services.Workflows.AgentRouter>();
 
+// Register agent registry as singleton (shared agent metadata registry)
+builder.Services.AddSingleton<bmadServer.ApiService.Services.Workflows.Agents.IAgentRegistry, bmadServer.ApiService.Services.Workflows.Agents.AgentRegistry>();
+
+// Register agent messaging service for agent-to-agent communication
+builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.Agents.IAgentMessaging, bmadServer.ApiService.Services.Workflows.Agents.AgentMessaging>();
+
 // Register step executor
 builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IStepExecutor, bmadServer.ApiService.Services.Workflows.StepExecutor>();
 
