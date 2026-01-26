@@ -78,6 +78,9 @@ builder.Services.AddSingleton<bmadServer.ApiService.Services.Workflows.Agents.IW
 // Register agent handoff tracker as singleton (shared handoff history)
 builder.Services.AddSingleton<bmadServer.ApiService.Services.Workflows.Agents.IAgentHandoffTracker, bmadServer.ApiService.Services.Workflows.Agents.AgentHandoffTracker>();
 
+// Register human approval service as singleton (shared approval state)
+builder.Services.AddSingleton<bmadServer.ApiService.Services.Workflows.Agents.IHumanApprovalService, bmadServer.ApiService.Services.Workflows.Agents.HumanApprovalService>();
+
 // Register agent router as singleton (shared agent handler registry)
 builder.Services.AddSingleton<bmadServer.ApiService.Services.Workflows.IAgentRouter, bmadServer.ApiService.Services.Workflows.AgentRouter>();
 
