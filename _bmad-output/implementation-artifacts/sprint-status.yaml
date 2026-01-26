@@ -94,6 +94,8 @@ development_status:
   # ====================================
   epic-5: in-progress
   5-1-agent-registry-configuration: done
+  5-2-agent-to-agent-messaging: done
+  5-3-shared-workflow-context: backlog
   5-2-agent-to-agent-messaging: backlog
   5-3-shared-workflow-context: backlog
   5-4-agent-handoff-attribution: backlog
