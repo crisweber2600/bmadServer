@@ -78,6 +78,14 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.Agents.IAgen
 // Register step executor
 builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IStepExecutor, bmadServer.ApiService.Services.Workflows.StepExecutor>();
 
+// Register shared context service for multi-agent workflow collaboration
+// Provides access to shared state (step outputs, decisions, preferences) across agents
+builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.ISharedContextService, bmadServer.ApiService.Services.Workflows.SharedContextService>();
+
+// Register context summarization service for managing token limits
+// Preserves decision history and recent outputs while summarizing older steps
+builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IContextSummarizationService, bmadServer.ApiService.Services.Workflows.ContextSummarizationService>();
+
 // Register FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<bmadServer.ApiService.Validators.RegisterRequestValidator>();
 
