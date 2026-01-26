@@ -6,7 +6,7 @@ public class WorkflowParticipant
     public Guid WorkflowId { get; set; }
     public Guid UserId { get; set; }
     public ParticipantRole Role { get; set; }
-    public DateTime AddedAt { get; set; }
+    public DateTime AddedAt { get; init; }
     public Guid AddedBy { get; set; }
     
     // Navigation properties

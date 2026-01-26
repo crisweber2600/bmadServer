@@ -221,7 +221,8 @@ public class ApplicationDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Role)
                 .IsRequired()
-                .HasConversion<string>();
+                .HasConversion<string>()
+                .HasMaxLength(20);
             
             // Unique constraint: one user per workflow
             entity.HasIndex(e => new { e.WorkflowId, e.UserId })
