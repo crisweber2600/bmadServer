@@ -63,6 +63,7 @@ public class WorkflowCancellationIntegrationTests : IDisposable
              registryMock.Object,
              new Mock<IAgentRegistry>().Object,
              new Mock<IStepExecutor>().Object,
+             new Mock<IApprovalService>().Object,
              _hubContextMock.Object,
              new Mock<ILogger<WorkflowsController>>().Object);
 
@@ -247,6 +248,7 @@ public class WorkflowCancellationIntegrationTests : IDisposable
              new Mock<IWorkflowRegistry>().Object,
              new Mock<IAgentRegistry>().Object,
              new Mock<IStepExecutor>().Object,
+             new Mock<IApprovalService>().Object,
              _hubContextMock.Object,
              new Mock<ILogger<WorkflowsController>>().Object);
 

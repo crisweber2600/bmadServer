@@ -23,6 +23,7 @@ public class WorkflowsController : ControllerBase
     private readonly IWorkflowRegistry _workflowRegistry;
     private readonly IAgentRegistry _agentRegistry;
     private readonly IStepExecutor _stepExecutor;
+    private readonly IApprovalService _approvalService;
     private readonly IHubContext<ChatHub> _hubContext;
     private readonly ILogger<WorkflowsController> _logger;
 
@@ -31,6 +32,7 @@ public class WorkflowsController : ControllerBase
         IWorkflowRegistry workflowRegistry,
         IAgentRegistry agentRegistry,
         IStepExecutor stepExecutor,
+        IApprovalService approvalService,
         IHubContext<ChatHub> hubContext,
         ILogger<WorkflowsController> logger)
     {
@@ -38,6 +40,7 @@ public class WorkflowsController : ControllerBase
         _workflowRegistry = workflowRegistry;
         _agentRegistry = agentRegistry;
         _stepExecutor = stepExecutor;
+        _approvalService = approvalService;
         _hubContext = hubContext;
         _logger = logger;
     }
@@ -794,6 +797,284 @@ public class WorkflowsController : ControllerBase
             AgentAvatarUrl = null,
             Capabilities = new List<string>(),
             CurrentStepResponsibility = null
+        };
+    }
+
+    /// <summary>
+    /// Get the pending approval request for a workflow instance
+    /// </summary>
+    /// <param name="id">The workflow instance ID</param>
+    /// <returns>The pending approval request if one exists</returns>
+    [HttpGet("{id}/approvals/pending")]
+    [ProducesResponseType(typeof(ApprovalRequestDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<ApprovalRequestDto?>> GetPendingApproval(Guid id)
+    {
+        var instance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
+        if (instance == null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "Workflow Not Found",
+                Detail = $"Workflow instance {id} not found"
+            });
+        }
+
+        // Check authorization
+        var userId = GetUserIdFromClaims();
+        if (instance.UserId != userId && !User.IsInRole("admin"))
+        {
+            return Forbid();
+        }
+
+        var approval = await _approvalService.GetPendingApprovalAsync(id);
+        if (approval == null)
+        {
+            return Ok(null as ApprovalRequestDto);
+        }
+
+        return Ok(MapApprovalRequestToDto(approval));
+    }
+
+    /// <summary>
+    /// Get a specific approval request by ID
+    /// </summary>
+    /// <param name="approvalId">The approval request ID</param>
+    /// <returns>The approval request details</returns>
+    [HttpGet("approvals/{approvalId}")]
+    [ProducesResponseType(typeof(ApprovalRequestDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<ApprovalRequestDto>> GetApprovalRequest(Guid approvalId)
+    {
+        var approval = await _approvalService.GetApprovalRequestAsync(approvalId);
+        if (approval == null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "Approval Request Not Found",
+                Detail = $"Approval request {approvalId} not found"
+            });
+        }
+
+        // Check authorization
+        var userId = GetUserIdFromClaims();
+        if (approval.WorkflowInstance?.UserId != userId && !User.IsInRole("admin"))
+        {
+            return Forbid();
+        }
+
+        return Ok(MapApprovalRequestToDto(approval));
+    }
+
+    /// <summary>
+    /// Approve an approval request as-is
+    /// </summary>
+    /// <param name="approvalId">The approval request ID</param>
+    /// <returns>The updated approval request</returns>
+    [HttpPost("approvals/{approvalId}/approve")]
+    [ProducesResponseType(typeof(ApprovalRequestDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<ApprovalRequestDto>> ApproveRequest(Guid approvalId)
+    {
+        var approval = await _approvalService.GetApprovalRequestAsync(approvalId);
+        if (approval == null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "Approval Request Not Found",
+                Detail = $"Approval request {approvalId} not found"
+            });
+        }
+
+        // Check authorization
+        var userId = GetUserIdFromClaims();
+        if (approval.WorkflowInstance?.UserId != userId && !User.IsInRole("admin"))
+        {
+            return Forbid();
+        }
+
+        var (success, message, updatedApproval) = await _approvalService.ApproveAsync(approvalId, userId);
+        if (!success)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Approval Failed",
+                Detail = message
+            });
+        }
+
+        // Send SignalR notification
+        await _hubContext.Clients.User(userId.ToString())
+            .SendAsync("APPROVAL_RESOLVED", new
+            {
+                approvalRequestId = approvalId,
+                workflowInstanceId = approval.WorkflowInstanceId,
+                action = "Approved",
+                resolvedBy = userId,
+                resolvedAt = DateTime.UtcNow
+            });
+
+        return Ok(MapApprovalRequestToDto(updatedApproval!));
+    }
+
+    /// <summary>
+    /// Approve an approval request with modifications
+    /// </summary>
+    /// <param name="approvalId">The approval request ID</param>
+    /// <param name="request">The modified response</param>
+    /// <returns>The updated approval request</returns>
+    [HttpPost("approvals/{approvalId}/modify")]
+    [ProducesResponseType(typeof(ApprovalRequestDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<ApprovalRequestDto>> ModifyApprovalRequest(
+        Guid approvalId,
+        [FromBody] ApprovalModifyRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.ModifiedResponse))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Validation Failed",
+                Detail = "Modified response cannot be empty"
+            });
+        }
+
+        var approval = await _approvalService.GetApprovalRequestAsync(approvalId);
+        if (approval == null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "Approval Request Not Found",
+                Detail = $"Approval request {approvalId} not found"
+            });
+        }
+
+        // Check authorization
+        var userId = GetUserIdFromClaims();
+        if (approval.WorkflowInstance?.UserId != userId && !User.IsInRole("admin"))
+        {
+            return Forbid();
+        }
+
+        var (success, message, updatedApproval) = await _approvalService.ModifyAndApproveAsync(
+            approvalId, userId, request.ModifiedResponse);
+
+        if (!success)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Modification Failed",
+                Detail = message
+            });
+        }
+
+        // Send SignalR notification
+        await _hubContext.Clients.User(userId.ToString())
+            .SendAsync("APPROVAL_RESOLVED", new
+            {
+                approvalRequestId = approvalId,
+                workflowInstanceId = approval.WorkflowInstanceId,
+                action = "Modified",
+                resolvedBy = userId,
+                resolvedAt = DateTime.UtcNow
+            });
+
+        return Ok(MapApprovalRequestToDto(updatedApproval!));
+    }
+
+    /// <summary>
+    /// Reject an approval request
+    /// </summary>
+    /// <param name="approvalId">The approval request ID</param>
+    /// <param name="request">The rejection reason</param>
+    /// <returns>The updated approval request</returns>
+    [HttpPost("approvals/{approvalId}/reject")]
+    [ProducesResponseType(typeof(ApprovalRequestDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<ApprovalRequestDto>> RejectApprovalRequest(
+        Guid approvalId,
+        [FromBody] ApprovalRejectRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.RejectionReason))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Validation Failed",
+                Detail = "Rejection reason cannot be empty"
+            });
+        }
+
+        var approval = await _approvalService.GetApprovalRequestAsync(approvalId);
+        if (approval == null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "Approval Request Not Found",
+                Detail = $"Approval request {approvalId} not found"
+            });
+        }
+
+        // Check authorization
+        var userId = GetUserIdFromClaims();
+        if (approval.WorkflowInstance?.UserId != userId && !User.IsInRole("admin"))
+        {
+            return Forbid();
+        }
+
+        var (success, message, updatedApproval) = await _approvalService.RejectAsync(
+            approvalId, userId, request.RejectionReason);
+
+        if (!success)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Rejection Failed",
+                Detail = message
+            });
+        }
+
+        // Send SignalR notification
+        await _hubContext.Clients.User(userId.ToString())
+            .SendAsync("APPROVAL_RESOLVED", new
+            {
+                approvalRequestId = approvalId,
+                workflowInstanceId = approval.WorkflowInstanceId,
+                action = "Rejected",
+                resolvedBy = userId,
+                resolvedAt = DateTime.UtcNow
+            });
+
+        return Ok(MapApprovalRequestToDto(updatedApproval!));
+    }
+
+    /// <summary>
+    /// Map ApprovalRequest domain model to DTO
+    /// </summary>
+    private ApprovalRequestDto MapApprovalRequestToDto(ApprovalRequest approval)
+    {
+        return new ApprovalRequestDto
+        {
+            Id = approval.Id,
+            WorkflowInstanceId = approval.WorkflowInstanceId,
+            AgentId = approval.AgentId,
+            StepId = approval.StepId,
+            ProposedResponse = approval.ProposedResponse,
+            ConfidenceScore = approval.ConfidenceScore,
+            Reasoning = approval.Reasoning,
+            Status = approval.Status.ToString(),
+            RequestedAt = approval.RequestedAt,
+            ResolvedAt = approval.ResolvedAt,
+            ResolvedBy = approval.ResolvedBy,
+            ModifiedResponse = approval.ModifiedResponse,
+            RejectionReason = approval.RejectionReason
         };
     }
 

@@ -78,6 +78,9 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.Agents.IAgen
 // Register step executor
 builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IStepExecutor, bmadServer.ApiService.Services.Workflows.StepExecutor>();
 
+// Register approval service for human approval workflows
+builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IApprovalService, bmadServer.ApiService.Services.Workflows.ApprovalService>();
+
 // Register shared context service for multi-agent workflow collaboration
 // Provides access to shared state (step outputs, decisions, preferences) across agents
 builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.ISharedContextService, bmadServer.ApiService.Services.Workflows.SharedContextService>();

@@ -65,6 +65,7 @@ public class StepExecutionIntegrationTests : IDisposable
             _workflowInstanceService,
             sharedContextServiceMock.Object,
             agentHandoffServiceMock.Object,
+            new Mock<IApprovalService>().Object,
              hubContextMock.Object,
              new Mock<ILogger<StepExecutor>>().Object);
  
@@ -73,6 +74,7 @@ public class StepExecutionIntegrationTests : IDisposable
              _workflowRegistry,
              _agentRegistry,
              _stepExecutor,
+             new Mock<IApprovalService>().Object,
              new Mock<IHubContext<ChatHub>>().Object,
              new Mock<ILogger<WorkflowsController>>().Object);
 

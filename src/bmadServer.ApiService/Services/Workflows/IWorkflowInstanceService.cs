@@ -31,4 +31,10 @@ public interface IWorkflowInstanceService
     
     // Story 5.4: Agent Handoff & Attribution methods
     Task<List<AgentHandoff>> GetWorkflowHandoffsAsync(Guid workflowInstanceId);
+    
+    // Story 5.5: Human Approval for Low-Confidence Decisions
+    Task<(bool Success, string? Message)> ResumeAfterApprovalAsync(
+        Guid workflowInstanceId,
+        ApprovalRequest approvalRequest,
+        CancellationToken cancellationToken = default);
 }

@@ -51,6 +51,7 @@ public class StepExecutorTests : IDisposable
             _workflowInstanceServiceMock.Object,
             sharedContextServiceMock.Object,
             _agentHandoffServiceMock.Object,
+            new Mock<IApprovalService>().Object,
             _hubContextMock.Object,
             _loggerMock.Object);
     }
