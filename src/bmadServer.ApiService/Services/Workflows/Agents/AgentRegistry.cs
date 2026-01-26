@@ -82,66 +82,66 @@ public class AgentRegistry : IAgentRegistry
     {
         var agents = new[]
         {
-            new AgentDefinition
-            {
-                AgentId = "product-manager",
-                Name = "Product Manager",
-                Description = "Gathers requirements and translates business needs into specifications",
-                SystemPrompt = "You are a product manager for a software development project. Your role is to gather requirements, understand user needs, and translate business objectives into clear technical specifications.",
-                Capabilities = ["gather-requirements", "create-specifications", "analyze-market", "prioritize-features"],
-                ModelPreference = "gpt-5-mini",
-                Temperature = 0.7m
-            },
-            new AgentDefinition
-            {
-                AgentId = "architect",
-                Name = "Architect",
-                Description = "Designs system architecture and technical solutions",
-                SystemPrompt = "You are a senior solutions architect. Your role is to design scalable, maintainable system architectures that meet both functional and non-functional requirements.",
-                Capabilities = ["create-architecture", "design-system", "evaluate-tradeoffs", "plan-migration"],
-                ModelPreference = "gpt-5.1",
-                Temperature = 0.7m
-            },
-            new AgentDefinition
-            {
-                AgentId = "designer",
-                Name = "Designer",
-                Description = "Creates user experience and interface designs",
-                SystemPrompt = "You are a UX/UI designer. Your role is to create intuitive, accessible, and visually appealing user interfaces and experiences.",
-                Capabilities = ["create-ui-design", "design-ux-flow", "evaluate-usability", "create-wireframes"],
-                ModelPreference = "gpt-5-mini",
-                Temperature = 0.8m
-            },
-            new AgentDefinition
-            {
-                AgentId = "developer",
-                Name = "Developer",
-                Description = "Implements features and writes production code",
-                SystemPrompt = "You are a senior software developer. Your role is to implement features, write clean and maintainable code, and ensure code quality through testing and best practices.",
-                Capabilities = ["write-code", "implement-feature", "write-tests", "refactor-code", "fix-bugs"],
-                ModelPreference = "gpt-5.1-codex",
-                Temperature = 0.5m
-            },
-            new AgentDefinition
-            {
-                AgentId = "analyst",
-                Name = "Analyst",
-                Description = "Analyzes requirements, data, and provides insights",
-                SystemPrompt = "You are a business and technical analyst. Your role is to analyze requirements, identify risks and opportunities, and provide data-driven insights.",
-                Capabilities = ["analyze-requirements", "identify-risks", "analyze-data", "provide-recommendations"],
-                ModelPreference = "gpt-5.2",
-                Temperature = 0.6m
-            },
-            new AgentDefinition
-            {
-                AgentId = "orchestrator",
-                Name = "Orchestrator",
-                Description = "Coordinates between agents and manages workflow execution",
-                SystemPrompt = "You are a workflow orchestrator. Your role is to coordinate between different agents, manage task distribution, and ensure smooth workflow execution.",
-                Capabilities = ["coordinate-agents", "manage-workflow", "route-tasks", "aggregate-results"],
-                ModelPreference = "gpt-5.1",
-                Temperature = 0.6m
-            }
+             new AgentDefinition
+             {
+                 AgentId = "product-manager",
+                 Name = "Product Manager",
+                 Description = "Gathers requirements and translates business needs into specifications",
+                 SystemPrompt = "You are a product manager for a software development project. Your role is to gather requirements, understand user needs, and translate business objectives into clear technical specifications.",
+                 Capabilities = ["gather-requirements", "create-specifications", "analyze-market", "prioritize-features"],
+                 ModelPreference = "gpt-4",
+                 Temperature = 0.7m
+             },
+             new AgentDefinition
+             {
+                 AgentId = "architect",
+                 Name = "Architect",
+                 Description = "Designs system architecture and technical solutions",
+                 SystemPrompt = "You are a senior solutions architect. Your role is to design scalable, maintainable system architectures that meet both functional and non-functional requirements.",
+                 Capabilities = ["create-architecture", "design-system", "evaluate-tradeoffs", "plan-migration"],
+                 ModelPreference = "gpt-4-turbo",
+                 Temperature = 0.7m
+             },
+             new AgentDefinition
+             {
+                 AgentId = "designer",
+                 Name = "Designer",
+                 Description = "Creates user experience and interface designs",
+                 SystemPrompt = "You are a UX/UI designer. Your role is to create intuitive, accessible, and visually appealing user interfaces and experiences.",
+                 Capabilities = ["create-ui-design", "design-ux-flow", "evaluate-usability", "create-wireframes"],
+                 ModelPreference = "gpt-4",
+                 Temperature = 0.8m
+             },
+             new AgentDefinition
+             {
+                 AgentId = "developer",
+                 Name = "Developer",
+                 Description = "Implements features and writes production code",
+                 SystemPrompt = "You are a senior software developer. Your role is to implement features, write clean and maintainable code, and ensure code quality through testing and best practices.",
+                 Capabilities = ["write-code", "implement-feature", "write-tests", "refactor-code", "fix-bugs"],
+                 ModelPreference = "gpt-4-turbo",
+                 Temperature = 0.5m
+             },
+             new AgentDefinition
+             {
+                 AgentId = "analyst",
+                 Name = "Analyst",
+                 Description = "Analyzes requirements, data, and provides insights",
+                 SystemPrompt = "You are a business and technical analyst. Your role is to analyze requirements, identify risks and opportunities, and provide data-driven insights.",
+                 Capabilities = ["analyze-requirements", "identify-risks", "analyze-data", "provide-recommendations"],
+                 ModelPreference = "gpt-4",
+                 Temperature = 0.6m
+             },
+             new AgentDefinition
+             {
+                 AgentId = "orchestrator",
+                 Name = "Orchestrator",
+                 Description = "Coordinates between agents and manages workflow execution",
+                 SystemPrompt = "You are a workflow orchestrator. Your role is to coordinate between different agents, manage task distribution, and ensure smooth workflow execution.",
+                 Capabilities = ["coordinate-agents", "manage-workflow", "route-tasks", "aggregate-results"],
+                 ModelPreference = "gpt-4-turbo",
+                 Temperature = 0.6m
+             }
         };
 
         foreach (var agent in agents)
