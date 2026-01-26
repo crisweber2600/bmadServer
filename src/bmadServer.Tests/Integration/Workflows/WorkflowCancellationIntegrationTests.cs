@@ -55,15 +55,16 @@ public class WorkflowCancellationIntegrationTests : IDisposable
         mockClientProxy.Setup(p => p.SendCoreAsync(
             It.IsAny<string>(),
             It.IsAny<object[]>(),
-            It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-        
-        _controller = new WorkflowsController(
-            _workflowInstanceService,
-            registryMock.Object,
-            new Mock<IStepExecutor>().Object,
-            _hubContextMock.Object,
-            new Mock<ILogger<WorkflowsController>>().Object);
+             It.IsAny<CancellationToken>()))
+             .Returns(Task.CompletedTask);
+         
+         _controller = new WorkflowsController(
+             _workflowInstanceService,
+             registryMock.Object,
+             new Mock<IAgentRegistry>().Object,
+             new Mock<IStepExecutor>().Object,
+             _hubContextMock.Object,
+             new Mock<ILogger<WorkflowsController>>().Object);
 
         _testUserId = Guid.NewGuid();
         var claims = new List<Claim>
@@ -237,16 +238,17 @@ public class WorkflowCancellationIntegrationTests : IDisposable
         problemResult.StatusCode.Should().Be(StatusCodes.Status404NotFound);
     }
 
-    [Fact]
-    public async Task CancelWorkflow_WithoutAuthentication_ShouldReturn401()
-    {
-        // Arrange
-        var controller = new WorkflowsController(
-            _workflowInstanceService,
-            new Mock<IWorkflowRegistry>().Object,
-            new Mock<IStepExecutor>().Object,
-            _hubContextMock.Object,
-            new Mock<ILogger<WorkflowsController>>().Object);
+     [Fact]
+     public async Task CancelWorkflow_WithoutAuthentication_ShouldReturn401()
+     {
+         // Arrange
+         var controller = new WorkflowsController(
+             _workflowInstanceService,
+             new Mock<IWorkflowRegistry>().Object,
+             new Mock<IAgentRegistry>().Object,
+             new Mock<IStepExecutor>().Object,
+             _hubContextMock.Object,
+             new Mock<ILogger<WorkflowsController>>().Object);
 
         controller.ControllerContext = new ControllerContext
         {
