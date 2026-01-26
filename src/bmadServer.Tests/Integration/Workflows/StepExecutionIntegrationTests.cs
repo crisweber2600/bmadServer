@@ -2,6 +2,7 @@ using bmadServer.ApiService.Controllers;
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Hubs;
 using bmadServer.ApiService.Models.Workflows;
+using bmadServer.ApiService.Services;
 using bmadServer.ApiService.Services.Workflows;
 using bmadServer.ApiService.Services.Workflows.Agents;
 using bmadServer.ServiceDefaults.Models.Workflows;
@@ -52,12 +53,21 @@ public class StepExecutionIntegrationTests : IDisposable
             _workflowInstanceService,
             new Mock<ILogger<StepExecutor>>().Object);
 
+        // Setup hub context mock
+        var mockClients = new Mock<IHubClients>();
+        var mockClientProxy = new Mock<IClientProxy>();
+        mockClients.Setup(clients => clients.All).Returns(mockClientProxy.Object);
+        mockClients.Setup(clients => clients.Group(It.IsAny<string>())).Returns(mockClientProxy.Object);
+        var mockHubContext = new Mock<IHubContext<ChatHub>>();
+        mockHubContext.Setup(hub => hub.Clients).Returns(mockClients.Object);
+
         _controller = new WorkflowsController(
             _workflowInstanceService,
             _workflowRegistry,
             _stepExecutor,
-            new Mock<IHubContext<ChatHub>>().Object,
-            new Mock<ILogger<WorkflowsController>>().Object);
+            mockHubContext.Object,
+            new Mock<ILogger<WorkflowsController>>().Object,
+            new Mock<IParticipantService>().Object);
 
         // Setup test user
         _testUserId = Guid.NewGuid();

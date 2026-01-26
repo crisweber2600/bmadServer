@@ -20,6 +20,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<WorkflowInstance> WorkflowInstances { get; set; }
     public DbSet<WorkflowEvent> WorkflowEvents { get; set; }
     public DbSet<WorkflowStepHistory> WorkflowStepHistories { get; set; }
+    public DbSet<WorkflowParticipant> WorkflowParticipants { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -211,6 +212,34 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(e => e.WorkflowInstance)
                 .WithMany()
                 .HasForeignKey(e => e.WorkflowInstanceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<WorkflowParticipant>(entity =>
+        {
+            entity.ToTable("workflow_participants");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Role)
+                .IsRequired()
+                .HasConversion<string>();
+            
+            // Unique constraint: one user per workflow
+            entity.HasIndex(e => new { e.WorkflowId, e.UserId })
+                .IsUnique();
+            
+            // Indexes for lookup performance
+            entity.HasIndex(e => e.WorkflowId);
+            entity.HasIndex(e => e.UserId);
+            
+            // Foreign keys
+            entity.HasOne(e => e.Workflow)
+                .WithMany()
+                .HasForeignKey(e => e.WorkflowId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

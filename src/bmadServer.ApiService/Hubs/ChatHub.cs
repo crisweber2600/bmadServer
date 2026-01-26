@@ -17,15 +17,18 @@ public class ChatHub : Hub
     private readonly ISessionService _sessionService;
     private readonly IStepExecutor _stepExecutor;
     private readonly ILogger<ChatHub> _logger;
+    private readonly IParticipantService _participantService;
 
     public ChatHub(
         ISessionService sessionService, 
         IStepExecutor stepExecutor,
-        ILogger<ChatHub> logger)
+        ILogger<ChatHub> logger,
+        IParticipantService participantService)
     {
         _sessionService = sessionService;
         _stepExecutor = stepExecutor;
         _logger = logger;
+        _participantService = participantService;
     }
 
     /// <summary>
@@ -214,5 +217,75 @@ public class ChatHub : Hub
                 Timestamp = DateTime.UtcNow
             });
         }
+    }
+
+    /// <summary>
+    /// Join a workflow to receive real-time updates and enable presence tracking
+    /// </summary>
+    public async Task JoinWorkflow(Guid workflowId)
+    {
+        var userId = GetUserIdFromClaims();
+
+        // Verify user is a participant or owner
+        var isParticipant = await _participantService.IsParticipantAsync(workflowId, userId);
+        var isOwner = await _participantService.IsWorkflowOwnerAsync(workflowId, userId);
+
+        if (!isParticipant && !isOwner)
+        {
+            throw new HubException("Not authorized to join this workflow");
+        }
+
+        // Add to SignalR group
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"workflow-{workflowId}");
+
+        // Broadcast USER_JOINED event to workflow group
+        await Clients.OthersInGroup($"workflow-{workflowId}").SendAsync("USER_JOINED", new
+        {
+            eventType = "USER_JOINED",
+            userId,
+            userName = Context.User?.Identity?.Name ?? "Unknown User",
+            timestamp = DateTime.UtcNow
+        });
+
+        _logger.LogInformation("User {UserId} joined workflow {WorkflowId}", userId, workflowId);
+    }
+
+    /// <summary>
+    /// Leave a workflow group
+    /// </summary>
+    public async Task LeaveWorkflow(Guid workflowId)
+    {
+        var userId = GetUserIdFromClaims();
+
+        // Remove from SignalR group
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"workflow-{workflowId}");
+
+        // Broadcast USER_LEFT event to workflow group
+        await Clients.OthersInGroup($"workflow-{workflowId}").SendAsync("USER_LEFT", new
+        {
+            eventType = "USER_LEFT",
+            userId,
+            userName = Context.User?.Identity?.Name ?? "Unknown User",
+            timestamp = DateTime.UtcNow
+        });
+
+        _logger.LogInformation("User {UserId} left workflow {WorkflowId}", userId, workflowId);
+    }
+
+    /// <summary>
+    /// Send typing indicator to other participants
+    /// </summary>
+    public async Task SendTypingIndicator(Guid workflowId)
+    {
+        var userId = GetUserIdFromClaims();
+
+        // Broadcast typing indicator to others in the workflow group
+        await Clients.OthersInGroup($"workflow-{workflowId}").SendAsync("USER_TYPING", new
+        {
+            eventType = "USER_TYPING",
+            userId,
+            userName = Context.User?.Identity?.Name ?? "Unknown User",
+            timestamp = DateTime.UtcNow
+        });
     }
 }

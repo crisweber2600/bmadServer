@@ -2,6 +2,7 @@ using bmadServer.ApiService.Controllers;
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Hubs;
 using bmadServer.ApiService.Models.Workflows;
+using bmadServer.ApiService.Services;
 using bmadServer.ApiService.Services.Workflows;
 using bmadServer.ServiceDefaults.Services.Workflows;
 using FluentAssertions;
@@ -57,7 +58,8 @@ public class WorkflowCancellationIntegrationTests : IDisposable
             registryMock.Object,
             new Mock<IStepExecutor>().Object,
             _hubContextMock.Object,
-            new Mock<ILogger<WorkflowsController>>().Object);
+            new Mock<ILogger<WorkflowsController>>().Object,
+            new Mock<IParticipantService>().Object);
 
         _testUserId = Guid.NewGuid();
         var claims = new List<Claim>
@@ -240,7 +242,8 @@ public class WorkflowCancellationIntegrationTests : IDisposable
             new Mock<IWorkflowRegistry>().Object,
             new Mock<IStepExecutor>().Object,
             _hubContextMock.Object,
-            new Mock<ILogger<WorkflowsController>>().Object);
+            new Mock<ILogger<WorkflowsController>>().Object,
+            new Mock<IParticipantService>().Object);
 
         controller.ControllerContext = new ControllerContext
         {
