@@ -75,6 +75,9 @@ builder.Services.AddSingleton<bmadServer.ApiService.Services.Workflows.Agents.IA
 // Register workflow context manager as singleton (shared workflow contexts)
 builder.Services.AddSingleton<bmadServer.ApiService.Services.Workflows.Agents.IWorkflowContextManager, bmadServer.ApiService.Services.Workflows.Agents.WorkflowContextManager>();
 
+// Register agent handoff tracker as singleton (shared handoff history)
+builder.Services.AddSingleton<bmadServer.ApiService.Services.Workflows.Agents.IAgentHandoffTracker, bmadServer.ApiService.Services.Workflows.Agents.AgentHandoffTracker>();
+
 // Register agent router as singleton (shared agent handler registry)
 builder.Services.AddSingleton<bmadServer.ApiService.Services.Workflows.IAgentRouter, bmadServer.ApiService.Services.Workflows.AgentRouter>();
 
