@@ -1,0 +1,154 @@
+.agent-attribution-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.agent-attribution-inline:hover {
+  background-color: rgba(24, 144, 255, 0.1);
+}
+
+.agent-attribution-inline .agent-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.agent-attribution-block {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-left: 3px solid #1890ff;
+  background-color: rgba(24, 144, 255, 0.05);
+  border-radius: 4px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.agent-attribution-block.hovering {
+  background-color: rgba(24, 144, 255, 0.1);
+  border-left-color: #0050b3;
+}
+
+.attribution-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.agent-avatar {
+  flex-shrink: 0;
+}
+
+.agent-avatar.small {
+  width: 24px !important;
+  height: 24px !important;
+  font-size: 12px;
+}
+
+.agent-avatar.large {
+  width: 32px !important;
+  height: 32px !important;
+  font-size: 16px;
+}
+
+.attribution-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.agent-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #262626;
+}
+
+.agent-timestamp {
+  font-size: 12px;
+  color: #8c8c8c;
+}
+
+.agent-attribution-tooltip {
+  max-width: 300px;
+  padding: 4px 0;
+}
+
+.tooltip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.tooltip-header strong {
+  font-size: 14px;
+  color: #262626;
+}
+
+.tooltip-id {
+  font-size: 12px;
+}
+
+.tooltip-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tooltip-section > :first-child {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.tooltip-section > :last-child {
+  font-size: 13px;
+  color: #262626;
+}
+
+.capabilities-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.capability-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background-color: #f0f2f5;
+  border-radius: 3px;
+  font-size: 12px;
+  color: #262626;
+}
+
+.tooltip-timestamp {
+  font-size: 11px;
+  display: block;
+  margin-top: 4px;
+}
+
+@media (max-width: 768px) {
+  .agent-attribution-block {
+    padding: 6px 10px;
+  }
+
+  .attribution-content {
+    gap: 8px;
+  }
+
+  .agent-name {
+    font-size: 13px;
+  }
+
+  .agent-timestamp {
+    font-size: 11px;
+  }
+}
