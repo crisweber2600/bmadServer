@@ -1,0 +1,164 @@
+.workflow-handoff-log {
+  padding: 24px;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.handoff-log-header {
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.handoff-log-header h2 {
+  margin: 0 0 8px 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #1f1f1f;
+}
+
+.handoff-log-description {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.handoff-log-filters {
+  background: #fafafa;
+  padding: 16px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  border: 1px solid #f0f0f0;
+}
+
+.handoff-log-filters .date-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.handoff-log-filters .date-filter label {
+  font-weight: 500;
+  color: #333;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.handoff-log-export {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.handoff-log-export span {
+  font-weight: 500;
+  color: #666;
+}
+
+.handoff-log-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+}
+
+.ant-table {
+  font-size: 13px;
+}
+
+.ant-table-thead > tr > th {
+  background: #fafafa;
+  font-weight: 600;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.ant-table-tbody > tr > td {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.ant-table-tbody > tr:hover > td {
+  background: #f5f5f5;
+}
+
+.ant-table-pagination {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+@media (max-width: 768px) {
+  .workflow-handoff-log {
+    padding: 16px;
+  }
+
+  .handoff-log-header {
+    margin-bottom: 16px;
+  }
+
+  .handoff-log-header h2 {
+    font-size: 20px;
+  }
+
+  .handoff-log-filters {
+    padding: 12px;
+  }
+
+  .handoff-log-filters .date-filter {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .handoff-log-export {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ant-table-wrapper .ant-table {
+    font-size: 12px;
+  }
+
+  .ant-table-thead > tr > th {
+    padding: 8px 4px !important;
+  }
+
+  .ant-table-tbody > tr > td {
+    padding: 8px 4px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .workflow-handoff-log {
+    padding: 12px;
+    border-radius: 0;
+    margin: -12px -12px 0 -12px;
+  }
+
+  .handoff-log-header h2 {
+    font-size: 18px;
+  }
+
+  .handoff-log-description {
+    font-size: 12px;
+  }
+
+  .handoff-log-filters {
+    padding: 8px;
+  }
+
+  .ant-table-wrapper {
+    font-size: 11px;
+  }
+
+  .ant-table-thead > tr > th {
+    padding: 6px 2px !important;
+  }
+
+  .ant-table-tbody > tr > td {
+    padding: 6px 2px !important;
+    font-size: 11px;
+  }
+}
