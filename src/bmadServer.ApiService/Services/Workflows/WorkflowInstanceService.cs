@@ -820,21 +820,21 @@ public class WorkflowInstanceService : IWorkflowInstanceService
         };
     }
 
-     /// <summary>
-     /// Converts an AgentDefinition to AgentAttributionDto for API responses.
-     /// </summary>
-     private AgentAttributionDto ConvertToAgentAttribution(AgentDefinition agent)
-     {
-         return new AgentAttributionDto
-         {
-             AgentId = agent.AgentId,
-              AgentName = agent.Name,
-              AgentDescription = agent.Description ?? string.Empty,
-              AgentAvatarUrl = null,
-              Capabilities = agent.Capabilities.ToList(),
-              CurrentStepResponsibility = null
-          };
-      }
+    /// <summary>
+    /// Converts an AgentDefinition to AgentAttributionDto for API responses.
+    /// </summary>
+    private AgentAttributionDto ConvertToAgentAttribution(AgentDefinition agent)
+    {
+        return new AgentAttributionDto
+        {
+            AgentId = agent.AgentId,
+            AgentName = agent.Name,
+            AgentDescription = agent.Description ?? string.Empty,
+            AgentAvatarUrl = null,
+            Capabilities = agent.Capabilities.ToList(),
+            CurrentStepResponsibility = null
+        };
+    }
 
     public async Task<List<AgentHandoff>> GetWorkflowHandoffsAsync(Guid workflowInstanceId)
     {

@@ -28,7 +28,6 @@ public class StepExecutor : IStepExecutor
     private readonly ILogger<StepExecutor> _logger;
     
     private const int StreamingThresholdSeconds = 5;
-    private const double ApprovalConfidenceThreshold = 0.7;
 
     public StepExecutor(
         ApplicationDbContext context,
@@ -190,12 +189,11 @@ public class StepExecutor : IStepExecutor
                 }
             }
 
-            // Prepare agent context
-            var agentContext = PrepareAgentContext(instance, step, userInput);
-            
             // Load shared context before execution
             var sharedContext = await _sharedContextService.GetContextAsync(workflowInstanceId, cancellationToken);
-            agentContext = agentContext with { SharedContext = sharedContext };
+            
+            // Prepare agent context
+            var agentContext = PrepareAgentContext(instance, step, userInput, sharedContext);
 
             // Execute step via agent handler
             var agentResult = await handler.ExecuteAsync(agentContext, cancellationToken);
@@ -453,10 +451,8 @@ public class StepExecutor : IStepExecutor
             yield break;
         }
 
-        var agentContext = PrepareAgentContext(instance, step, userInput);
-        
         var sharedContext = await _sharedContextService.GetContextAsync(workflowInstanceId, cancellationToken);
-        agentContext = agentContext with { SharedContext = sharedContext };
+        var agentContext = PrepareAgentContext(instance, step, userInput, sharedContext);
         
         var stopwatch = Stopwatch.StartNew();
 
@@ -472,7 +468,8 @@ public class StepExecutor : IStepExecutor
     private AgentContext PrepareAgentContext(
         WorkflowInstance instance, 
         ServiceDefaults.Models.Workflows.WorkflowStep step, 
-        string? userInput)
+        string? userInput,
+        SharedContext? sharedContext)
     {
         // Parse step parameters from InputSchema (if any)
         JsonDocument? stepParameters = null;
@@ -498,7 +495,7 @@ public class StepExecutor : IStepExecutor
             StepParameters = stepParameters,
             ConversationHistory = new List<ConversationMessage>(),
             UserInput = userInput,
-            SharedContext = null
+            SharedContext = sharedContext
         };
     }
 
