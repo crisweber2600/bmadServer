@@ -21,6 +21,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<WorkflowEvent> WorkflowEvents { get; set; }
     public DbSet<WorkflowStepHistory> WorkflowStepHistories { get; set; }
     public DbSet<WorkflowParticipant> WorkflowParticipants { get; set; }
+    public DbSet<WorkflowCheckpoint> WorkflowCheckpoints { get; set; }
+    public DbSet<QueuedInput> QueuedInputs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -242,6 +244,100 @@ public class ApplicationDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<WorkflowCheckpoint>(entity =>
+        {
+            entity.ToTable("workflow_checkpoints");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.StepId).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.CheckpointType)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasMaxLength(50);
+            
+            // JSONB columns for PostgreSQL with JSON value converters for compatibility
+            entity.Property(e => e.StateSnapshot)
+                .HasColumnType("jsonb")
+                .IsRequired()
+                .HasConversion(
+                    v => v.RootElement.GetRawText(),
+                    v => JsonDocument.Parse(v));
+            
+            entity.Property(e => e.Metadata)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => v == null ? null : v.RootElement.GetRawText(),
+                    v => v == null ? null : JsonDocument.Parse(v));
+            
+            // Indexes
+            entity.HasIndex(e => new { e.WorkflowId, e.CreatedAt })
+                .HasDatabaseName("idx_checkpoints_workflow_time");
+            entity.HasIndex(e => new { e.WorkflowId, e.Version })
+                .HasDatabaseName("idx_checkpoints_version");
+            
+            // GIN indexes for JSONB columns (PostgreSQL only)
+            entity.HasIndex(e => e.StateSnapshot)
+                .HasMethod("gin");
+            entity.HasIndex(e => e.Metadata)
+                .HasMethod("gin");
+            
+            // Foreign keys
+            entity.HasOne(e => e.Workflow)
+                .WithMany()
+                .HasForeignKey(e => e.WorkflowId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            entity.HasOne(e => e.TriggeredByUser)
+                .WithMany()
+                .HasForeignKey(e => e.TriggeredBy)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<QueuedInput>(entity =>
+        {
+            entity.ToTable("queued_inputs");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.InputType).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .HasDefaultValue(InputStatus.Queued);
+            entity.Property(e => e.RejectionReason).HasMaxLength(2000);
+            
+            // Auto-increment sequence number for FIFO ordering
+            entity.Property(e => e.SequenceNumber)
+                .UseIdentityAlwaysColumn();
+            
+            // JSONB column for PostgreSQL with JSON value converter for compatibility
+            entity.Property(e => e.Content)
+                .HasColumnType("jsonb")
+                .IsRequired()
+                .HasConversion(
+                    v => v.RootElement.GetRawText(),
+                    v => JsonDocument.Parse(v));
+            
+            // Indexes
+            entity.HasIndex(e => new { e.WorkflowId, e.Status, e.SequenceNumber })
+                .HasDatabaseName("idx_queued_inputs_workflow_status");
+            entity.HasIndex(e => e.UserId)
+                .HasDatabaseName("idx_queued_inputs_user");
+            
+            // GIN index for JSONB column (PostgreSQL only)
+            entity.HasIndex(e => e.Content)
+                .HasMethod("gin");
+            
+            // Foreign keys
+            entity.HasOne(e => e.Workflow)
+                .WithMany()
+                .HasForeignKey(e => e.WorkflowId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

@@ -75,6 +75,10 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IStepExecuto
 // Register participant service
 builder.Services.AddScoped<bmadServer.ApiService.Services.IParticipantService, bmadServer.ApiService.Services.ParticipantService>();
 
+// Register checkpoint services
+builder.Services.AddScoped<bmadServer.ApiService.Services.Checkpoints.ICheckpointService, bmadServer.ApiService.Services.Checkpoints.CheckpointService>();
+builder.Services.AddScoped<bmadServer.ApiService.Services.Checkpoints.IInputQueueService, bmadServer.ApiService.Services.Checkpoints.InputQueueService>();
+
 // Register FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<bmadServer.ApiService.Validators.RegisterRequestValidator>();
 
