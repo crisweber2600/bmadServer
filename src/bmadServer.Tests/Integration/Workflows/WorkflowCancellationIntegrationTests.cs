@@ -3,6 +3,7 @@ using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Hubs;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services.Workflows;
+using bmadServer.ApiService.Services.Workflows.Agents;
 using bmadServer.ServiceDefaults.Services.Workflows;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
@@ -34,9 +35,14 @@ public class WorkflowCancellationIntegrationTests : IDisposable
         var registryMock = new Mock<IWorkflowRegistry>();
         registryMock.Setup(r => r.ValidateWorkflow(It.IsAny<string>())).Returns(true);
 
+        var agentRegistryMock = new Mock<IAgentRegistry>();
+        var agentHandoffServiceMock = new Mock<IAgentHandoffService>();
+
         _workflowInstanceService = new WorkflowInstanceService(
             _context,
             registryMock.Object,
+            agentRegistryMock.Object,
+            agentHandoffServiceMock.Object,
             new Mock<ILogger<WorkflowInstanceService>>().Object);
 
         // Setup SignalR hub mock properly

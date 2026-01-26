@@ -2,6 +2,7 @@ using bmadServer.ApiService.Data;
 using bmadServer.ApiService.DTOs;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services.Workflows;
+using bmadServer.ApiService.Services.Workflows.Agents;
 using bmadServer.ServiceDefaults.Models.Workflows;
 using bmadServer.ServiceDefaults.Services.Workflows;
 using FluentAssertions;
@@ -16,6 +17,8 @@ public class WorkflowStatusProgressTests : IDisposable
 {
     private readonly ApplicationDbContext _context;
     private readonly Mock<IWorkflowRegistry> _registryMock;
+    private readonly Mock<IAgentRegistry> _agentRegistryMock;
+    private readonly Mock<IAgentHandoffService> _agentHandoffServiceMock;
     private readonly Mock<ILogger<WorkflowInstanceService>> _loggerMock;
     private readonly IWorkflowInstanceService _service;
 
@@ -27,8 +30,10 @@ public class WorkflowStatusProgressTests : IDisposable
         _context = new ApplicationDbContext(options);
 
         _registryMock = new Mock<IWorkflowRegistry>();
+        _agentRegistryMock = new Mock<IAgentRegistry>();
+        _agentHandoffServiceMock = new Mock<IAgentHandoffService>();
         _loggerMock = new Mock<ILogger<WorkflowInstanceService>>();
-        _service = new WorkflowInstanceService(_context, _registryMock.Object, _loggerMock.Object);
+        _service = new WorkflowInstanceService(_context, _registryMock.Object, _agentRegistryMock.Object, _agentHandoffServiceMock.Object, _loggerMock.Object);
     }
 
     public void Dispose()
