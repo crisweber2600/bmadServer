@@ -52,6 +52,7 @@ public class StepExecutionIntegrationTests : IDisposable
             .ReturnsAsync((SharedContext?)null);
 
         var agentHandoffServiceMock = new Mock<IAgentHandoffService>();
+        var hubContextMock = new Mock<IHubContext<ChatHub>>();
         
         _stepExecutor = new StepExecutor(
             _context,
@@ -60,6 +61,7 @@ public class StepExecutionIntegrationTests : IDisposable
             _workflowInstanceService,
             sharedContextServiceMock.Object,
             agentHandoffServiceMock.Object,
+            hubContextMock.Object,
             new Mock<ILogger<StepExecutor>>().Object);
 
         _controller = new WorkflowsController(

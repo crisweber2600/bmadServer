@@ -1,7 +1,9 @@
 using bmadServer.ApiService.Data;
+using bmadServer.ApiService.Hubs;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services.Workflows.Agents;
 using bmadServer.ServiceDefaults.Services.Workflows;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using NJsonSchema;
 using System.Diagnostics;
@@ -21,6 +23,7 @@ public class StepExecutor : IStepExecutor
     private readonly IWorkflowInstanceService _workflowInstanceService;
     private readonly ISharedContextService _sharedContextService;
     private readonly IAgentHandoffService _agentHandoffService;
+    private readonly IHubContext<ChatHub> _hubContext;
     private readonly ILogger<StepExecutor> _logger;
     
     private const int StreamingThresholdSeconds = 5;
@@ -32,6 +35,7 @@ public class StepExecutor : IStepExecutor
         IWorkflowInstanceService workflowInstanceService,
         ISharedContextService sharedContextService,
         IAgentHandoffService agentHandoffService,
+        IHubContext<ChatHub> hubContext,
         ILogger<StepExecutor> logger)
     {
         _context = context;
@@ -40,6 +44,7 @@ public class StepExecutor : IStepExecutor
         _workflowInstanceService = workflowInstanceService;
         _sharedContextService = sharedContextService;
         _agentHandoffService = agentHandoffService;
+        _hubContext = hubContext;
         _logger = logger;
     }
 
@@ -151,6 +156,26 @@ public class StepExecutor : IStepExecutor
                     _logger.LogInformation(
                         "Recorded handoff from {FromAgent} to {ToAgent} for step {StepId}",
                         previousStep.AgentId, step.AgentId, step.StepId);
+                    
+                    // Emit AGENT_HANDOFF event to connected clients (non-blocking)
+                    try
+                    {
+                        await _hubContext.Clients.All.SendAsync("AGENT_HANDOFF", new
+                        {
+                            FromAgentId = previousStep.AgentId,
+                            ToAgentId = step.AgentId,
+                            StepName = step.Name,
+                            Timestamp = DateTimeOffset.UtcNow,
+                            Message = $"Handing off to {step.AgentId}..."
+                        }, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Non-blocking SignalR error - log but don't fail workflow
+                        _logger.LogWarning(ex, 
+                            "Failed to emit AGENT_HANDOFF event for handoff from {FromAgent} to {ToAgent}",
+                            previousStep.AgentId, step.AgentId);
+                    }
                 }
                 catch (Exception ex)
                 {
