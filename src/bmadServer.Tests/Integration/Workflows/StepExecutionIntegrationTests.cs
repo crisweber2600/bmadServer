@@ -51,12 +51,15 @@ public class StepExecutionIntegrationTests : IDisposable
             .Setup(x => x.GetContextAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((SharedContext?)null);
 
+        var agentHandoffServiceMock = new Mock<IAgentHandoffService>();
+        
         _stepExecutor = new StepExecutor(
             _context,
             _agentRouter,
             _workflowRegistry,
             _workflowInstanceService,
             sharedContextServiceMock.Object,
+            agentHandoffServiceMock.Object,
             new Mock<ILogger<StepExecutor>>().Object);
 
         _controller = new WorkflowsController(
