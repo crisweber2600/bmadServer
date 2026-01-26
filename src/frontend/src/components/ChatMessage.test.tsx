@@ -207,6 +207,72 @@ describe('ChatMessage', () => {
     });
   });
 
+  describe('Agent Attribution', () => {
+    const mockAttribution = {
+      agentId: 'agent-001',
+      agentName: 'BMAD Architect',
+      agentDescription: 'Designs system architecture',
+      capabilities: ['Design', 'Review'],
+    };
+
+    it('renders AgentAttribution when provided', () => {
+      render(
+        <ChatMessage
+          content="Architecture message"
+          isUser={false}
+          timestamp={mockDate}
+          agentAttribution={mockAttribution}
+        />
+      );
+
+      expect(screen.getByText('BMAD Architect')).toBeInTheDocument();
+      expect(screen.getByLabelText('BMAD Architect')).toBeInTheDocument();
+    });
+
+    it('does not render simple agent name when AgentAttribution is provided', () => {
+      const { container } = render(
+        <ChatMessage
+          content="Architecture message"
+          isUser={false}
+          timestamp={mockDate}
+          agentName="Simple Agent Name"
+          agentAttribution={mockAttribution}
+        />
+      );
+
+      const agentNameSpans = container.querySelectorAll('.agent-name');
+      expect(agentNameSpans).toHaveLength(0);
+    });
+
+    it('renders simple agent name when AgentAttribution is not provided', () => {
+      const { container } = render(
+        <ChatMessage
+          content="Agent message"
+          isUser={false}
+          timestamp={mockDate}
+          agentName="Simple Agent"
+        />
+      );
+
+      const agentNameSpans = container.querySelectorAll('.agent-name');
+      expect(agentNameSpans.length).toBeGreaterThan(0);
+    });
+
+    it('passes timestamp to AgentAttribution', () => {
+      const customDate = new Date('2024-02-20T15:45:00');
+      render(
+        <ChatMessage
+          content="Message"
+          isUser={false}
+          timestamp={customDate}
+          agentAttribution={mockAttribution}
+        />
+      );
+
+      expect(screen.getByText('BMAD Architect')).toBeInTheDocument();
+    });
+  });
+
   describe('Timestamp Formatting', () => {
     it('formats timestamp correctly for morning', () => {
       const morning = new Date('2024-01-15T09:15:00');
