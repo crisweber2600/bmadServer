@@ -134,7 +134,7 @@ public class DecisionConflictTests : IClassFixture<WebApplicationFactory<Program
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var workflowId = await CreateWorkflowInstanceAsync();
-        var decision1Id = await CreateDecisionAsync(workflowId, "step-1");
+        await CreateDecisionAsync(workflowId, "step-1");
 
         // Act
         var response = await _client.GetAsync($"/api/v1/workflows/{workflowId}/conflicts");
@@ -175,7 +175,7 @@ public class DecisionConflictTests : IClassFixture<WebApplicationFactory<Program
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var workflowId = await CreateWorkflowInstanceAsync();
-        var decision1 = await CreateDecisionAsync(workflowId, "step-1");
+        await CreateDecisionAsync(workflowId, "step-1");
 
         var conflictsResponse = await _client.GetAsync($"/api/v1/workflows/{workflowId}/conflicts");
         var conflicts = await conflictsResponse.Content.ReadFromJsonAsync<List<DecisionConflictResponse>>();
@@ -301,7 +301,7 @@ public class DecisionConflictTests : IClassFixture<WebApplicationFactory<Program
 
         // Act
         var rulesResponse = await _client.GetAsync("/api/v1/conflict-rules");
-        var rules = await rulesResponse.Content.ReadFromJsonAsync<List<ConflictRuleResponse>>();
+        await rulesResponse.Content.ReadFromJsonAsync<List<ConflictRuleResponse>>();
 
         // Create decisions
         for (int i = 0; i < 2; i++)

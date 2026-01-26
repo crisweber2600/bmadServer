@@ -1,6 +1,8 @@
 # Build Output
 bin/
 obj/
+**/bin/
+**/obj/
 out/
 *.dll
 *.exe

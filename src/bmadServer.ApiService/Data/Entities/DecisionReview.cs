@@ -32,6 +32,27 @@ public enum DecisionStatus
 }
 
 /// <summary>
+/// Represents the status of a review
+/// </summary>
+public enum ReviewStatus
+{
+    /// <summary>
+    /// Review is pending responses
+    /// </summary>
+    Pending,
+    
+    /// <summary>
+    /// Review has been completed
+    /// </summary>
+    Completed,
+    
+    /// <summary>
+    /// Review has been cancelled
+    /// </summary>
+    Cancelled
+}
+
+/// <summary>
 /// Represents a review request for a decision
 /// </summary>
 public class DecisionReview
@@ -64,12 +85,7 @@ public class DecisionReview
     /// <summary>
     /// Current status of the review
     /// </summary>
-    public string Status { get; set; } = "Pending";
-
-    /// <summary>
-    /// List of reviewer IDs invited for this review, stored as comma-separated values
-    /// </summary>
-    public string? ReviewerIds { get; set; }
+    public ReviewStatus Status { get; set; } = ReviewStatus.Pending;
 
     /// <summary>
     /// When the review was completed
@@ -90,6 +106,48 @@ public class DecisionReview
     /// Navigation property to individual reviewer responses
     /// </summary>
     public ICollection<DecisionReviewResponse> Responses { get; set; } = new List<DecisionReviewResponse>();
+    
+    /// <summary>
+    /// Navigation property to reviewer invitations
+    /// </summary>
+    public ICollection<DecisionReviewInvitation> Invitations { get; set; } = new List<DecisionReviewInvitation>();
+}
+
+/// <summary>
+/// Represents an invitation for a user to review a decision
+/// Junction table for many-to-many relationship between reviews and reviewers
+/// </summary>
+public class DecisionReviewInvitation
+{
+    /// <summary>
+    /// Unique identifier for this invitation
+    /// </summary>
+    public Guid Id { get; set; } = Guid.NewGuid();
+    
+    /// <summary>
+    /// Review this invitation belongs to
+    /// </summary>
+    public Guid ReviewId { get; set; }
+    
+    /// <summary>
+    /// User invited to review
+    /// </summary>
+    public Guid ReviewerId { get; set; }
+    
+    /// <summary>
+    /// When the invitation was sent
+    /// </summary>
+    public DateTime InvitedAt { get; set; } = DateTime.UtcNow;
+    
+    /// <summary>
+    /// Navigation property to the review
+    /// </summary>
+    public DecisionReview? Review { get; set; }
+    
+    /// <summary>
+    /// Navigation property to the reviewer
+    /// </summary>
+    public User? Reviewer { get; set; }
 }
 
 /// <summary>

@@ -27,6 +27,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<DecisionVersion> DecisionVersions { get; set; }
     public DbSet<DecisionReview> DecisionReviews { get; set; }
     public DbSet<DecisionReviewResponse> DecisionReviewResponses { get; set; }
+    public DbSet<DecisionReviewInvitation> DecisionReviewInvitations { get; set; }
     public DbSet<DecisionConflict> DecisionConflicts { get; set; }
     public DbSet<ConflictRule> ConflictRules { get; set; }
 
@@ -412,7 +413,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.DecisionId).IsRequired();
             entity.Property(e => e.RequestedBy).IsRequired();
             entity.Property(e => e.RequestedAt).IsRequired();
-            entity.Property(e => e.Status).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasConversion<string>();
             
             // Indexes
             entity.HasIndex(e => e.DecisionId);
@@ -428,6 +431,34 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(e => e.Requester)
                 .WithMany()
                 .HasForeignKey(e => e.RequestedBy)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<DecisionReviewInvitation>(entity =>
+        {
+            entity.ToTable("decision_review_invitations");
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.ReviewId).IsRequired();
+            entity.Property(e => e.ReviewerId).IsRequired();
+            entity.Property(e => e.InvitedAt).IsRequired();
+            
+            // Unique constraint - one invitation per reviewer per review
+            entity.HasIndex(e => new { e.ReviewId, e.ReviewerId }).IsUnique();
+            
+            // Indexes
+            entity.HasIndex(e => e.ReviewId);
+            entity.HasIndex(e => e.ReviewerId);
+            
+            // Foreign keys
+            entity.HasOne(e => e.Review)
+                .WithMany(r => r.Invitations)
+                .HasForeignKey(e => e.ReviewId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            entity.HasOne(e => e.Reviewer)
+                .WithMany()
+                .HasForeignKey(e => e.ReviewerId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

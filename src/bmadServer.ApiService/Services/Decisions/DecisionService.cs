@@ -529,7 +529,7 @@ public class DecisionService : IDecisionService
 
             // Check if there's already an active review
             var existingReview = await _context.DecisionReviews
-                .Where(r => r.DecisionId == id && r.Status == "Pending")
+                .Where(r => r.DecisionId == id && r.Status == ReviewStatus.Pending)
                 .FirstOrDefaultAsync(cancellationToken);
 
             if (existingReview != null)
@@ -544,11 +544,22 @@ public class DecisionService : IDecisionService
                 RequestedBy = userId,
                 RequestedAt = DateTime.UtcNow,
                 Deadline = deadline,
-                Status = "Pending",
-                ReviewerIds = string.Join(",", reviewerIds)
+                Status = ReviewStatus.Pending
             };
 
             _context.DecisionReviews.Add(review);
+
+            // Create invitations for each reviewer
+            foreach (var reviewerId in reviewerIds)
+            {
+                var invitation = new DecisionReviewInvitation
+                {
+                    ReviewId = review.Id,
+                    ReviewerId = reviewerId,
+                    InvitedAt = DateTime.UtcNow
+                };
+                _context.DecisionReviewInvitations.Add(invitation);
+            }
 
             // Update decision status
             decision.Status = DecisionStatus.UnderReview;
@@ -583,6 +594,7 @@ public class DecisionService : IDecisionService
         {
             var review = await _context.DecisionReviews
                 .Include(r => r.Responses)
+                .Include(r => r.Invitations)
                 .Include(r => r.Decision)
                 .FirstOrDefaultAsync(r => r.Id == reviewId, cancellationToken);
 
@@ -591,7 +603,7 @@ public class DecisionService : IDecisionService
                 throw new InvalidOperationException($"Review {reviewId} not found");
             }
 
-            if (review.Status != "Pending")
+            if (review.Status != ReviewStatus.Pending)
             {
                 throw new InvalidOperationException($"Review {reviewId} is not pending");
             }
@@ -625,7 +637,7 @@ public class DecisionService : IDecisionService
                 {
                     review.Decision.Status = DecisionStatus.ChangesRequested;
                 }
-                review.Status = "Completed";
+                review.Status = ReviewStatus.Completed;
                 review.CompletedAt = DateTime.UtcNow;
 
                 _logger.LogInformation(
@@ -636,10 +648,8 @@ public class DecisionService : IDecisionService
             }
             else if (responseType == "Approved")
             {
-                // Check if all reviewers have approved
-                var requiredApprovals = !string.IsNullOrEmpty(review.ReviewerIds) 
-                    ? review.ReviewerIds.Split(",").Length 
-                    : 1;
+                // Check if all invited reviewers have approved
+                var requiredApprovals = review.Invitations.Count;
                 var approvedCount = review.Responses.Count(r => r.ResponseType == "Approved") + 1;
 
                 _logger.LogInformation(
@@ -653,7 +663,7 @@ public class DecisionService : IDecisionService
                 if (approvedCount == requiredApprovals && requiredApprovals > 0)
                 {
                     // Mark review as completed and auto-lock decision
-                    review.Status = "Completed";
+                    review.Status = ReviewStatus.Completed;
                     review.CompletedAt = DateTime.UtcNow;
 
                     if (review.Decision != null)
