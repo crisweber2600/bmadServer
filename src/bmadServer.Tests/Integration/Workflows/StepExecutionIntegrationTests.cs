@@ -41,9 +41,12 @@ public class StepExecutionIntegrationTests : IDisposable
         var registryMock = new Mock<IAgentRegistry>();
         _agentRouter = new AgentRouter(registryMock.Object, new Mock<ILogger<AgentRouter>>().Object);
         
+        var agentHandoffServiceMock = new Mock<IAgentHandoffService>();
         _workflowInstanceService = new WorkflowInstanceService(
             _context,
             _workflowRegistry,
+            registryMock.Object,
+            agentHandoffServiceMock.Object,
             new Mock<ILogger<WorkflowInstanceService>>().Object);
 
         var sharedContextServiceMock = new Mock<ISharedContextService>();
@@ -51,7 +54,6 @@ public class StepExecutionIntegrationTests : IDisposable
             .Setup(x => x.GetContextAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((SharedContext?)null);
 
-        var agentHandoffServiceMock = new Mock<IAgentHandoffService>();
         var hubContextMock = new Mock<IHubContext<ChatHub>>();
         
         _stepExecutor = new StepExecutor(

@@ -1,6 +1,7 @@
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.DTOs;
 using bmadServer.ApiService.Models.Workflows;
+using bmadServer.ApiService.Services.Workflows.Agents;
 using bmadServer.ServiceDefaults.Services.Workflows;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -12,15 +13,21 @@ public class WorkflowInstanceService : IWorkflowInstanceService
 {
     private readonly ApplicationDbContext _context;
     private readonly IWorkflowRegistry _workflowRegistry;
+    private readonly IAgentRegistry _agentRegistry;
+    private readonly IAgentHandoffService _agentHandoffService;
     private readonly ILogger<WorkflowInstanceService> _logger;
 
     public WorkflowInstanceService(
         ApplicationDbContext context,
         IWorkflowRegistry workflowRegistry,
+        IAgentRegistry agentRegistry,
+        IAgentHandoffService agentHandoffService,
         ILogger<WorkflowInstanceService> logger)
     {
         _context = context;
         _workflowRegistry = workflowRegistry;
+        _agentRegistry = agentRegistry;
+        _agentHandoffService = agentHandoffService;
         _logger = logger;
     }
 
@@ -600,6 +607,47 @@ public class WorkflowInstanceService : IWorkflowInstanceService
             ? null 
             : instance.CreatedAt;
 
+        // Get current agent attribution (if workflow is active)
+        AgentAttributionDto? currentAgent = null;
+        if (instance.CurrentStep > 0 && instance.CurrentStep <= totalSteps)
+        {
+            var currentStep = workflowDef.Steps[instance.CurrentStep - 1];
+            var agentDef = _agentRegistry.GetAgent(currentStep.AgentId);
+            currentAgent = agentDef != null 
+                ? ConvertToAgentAttribution(agentDef) 
+                : CreatePlaceholderAttribution(currentStep.AgentId);
+        }
+
+        // Get recent handoffs (last 5)
+        var recentHandoffs = new List<AgentHandoffDto>();
+        try
+        {
+            var handoffs = await _agentHandoffService.GetRecentHandoffsAsync(
+                instanceId, 
+                limit: 5, 
+                CancellationToken.None);
+            
+            recentHandoffs = handoffs
+                .Select(h => new AgentHandoffDto
+                {
+                    FromAgent = _agentRegistry.GetAgent(h.FromAgentId) is AgentDefinition fromAgent
+                        ? ConvertToAgentAttribution(fromAgent)
+                        : CreatePlaceholderAttribution(h.FromAgentId),
+                    ToAgent = _agentRegistry.GetAgent(h.ToAgentId) is AgentDefinition toAgent
+                        ? ConvertToAgentAttribution(toAgent)
+                        : CreatePlaceholderAttribution(h.ToAgentId),
+                    Timestamp = h.Timestamp,
+                    StepName = h.WorkflowStepId,
+                    StepId = h.WorkflowStepId,
+                    Reason = h.Reason
+                })
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to retrieve recent handoffs for workflow instance {InstanceId}", instanceId);
+        }
+
         return new WorkflowStatusResponse
         {
             Id = instance.Id,
@@ -611,7 +659,9 @@ public class WorkflowInstanceService : IWorkflowInstanceService
             PercentComplete = percentComplete,
             StartedAt = startedAt,
             EstimatedCompletion = estimatedCompletion,
-            Steps = steps
+            Steps = steps,
+            CurrentAgent = currentAgent,
+            RecentHandoffs = recentHandoffs
         };
     }
 
@@ -753,4 +803,37 @@ public class WorkflowInstanceService : IWorkflowInstanceService
             HasNext = page < totalPages
         };
     }
+
+    /// <summary>
+    /// Creates a placeholder AgentAttributionDto when agent is not found in registry.
+    /// Used to gracefully handle missing agent metadata without breaking handoff display.
+    /// </summary>
+    private AgentAttributionDto CreatePlaceholderAttribution(string agentId)
+    {
+        return new AgentAttributionDto
+        {
+            AgentId = agentId,
+            AgentName = agentId,
+            AgentDescription = "Unknown Agent",
+            Capabilities = new List<string>(),
+            CurrentStepResponsibility = null
+        };
+    }
+
+    /// <summary>
+    /// Converts an AgentDefinition to AgentAttributionDto for API responses.
+    /// </summary>
+    private AgentAttributionDto ConvertToAgentAttribution(AgentDefinition agent)
+    {
+        return new AgentAttributionDto
+        {
+            AgentId = agent.AgentId,
+             AgentName = agent.Name,
+             AgentDescription = agent.Description ?? string.Empty,
+             AgentAvatarUrl = null,
+             Capabilities = agent.Capabilities.ToList(),
+             CurrentStepResponsibility = null
+         };
+     }
 }
+
