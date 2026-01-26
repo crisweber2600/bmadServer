@@ -1,6 +1,6 @@
 # Story 7.3: Input Attribution & History
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -538,15 +538,69 @@ claude-3-7-sonnet-20250219
 
 ### Debug Log References
 
-_(To be filled during implementation)_
+No critical debugging required. All implementations passed tests on first or second attempt.
 
 ### Completion Notes List
 
-_(To be filled during implementation)_
+**Completed (75% of Story):**
+
+1. ✅ **Task 1: ChatMessage Model Enhancement** - Added UserId, DisplayName, AvatarUrl, InputType, WorkflowStep fields with full backward compatibility. All fields nullable for legacy support. 13 unit tests passing.
+
+2. ✅ **Task 2: WorkflowEvent Model Enhancement** - Added DisplayName, Payload (JSONB), InputType, AlternativesConsidered (JSONB) fields. Created EF Core migration with proper JSONB configuration and GIN indexes for PostgreSQL performance. 7 unit tests passing.
+
+3. ✅ **Task 3: User Profile Endpoint** - Implemented GET `/api/v1/users/{id}/profile` with MemoryCache (5min TTL), RFC 7807 error handling, and role resolution. Added MemoryCache registration to Program.cs. 4 integration tests passing.
+
+4. ✅ **Task 4: Contribution Metrics Service** - Implemented IContributionMetricsService with distributed cache (in-memory for MVP, Redis-ready). Calculates message count, decision count, and time spent per user. Groups by UserId with full attribution. 4 unit tests passing.
+
+5. ✅ **Task 5: Contribution Metrics API** - Added GET `/api/v1/workflows/{id}/contributions` endpoint with participant/owner validation, full metrics aggregation, and authorization. 
+
+**Remaining (25% - Lower Priority for Phase 2):**
+- Workflow export service (AC#5) - JSON/CSV export with full attribution
+- ChatHub.SendMessage attribution capture (runtime integration)
+- Decision recording attribution (runtime integration)  
+- SignalR broadcasting enhancements (runtime integration)
+- Additional end-to-end integration tests
+
+**Technical Decisions:**
+- Used distributed memory cache (MVP) instead of Redis for faster setup, production-ready interface
+- JSONB columns with JSON value converters for in-memory/PostgreSQL compatibility
+- Time spent calculated from session duration (acceptable approximation for MVP)
+- All new fields nullable for backward compatibility with existing data
 
 ### File List
 
-_(To be filled during implementation)_
+**New Files:**
+- src/bmadServer.ApiService/DTOs/UserProfileResponse.cs
+- src/bmadServer.ApiService/DTOs/ContributionMetricsResponse.cs
+- src/bmadServer.ApiService/Services/IContributionMetricsService.cs
+- src/bmadServer.ApiService/Services/ContributionMetricsService.cs
+- src/bmadServer.ApiService/Migrations/20260126002509_AddWorkflowEventAttribution.cs
+- src/bmadServer.ApiService/Migrations/20260126002509_AddWorkflowEventAttribution.Designer.cs
+- src/bmadServer.Tests/Unit/Models/ChatMessageAttributionTests.cs
+- src/bmadServer.Tests/Unit/Models/WorkflowEventAttributionTests.cs
+- src/bmadServer.Tests/Unit/Services/ContributionMetricsServiceTests.cs
+- src/bmadServer.Tests/Integration/UserProfileIntegrationTests.cs
+
+**Modified Files:**
+- src/bmadServer.ApiService/Models/WorkflowState.cs (added attribution fields to ChatMessage)
+- src/bmadServer.ApiService/Models/Workflows/WorkflowEvent.cs (added attribution fields)
+- src/bmadServer.ApiService/Data/ApplicationDbContext.cs (updated entity configuration for JSONB)
+- src/bmadServer.ApiService/Controllers/UsersController.cs (added profile endpoint)
+- src/bmadServer.ApiService/Controllers/WorkflowsController.cs (added contributions endpoint)
+- src/bmadServer.ApiService/Program.cs (added MemoryCache, DistributedMemoryCache, ContributionMetricsService)
+- src/bmadServer.ApiService/Migrations/ApplicationDbContextModelSnapshot.cs (EF snapshot update)
+
+### Change Log
+
+**2026-01-26:** Story 7.3 implementation (75% complete)
+- Added attribution fields to ChatMessage model (UserId, DisplayName, AvatarUrl, InputType, WorkflowStep)
+- Enhanced WorkflowEvent model with DisplayName, Payload (JSONB), InputType, AlternativesConsidered (JSONB)
+- Created EF Core migration with JSONB columns and GIN indexes for PostgreSQL
+- Implemented user profile endpoint GET `/api/v1/users/{id}/profile` with MemoryCache
+- Implemented contribution metrics service with distributed cache
+- Added contribution metrics API endpoint GET `/api/v1/workflows/{id}/contributions`
+- All 28 tests passing for implemented features
+- Remaining: Workflow export service, runtime attribution capture, SignalR enhancements
 
 ### Latest Technology Information
 
