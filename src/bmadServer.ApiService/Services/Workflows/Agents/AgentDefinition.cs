@@ -25,9 +25,10 @@ public class AgentDefinition
     public string? Description { get; init; }
 
     /// <summary>
-    /// System prompt to provide context to the agent
+    /// System prompt to provide context to the agent (max 4000 characters)
     /// </summary>
     [Required]
+    [StringLength(4000, MinimumLength = 10, ErrorMessage = "SystemPrompt must be between 10 and 4000 characters")]
     public required string SystemPrompt { get; init; }
 
     /// <summary>
@@ -42,12 +43,14 @@ public class AgentDefinition
     public string? ModelPreference { get; init; }
 
     /// <summary>
-    /// Maximum tokens for this agent's responses
+    /// Maximum tokens for this agent's responses (1-128000)
     /// </summary>
+    [Range(1, 128000, ErrorMessage = "MaxTokens must be between 1 and 128000")]
     public int? MaxTokens { get; init; }
 
     /// <summary>
     /// Temperature setting for this agent (0.0-1.0)
     /// </summary>
+    [Range(0, 1, ErrorMessage = "Temperature must be between 0.0 and 1.0")]
     public decimal? Temperature { get; init; } = 0.7m;
 }
