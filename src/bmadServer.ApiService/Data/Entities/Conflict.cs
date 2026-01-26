@@ -14,6 +14,7 @@ public class Conflict
     public DateTime CreatedAt { get; set; }
     public DateTime ExpiresAt { get; set; }
     public DateTime? EscalatedAt { get; set; }
+    public int EscalationRetries { get; set; } = 0;
 
     public Workflow? WorkflowInstance { get; set; }
 
@@ -70,7 +71,8 @@ public enum ConflictStatus
 {
     Pending,
     Resolved,
-    Escalated
+    Escalated,
+    EscalationFailed
 }
 
 public enum ResolutionType

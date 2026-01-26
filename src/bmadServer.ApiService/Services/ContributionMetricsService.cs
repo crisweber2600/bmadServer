@@ -45,9 +45,9 @@ public class ContributionMetricsService : IContributionMetricsService
                        s.WorkflowState.ActiveWorkflowInstanceId == workflowId)
             .ToListAsync(cancellationToken);
 
-        // Get all workflow events for this workflow
+        // Get all workflow events for this workflow - use database filtering, not in-memory
         var events = await _dbContext.WorkflowEvents
-            .Where(e => e.WorkflowInstanceId == workflowId)
+            .Where(e => e.WorkflowInstanceId == workflowId && e.InputType == InputTypes.Decision)
             .ToListAsync(cancellationToken);
 
         // Calculate metrics per user
@@ -97,7 +97,7 @@ public class ContributionMetricsService : IContributionMetricsService
         }
 
         // Process workflow events (decisions)
-        foreach (var evt in events.Where(e => e.InputType == InputTypes.Decision))
+        foreach (var evt in events)
         {
             if (!contributorMetrics.ContainsKey(evt.UserId))
             {

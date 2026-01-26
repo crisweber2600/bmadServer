@@ -3,6 +3,8 @@ using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Moq;
 using Xunit;
 
 namespace bmadServer.Tests.Unit;
@@ -11,6 +13,7 @@ public class ParticipantServiceTests : IDisposable
 {
     private readonly ApplicationDbContext _context;
     private readonly ParticipantService _service;
+    private readonly Mock<ILogger<ParticipantService>> _mockLogger;
     private readonly Guid _testUserId;
     private readonly Guid _testOwnerId;
     private readonly Guid _testWorkflowId;
@@ -22,7 +25,8 @@ public class ParticipantServiceTests : IDisposable
             .Options;
 
         _context = new ApplicationDbContext(options);
-        _service = new ParticipantService(_context);
+        _mockLogger = new Mock<ILogger<ParticipantService>>();
+        _service = new ParticipantService(_context, _mockLogger.Object);
 
         _testUserId = Guid.NewGuid();
         _testOwnerId = Guid.NewGuid();

@@ -8,7 +8,8 @@ public class ConflictEscalationJob : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ConflictEscalationJob> _logger;
-    private readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(5);
+    private readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(1);
+    private readonly int _maxRetries = 3;
 
     public ConflictEscalationJob(
         IServiceProvider serviceProvider,
@@ -26,6 +27,7 @@ public class ConflictEscalationJob : BackgroundService
         {
             try
             {
+                await EscalatePendingConflictsAsync(stoppingToken);
                 await CheckExpiredConflictsAsync(stoppingToken);
             }
             catch (Exception ex)
@@ -34,6 +36,56 @@ public class ConflictEscalationJob : BackgroundService
             }
 
             await Task.Delay(_checkInterval, stoppingToken);
+        }
+    }
+
+    /// <summary>
+    /// Escalate pending conflicts with retry logic.
+    /// </summary>
+    private async Task EscalatePendingConflictsAsync(CancellationToken cancellationToken)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        var pendingConflicts = await dbContext.Conflicts
+            .Where(c => c.Status == ConflictStatus.Pending && c.EscalationRetries < _maxRetries)
+            .ToListAsync(cancellationToken);
+
+        foreach (var conflict in pendingConflicts)
+        {
+            using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+            try
+            {
+                conflict.Status = ConflictStatus.Escalated;
+                conflict.EscalatedAt = DateTime.UtcNow;
+                conflict.EscalationRetries++;
+
+                await dbContext.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+
+                _logger.LogWarning(
+                    "Conflict {ConflictId} escalated successfully for workflow {WorkflowId}",
+                    conflict.Id, conflict.WorkflowInstanceId);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                conflict.EscalationRetries++;
+
+                _logger.LogError(ex,
+                    "Failed to escalate conflict {ConflictId}. Attempt {Attempt}/{MaxRetries}",
+                    conflict.Id, conflict.EscalationRetries, _maxRetries);
+
+                if (conflict.EscalationRetries >= _maxRetries)
+                {
+                    conflict.Status = ConflictStatus.EscalationFailed;
+                    _logger.LogError(
+                        "Conflict {ConflictId} escalation failed after {MaxRetries} attempts",
+                        conflict.Id, _maxRetries);
+
+                    await dbContext.SaveChangesAsync(cancellationToken);
+                }
+            }
         }
     }
 
@@ -53,7 +105,7 @@ public class ConflictEscalationJob : BackgroundService
             conflict.EscalatedAt = DateTime.UtcNow;
 
             _logger.LogWarning(
-                "Conflict {ConflictId} escalated for workflow {WorkflowId}",
+                "Conflict {ConflictId} auto-escalated due to expiration for workflow {WorkflowId}",
                 conflict.Id, conflict.WorkflowInstanceId);
         }
 

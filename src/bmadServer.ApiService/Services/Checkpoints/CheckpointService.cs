@@ -26,52 +26,68 @@ public class CheckpointService : ICheckpointService
         Guid triggeredBy,
         CancellationToken cancellationToken = default)
     {
-        var workflow = await _context.WorkflowInstances
-            .AsNoTracking()
-            .FirstOrDefaultAsync(w => w.Id == workflowId, cancellationToken);
-
-        if (workflow == null)
+        using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        try
         {
-            throw new InvalidOperationException($"Workflow {workflowId} not found");
+            // Load workflow with explicit lock for consistency
+            var workflow = await _context.WorkflowInstances
+                .FirstOrDefaultAsync(w => w.Id == workflowId, cancellationToken);
+
+            if (workflow == null)
+            {
+                throw new InvalidOperationException($"Workflow {workflowId} not found");
+            }
+
+            // Get current version (latest checkpoint version + 1) within transaction for consistency
+            var latestCheckpoint = await _context.WorkflowCheckpoints
+                .Where(c => c.WorkflowId == workflowId)
+                .OrderByDescending(c => c.Version)
+                .FirstOrDefaultAsync(cancellationToken);
+            
+            var version = (latestCheckpoint?.Version ?? 0) + 1;
+
+            // Capture current state snapshot
+            var stateSnapshot = JsonDocument.Parse(JsonSerializer.Serialize(new
+            {
+                workflowId = workflow.Id,
+                workflowDefinitionId = workflow.WorkflowDefinitionId,
+                currentStep = workflow.CurrentStep,
+                status = workflow.Status.ToString(),
+                stepData = workflow.StepData,
+                context = workflow.Context,
+                createdAt = workflow.CreatedAt,
+                updatedAt = workflow.UpdatedAt
+            }));
+
+            var checkpoint = new WorkflowCheckpoint
+            {
+                Id = Guid.NewGuid(),
+                WorkflowId = workflowId,
+                StepId = stepId,
+                CheckpointType = type,
+                StateSnapshot = stateSnapshot,
+                Version = version,
+                CreatedAt = DateTime.UtcNow,
+                TriggeredBy = triggeredBy
+            };
+
+            _context.WorkflowCheckpoints.Add(checkpoint);
+            await _context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Created checkpoint {CheckpointId} for workflow {WorkflowId} at step {StepId} (version {Version})",
+                checkpoint.Id, workflowId, stepId, version);
+
+            return checkpoint;
         }
-
-        // Get current version (latest checkpoint version + 1)
-        var latestCheckpoint = await GetLatestCheckpointAsync(workflowId, cancellationToken);
-        var version = (latestCheckpoint?.Version ?? 0) + 1;
-
-        // Capture current state snapshot
-        var stateSnapshot = JsonDocument.Parse(JsonSerializer.Serialize(new
+        catch (Exception ex)
         {
-            workflowId = workflow.Id,
-            workflowDefinitionId = workflow.WorkflowDefinitionId,
-            currentStep = workflow.CurrentStep,
-            status = workflow.Status.ToString(),
-            stepData = workflow.StepData,
-            context = workflow.Context,
-            createdAt = workflow.CreatedAt,
-            updatedAt = workflow.UpdatedAt
-        }));
-
-        var checkpoint = new WorkflowCheckpoint
-        {
-            Id = Guid.NewGuid(),
-            WorkflowId = workflowId,
-            StepId = stepId,
-            CheckpointType = type,
-            StateSnapshot = stateSnapshot,
-            Version = version,
-            CreatedAt = DateTime.UtcNow,
-            TriggeredBy = triggeredBy
-        };
-
-        _context.WorkflowCheckpoints.Add(checkpoint);
-        await _context.SaveChangesAsync(cancellationToken);
-
-        _logger.LogInformation(
-            "Created checkpoint {CheckpointId} for workflow {WorkflowId} at step {StepId} (version {Version})",
-            checkpoint.Id, workflowId, stepId, version);
-
-        return checkpoint;
+            await transaction.RollbackAsync(cancellationToken);
+            _logger.LogError(ex, "Failed to create checkpoint for workflow {WorkflowId} at step {StepId}",
+                workflowId, stepId);
+            throw;
+        }
     }
 
     public async Task RestoreCheckpointAsync(
@@ -115,6 +131,32 @@ public class CheckpointService : ICheckpointService
             }
             
             workflow.UpdatedAt = DateTime.UtcNow;
+
+            // Reset any failed inputs for retry (preserve for AC#4 requirement)
+            try
+            {
+                var failedInputs = await _context.QueuedInputs
+                    .Where(q => q.WorkflowId == workflowId && q.Status == InputStatus.Failed)
+                    .ToListAsync(cancellationToken);
+
+                foreach (var input in failedInputs)
+                {
+                    input.Status = InputStatus.Queued;
+                }
+
+                if (failedInputs.Any())
+                {
+                    _logger.LogInformation(
+                        "Reset {FailedCount} failed inputs for retry after checkpoint restore", 
+                        failedInputs.Count);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log but don't fail if we can't process queued inputs
+                _logger.LogWarning(ex, 
+                    "Could not process queued inputs during checkpoint restore (may not exist in this workflow)");
+            }
 
             await _context.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
