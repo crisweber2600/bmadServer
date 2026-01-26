@@ -164,9 +164,35 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.NewStatus)
                 .HasConversion<string?>();
             
+            // Attribution fields (Story 7.3)
+            entity.Property(e => e.DisplayName).HasMaxLength(255);
+            entity.Property(e => e.InputType).HasMaxLength(50);
+            
+            // JSONB columns for PostgreSQL with JSON value converters for compatibility
+            entity.Property(e => e.Payload)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => v == null ? null : v.RootElement.GetRawText(),
+                    v => v == null ? null : JsonDocument.Parse(v));
+            
+            entity.Property(e => e.AlternativesConsidered)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => v == null ? null : v.RootElement.GetRawText(),
+                    v => v == null ? null : JsonDocument.Parse(v));
+            
             // Indexes
             entity.HasIndex(e => e.WorkflowInstanceId);
             entity.HasIndex(e => e.Timestamp);
+            // Index for attribution queries (Story 7.3)
+            entity.HasIndex(e => new { e.UserId, e.Timestamp })
+                .HasDatabaseName("idx_workflow_events_user_time");
+            
+            // GIN indexes for JSONB columns (PostgreSQL only)
+            entity.HasIndex(e => e.Payload)
+                .HasMethod("gin");
+            entity.HasIndex(e => e.AlternativesConsidered)
+                .HasMethod("gin");
             
             // Foreign key to WorkflowInstance
             entity.HasOne(e => e.WorkflowInstance)

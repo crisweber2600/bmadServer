@@ -117,7 +117,7 @@ development_status:
   epic-7: in-progress
   7-1-multi-user-workflow-participation: review
   7-2-safe-checkpoint-system: review
-  7-3-input-attribution-history: ready-for-dev
+  7-3-input-attribution-history: in-progress
   7-4-conflict-detection-buffering: ready-for-dev
   7-5-real-time-collaboration-updates: ready-for-dev
   epic-7-retrospective: optional

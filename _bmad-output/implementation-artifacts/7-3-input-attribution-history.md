@@ -44,29 +44,29 @@ As a user (Sarah), I want to see who provided each input and when, so that I can
 
 ## Tasks / Subtasks
 
-- [ ] Enhance ChatMessage model with attribution (AC: #1, #2)
-  - [ ] Add UserId (Guid) to ChatMessage
-  - [ ] Add DisplayName (string) to ChatMessage
-  - [ ] Add AvatarUrl (string?) to ChatMessage
-  - [ ] Add InputType (enum: Message, Decision, StepAdvance, Checkpoint) to ChatMessage
-  - [ ] Add WorkflowStep (string?) to ChatMessage for context
-  - [ ] Update WorkflowState.cs model
-  - [ ] Ensure backward compatibility with existing messages
+- [x] Enhance ChatMessage model with attribution (AC: #1, #2)
+  - [x] Add UserId (Guid) to ChatMessage
+  - [x] Add DisplayName (string) to ChatMessage
+  - [x] Add AvatarUrl (string?) to ChatMessage
+  - [x] Add InputType (enum: Message, Decision, StepAdvance, Checkpoint) to ChatMessage
+  - [x] Add WorkflowStep (string?) to ChatMessage for context
+  - [x] Update WorkflowState.cs model
+  - [x] Ensure backward compatibility with existing messages
 
-- [ ] Enhance WorkflowEvent model with attribution (AC: #1, #3)
-  - [ ] Add DisplayName (string) to WorkflowEvent
-  - [ ] Add Payload (JsonDocument) to WorkflowEvent for decision details
-  - [ ] Add InputType (string) to WorkflowEvent
-  - [ ] Add AlternativesConsidered (JsonDocument?) for decision context
-  - [ ] Update EF Core entity configuration
-  - [ ] Create migration for new columns
+- [x] Enhance WorkflowEvent model with attribution (AC: #1, #3)
+  - [x] Add DisplayName (string) to WorkflowEvent
+  - [x] Add Payload (JsonDocument) to WorkflowEvent for decision details
+  - [x] Add InputType (string) to WorkflowEvent
+  - [x] Add AlternativesConsidered (JsonDocument?) for decision context
+  - [x] Update EF Core entity configuration
+  - [x] Create migration for new columns
 
-- [ ] User profile endpoint for attribution (AC: #2)
-  - [ ] Add GET `/api/v1/users/{id}/profile` endpoint
-  - [ ] Return UserProfileResponse with: displayName, avatarUrl, joinedAt, role
-  - [ ] Add `[Authorize]` attribute
-  - [ ] Implement caching with MemoryCache (5 min TTL)
-  - [ ] Return RFC 7807 ProblemDetails on user not found
+- [x] User profile endpoint for attribution (AC: #2)
+  - [x] Add GET `/api/v1/users/{id}/profile` endpoint
+  - [x] Return UserProfileResponse with: displayName, avatarUrl, joinedAt, role
+  - [x] Add `[Authorize]` attribute
+  - [x] Implement caching with MemoryCache (5 min TTL)
+  - [x] Return RFC 7807 ProblemDetails on user not found
 
 - [ ] Contribution metrics service (AC: #4)
   - [ ] Create IContributionMetricsService interface

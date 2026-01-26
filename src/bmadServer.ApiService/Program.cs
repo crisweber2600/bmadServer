@@ -79,6 +79,9 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.IParticipantService, b
 builder.Services.AddScoped<bmadServer.ApiService.Services.Checkpoints.ICheckpointService, bmadServer.ApiService.Services.Checkpoints.CheckpointService>();
 builder.Services.AddScoped<bmadServer.ApiService.Services.Checkpoints.IInputQueueService, bmadServer.ApiService.Services.Checkpoints.InputQueueService>();
 
+// Register memory cache for user profile caching (Story 7.3)
+builder.Services.AddMemoryCache();
+
 // Register FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<bmadServer.ApiService.Validators.RegisterRequestValidator>();
 
