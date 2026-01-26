@@ -23,6 +23,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<WorkflowParticipant> WorkflowParticipants { get; set; }
     public DbSet<WorkflowCheckpoint> WorkflowCheckpoints { get; set; }
     public DbSet<QueuedInput> QueuedInputs { get; set; }
+    public DbSet<Conflict> Conflicts { get; set; }
+    public DbSet<BufferedInput> BufferedInputs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -364,6 +366,60 @@ public class ApplicationDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Conflict>(entity =>
+        {
+            entity.ToTable("conflicts");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.FieldName).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.Type)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasMaxLength(50);
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasMaxLength(50);
+            entity.Property(e => e.InputsJson)
+                .HasColumnName("inputs")
+                .HasColumnType("jsonb")
+                .IsRequired();
+            entity.Property(e => e.ResolutionJson)
+                .HasColumnName("resolution")
+                .HasColumnType("jsonb");
+            
+            entity.HasIndex(e => e.WorkflowInstanceId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.ExpiresAt)
+                .HasFilter("\"Status\" = 'Pending'");
+            
+            entity.HasOne(e => e.WorkflowInstance)
+                .WithMany()
+                .HasForeignKey(e => e.WorkflowInstanceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<BufferedInput>(entity =>
+        {
+            entity.ToTable("buffered_inputs");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.DisplayName).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.FieldName).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.Value).IsRequired();
+            
+            entity.HasIndex(e => new { e.WorkflowInstanceId, e.FieldName, e.IsApplied });
+            entity.HasIndex(e => e.ConflictId);
+            
+            entity.HasOne(e => e.WorkflowInstance)
+                .WithMany()
+                .HasForeignKey(e => e.WorkflowInstanceId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            entity.HasOne(e => e.Conflict)
+                .WithMany()
+                .HasForeignKey(e => e.ConflictId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

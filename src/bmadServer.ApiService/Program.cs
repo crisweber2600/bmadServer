@@ -89,6 +89,15 @@ builder.Services.AddDistributedMemoryCache();
 // Register contribution metrics service (Story 7.3)
 builder.Services.AddScoped<bmadServer.ApiService.Services.IContributionMetricsService, bmadServer.ApiService.Services.ContributionMetricsService>();
 
+// Register conflict detection services (Story 7.4)
+builder.Services.AddScoped<bmadServer.ApiService.Services.IConflictDetectionService, bmadServer.ApiService.Services.ConflictDetectionService>();
+builder.Services.AddScoped<bmadServer.ApiService.Services.IConflictResolutionService, bmadServer.ApiService.Services.ConflictResolutionService>();
+builder.Services.AddHostedService<bmadServer.ApiService.BackgroundServices.ConflictEscalationJob>();
+
+// Register real-time collaboration services (Story 7.5)
+builder.Services.AddSingleton<bmadServer.ApiService.Services.IPresenceTrackingService, bmadServer.ApiService.Services.PresenceTrackingService>();
+builder.Services.AddSingleton<bmadServer.ApiService.Services.IUpdateBatchingService, bmadServer.ApiService.Services.UpdateBatchingService>();
+
 // Register FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<bmadServer.ApiService.Validators.RegisterRequestValidator>();
 

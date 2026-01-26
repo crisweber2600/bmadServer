@@ -1,6 +1,6 @@
 # Story 7.4: Conflict Detection & Buffering
 
-**Status:** ready-for-dev
+**Status:** review
 
 ## Story
 
