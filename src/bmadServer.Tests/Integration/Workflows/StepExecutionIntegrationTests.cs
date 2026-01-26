@@ -23,6 +23,7 @@ public class StepExecutionIntegrationTests : IDisposable
     private readonly ApplicationDbContext _context;
     private readonly TestWorkflowRegistry _workflowRegistry;
     private readonly IAgentRouter _agentRouter;
+    private readonly IAgentRegistry _agentRegistry;
     private readonly IWorkflowInstanceService _workflowInstanceService;
     private readonly IStepExecutor _stepExecutor;
     private readonly WorkflowsController _controller;
@@ -38,26 +39,44 @@ public class StepExecutionIntegrationTests : IDisposable
 
         // Create real services
         _workflowRegistry = new TestWorkflowRegistry();
-        _agentRouter = new AgentRouter(new Mock<ILogger<AgentRouter>>().Object);
+        var registryMock = new Mock<IAgentRegistry>();
+        _agentRegistry = registryMock.Object;
+        _agentRouter = new AgentRouter(registryMock.Object, new Mock<ILogger<AgentRouter>>().Object);
         
+        var agentHandoffServiceMock = new Mock<IAgentHandoffService>();
         _workflowInstanceService = new WorkflowInstanceService(
             _context,
             _workflowRegistry,
+            registryMock.Object,
+            agentHandoffServiceMock.Object,
             new Mock<ILogger<WorkflowInstanceService>>().Object);
 
+        var sharedContextServiceMock = new Mock<ISharedContextService>();
+        sharedContextServiceMock
+            .Setup(x => x.GetContextAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((SharedContext?)null);
+
+        var hubContextMock = new Mock<IHubContext<ChatHub>>();
+        
         _stepExecutor = new StepExecutor(
             _context,
             _agentRouter,
             _workflowRegistry,
             _workflowInstanceService,
-            new Mock<ILogger<StepExecutor>>().Object);
-
-        _controller = new WorkflowsController(
-            _workflowInstanceService,
-            _workflowRegistry,
-            _stepExecutor,
-            new Mock<IHubContext<ChatHub>>().Object,
-            new Mock<ILogger<WorkflowsController>>().Object);
+            sharedContextServiceMock.Object,
+            agentHandoffServiceMock.Object,
+            new Mock<IApprovalService>().Object,
+             hubContextMock.Object,
+             new Mock<ILogger<StepExecutor>>().Object);
+ 
+         _controller = new WorkflowsController(
+             _workflowInstanceService,
+             _workflowRegistry,
+             _agentRegistry,
+             _stepExecutor,
+             new Mock<IApprovalService>().Object,
+             new Mock<IHubContext<ChatHub>>().Object,
+             new Mock<ILogger<WorkflowsController>>().Object);
 
         // Setup test user
         _testUserId = Guid.NewGuid();

@@ -66,6 +66,20 @@ public class WorkflowStatusResponse
     /// </summary>
     [JsonPropertyName("steps")]
     public List<WorkflowStepProgressDto> Steps { get; set; } = new();
+
+    /// <summary>
+    /// Current agent attribution with metadata (null if no workflow is active).
+    /// Displays which agent is currently responsible for workflow execution.
+    /// </summary>
+    [JsonPropertyName("currentAgent")]
+    public AgentAttributionDto? CurrentAgent { get; set; }
+
+    /// <summary>
+    /// Recent handoff events in chronological order (last 5 handoffs).
+    /// Provides audit trail context for decision traceability.
+    /// </summary>
+    [JsonPropertyName("recentHandoffs")]
+    public List<AgentHandoffDto> RecentHandoffs { get; set; } = new();
 }
 
 /// <summary>

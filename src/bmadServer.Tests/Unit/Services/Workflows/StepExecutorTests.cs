@@ -1,9 +1,11 @@
 using bmadServer.ApiService.Data;
+using bmadServer.ApiService.Hubs;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services.Workflows;
 using bmadServer.ApiService.Services.Workflows.Agents;
 using bmadServer.ServiceDefaults.Models.Workflows;
 using bmadServer.ServiceDefaults.Services.Workflows;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -18,6 +20,8 @@ public class StepExecutorTests : IDisposable
     private readonly Mock<IAgentRouter> _agentRouterMock;
     private readonly Mock<IWorkflowRegistry> _workflowRegistryMock;
     private readonly Mock<IWorkflowInstanceService> _workflowInstanceServiceMock;
+    private readonly Mock<IAgentHandoffService> _agentHandoffServiceMock;
+    private readonly Mock<IHubContext<ChatHub>> _hubContextMock;
     private readonly Mock<ILogger<StepExecutor>> _loggerMock;
     private readonly StepExecutor _stepExecutor;
 
@@ -32,13 +36,23 @@ public class StepExecutorTests : IDisposable
         _agentRouterMock = new Mock<IAgentRouter>();
         _workflowRegistryMock = new Mock<IWorkflowRegistry>();
         _workflowInstanceServiceMock = new Mock<IWorkflowInstanceService>();
+        _agentHandoffServiceMock = new Mock<IAgentHandoffService>();
+        _hubContextMock = new Mock<IHubContext<ChatHub>>();
         _loggerMock = new Mock<ILogger<StepExecutor>>();
+
+        var sharedContextServiceMock = new Mock<ISharedContextService>();
+        sharedContextServiceMock.Setup(s => s.GetContextAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((SharedContext?)null);
 
         _stepExecutor = new StepExecutor(
             _context,
             _agentRouterMock.Object,
             _workflowRegistryMock.Object,
             _workflowInstanceServiceMock.Object,
+            sharedContextServiceMock.Object,
+            _agentHandoffServiceMock.Object,
+            new Mock<IApprovalService>().Object,
+            _hubContextMock.Object,
             _loggerMock.Object);
     }
 
@@ -491,6 +505,253 @@ public class StepExecutorTests : IDisposable
 
         // Assert
         Assert.NotEmpty(progressUpdates);
+    }
+
+    [Fact]
+    public async Task ExecuteStepAsync_WithDifferentAgentInNextStep_RecordsHandoff()
+    {
+        // Arrange
+        var workflowId = "two-step-workflow";
+        var instanceId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+
+        var definition = new WorkflowDefinition
+        {
+            WorkflowId = workflowId,
+            Name = "Test Workflow",
+            Description = "Test",
+            EstimatedDuration = TimeSpan.FromMinutes(10),
+            RequiredRoles = new List<string>(),
+            Steps = new List<WorkflowStep>
+            {
+                new WorkflowStep
+                {
+                    StepId = "step-1",
+                    Name = "First Step",
+                    AgentId = "agent-alpha",
+                    OutputSchema = null,
+                    IsOptional = false,
+                    CanSkip = false
+                },
+                new WorkflowStep
+                {
+                    StepId = "step-2",
+                    Name = "Second Step",
+                    AgentId = "agent-beta",
+                    OutputSchema = null,
+                    IsOptional = false,
+                    CanSkip = false
+                }
+            }
+        };
+
+        var instance = new WorkflowInstance
+        {
+            Id = instanceId,
+            WorkflowDefinitionId = workflowId,
+            UserId = userId,
+            CurrentStep = 1,
+            Status = WorkflowStatus.Running,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var mockHandlerAlpha = new MockAgentHandler(shouldSucceed: true);
+        var mockHandlerBeta = new MockAgentHandler(shouldSucceed: true);
+
+        _workflowInstanceServiceMock
+            .Setup(s => s.GetWorkflowInstanceAsync(instanceId))
+            .ReturnsAsync(instance);
+
+        _workflowRegistryMock
+            .Setup(r => r.GetWorkflow(workflowId))
+            .Returns(definition);
+
+        _agentRouterMock
+            .Setup(r => r.GetHandler("agent-alpha"))
+            .Returns(mockHandlerAlpha);
+
+        _agentRouterMock
+            .Setup(r => r.GetHandler("agent-beta"))
+            .Returns(mockHandlerBeta);
+
+        _workflowInstanceServiceMock
+            .Setup(s => s.TransitionStateAsync(instanceId, WorkflowStatus.Running))
+            .ReturnsAsync(true);
+
+        // Act
+        var result1 = await _stepExecutor.ExecuteStepAsync(instanceId);
+        instance.CurrentStep = 2;
+        var result2 = await _stepExecutor.ExecuteStepAsync(instanceId);
+
+        // Assert
+        _agentHandoffServiceMock.Verify(
+            s => s.RecordHandoffAsync(
+                instanceId,
+                "agent-alpha",
+                "agent-beta",
+                "step-2",
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task ExecuteStepAsync_WithSameAgentInNextStep_DoesNotRecordHandoff()
+    {
+        // Arrange
+        var workflowId = "two-step-same-agent-workflow";
+        var instanceId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+
+        var definition = new WorkflowDefinition
+        {
+            WorkflowId = workflowId,
+            Name = "Test Workflow",
+            Description = "Test",
+            EstimatedDuration = TimeSpan.FromMinutes(10),
+            RequiredRoles = new List<string>(),
+            Steps = new List<WorkflowStep>
+            {
+                new WorkflowStep
+                {
+                    StepId = "step-1",
+                    Name = "First Step",
+                    AgentId = "agent-alpha",
+                    OutputSchema = null,
+                    IsOptional = false,
+                    CanSkip = false
+                },
+                new WorkflowStep
+                {
+                    StepId = "step-2",
+                    Name = "Second Step",
+                    AgentId = "agent-alpha",
+                    OutputSchema = null,
+                    IsOptional = false,
+                    CanSkip = false
+                }
+            }
+        };
+
+        var instance = new WorkflowInstance
+        {
+            Id = instanceId,
+            WorkflowDefinitionId = workflowId,
+            UserId = userId,
+            CurrentStep = 1,
+            Status = WorkflowStatus.Running,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var mockHandler = new MockAgentHandler(shouldSucceed: true);
+
+        _workflowInstanceServiceMock
+            .Setup(s => s.GetWorkflowInstanceAsync(instanceId))
+            .ReturnsAsync(instance);
+
+        _workflowRegistryMock
+            .Setup(r => r.GetWorkflow(workflowId))
+            .Returns(definition);
+
+        _agentRouterMock
+            .Setup(r => r.GetHandler("agent-alpha"))
+            .Returns(mockHandler);
+
+        _workflowInstanceServiceMock
+            .Setup(s => s.TransitionStateAsync(instanceId, WorkflowStatus.Running))
+            .ReturnsAsync(true);
+
+        // Act
+        var result = await _stepExecutor.ExecuteStepAsync(instanceId);
+
+        // Assert
+        _agentHandoffServiceMock.Verify(
+            s => s.RecordHandoffAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task ExecuteStepAsync_HandoffRecordingDoesNotFailWorkflow()
+    {
+        // Arrange
+        var workflowId = "workflow-with-failing-handoff";
+        var instanceId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+
+        var definition = new WorkflowDefinition
+        {
+            WorkflowId = workflowId,
+            Name = "Test Workflow",
+            Description = "Test",
+            EstimatedDuration = TimeSpan.FromMinutes(10),
+            RequiredRoles = new List<string>(),
+            Steps = new List<WorkflowStep>
+            {
+                new WorkflowStep
+                {
+                    StepId = "step-1",
+                    Name = "First Step",
+                    AgentId = "test-agent",
+                    OutputSchema = null,
+                    IsOptional = false,
+                    CanSkip = false
+                }
+            }
+        };
+
+        var instance = new WorkflowInstance
+        {
+            Id = instanceId,
+            WorkflowDefinitionId = workflowId,
+            UserId = userId,
+            CurrentStep = 1,
+            Status = WorkflowStatus.Running,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var mockHandler = new MockAgentHandler(shouldSucceed: true);
+
+        _workflowInstanceServiceMock
+            .Setup(s => s.GetWorkflowInstanceAsync(instanceId))
+            .ReturnsAsync(instance);
+
+        _workflowRegistryMock
+            .Setup(r => r.GetWorkflow(workflowId))
+            .Returns(definition);
+
+        _agentRouterMock
+            .Setup(r => r.GetHandler("test-agent"))
+            .Returns(mockHandler);
+
+        _workflowInstanceServiceMock
+            .Setup(s => s.TransitionStateAsync(instanceId, WorkflowStatus.Completed))
+            .ReturnsAsync(true);
+
+        _agentHandoffServiceMock
+            .Setup(s => s.RecordHandoffAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new Exception("Database connection failed"));
+
+        // Act
+        var result = await _stepExecutor.ExecuteStepAsync(instanceId);
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.Equal(StepExecutionStatus.Completed, result.Status);
     }
 
     public void Dispose()

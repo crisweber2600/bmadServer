@@ -22,366 +22,54 @@ namespace bmadServer.ApiService.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("bmadServer.ApiService.Data.Entities.ConflictRule", b =>
+            modelBuilder.Entity("bmadServer.ApiService.Data.Entities.AgentMessageLog", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("Configuration")
+                    b.Property<string>("Content")
+                        .IsRequired()
                         .HasColumnType("jsonb");
 
-                    b.Property<string>("ConflictType")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("Severity")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Configuration");
-
-                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Configuration"), "gin");
-
-                    b.HasIndex("ConflictType");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("IsActive");
-
-                    b.ToTable("conflict_rules", (string)null);
-                });
-
-            modelBuilder.Entity("bmadServer.ApiService.Data.Entities.Decision", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Context")
-                        .HasColumnType("jsonb");
-
-                    b.Property<int>("CurrentVersion")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("DecidedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("DecidedBy")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("DecisionType")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<bool>("IsLocked")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("LockReason")
+                    b.Property<string>("CorrelationId")
                         .HasColumnType("text");
 
-                    b.Property<DateTime?>("LockedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("LockedBy")
+                    b.Property<Guid>("MessageId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("Options")
-                        .HasColumnType("jsonb");
-
-                    b.Property<string>("Question")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<string>("Reasoning")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
-                    b.Property<int>("Status")
+                    b.Property<int>("MessageType")
                         .HasColumnType("integer");
 
-                    b.Property<string>("StepId")
+                    b.Property<string>("SourceAgent")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<DateTime?>("UpdatedAt")
+                    b.Property<string>("TargetAgent")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("Timestamp")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Value")
-                        .HasColumnType("jsonb");
 
                     b.Property<Guid>("WorkflowInstanceId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Context");
+                    b.HasIndex("Content");
 
-                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Context"), "gin");
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Content"), "gin");
 
-                    b.HasIndex("DecidedAt");
+                    b.HasIndex("CorrelationId");
 
-                    b.HasIndex("DecidedBy");
-
-                    b.HasIndex("DecisionType");
-
-                    b.HasIndex("Options");
-
-                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Options"), "gin");
-
-                    b.HasIndex("StepId");
-
-                    b.HasIndex("Value");
-
-                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Value"), "gin");
+                    b.HasIndex("Timestamp");
 
                     b.HasIndex("WorkflowInstanceId");
 
-                    b.ToTable("decisions", (string)null);
-                });
-
-            modelBuilder.Entity("bmadServer.ApiService.Data.Entities.DecisionConflict", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ConflictType")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<Guid>("DecisionId1")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("DecisionId2")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<DateTime>("DetectedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("OverrideJustification")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<string>("Resolution")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<DateTime?>("ResolvedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("ResolvedBy")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Severity")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ConflictType");
-
-                    b.HasIndex("DecisionId1");
-
-                    b.HasIndex("DecisionId2");
-
-                    b.HasIndex("DetectedAt");
-
-                    b.HasIndex("ResolvedBy");
-
-                    b.HasIndex("Severity");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("DecisionId1", "DecisionId2");
-
-                    b.ToTable("decision_conflicts", (string)null);
-                });
-
-            modelBuilder.Entity("bmadServer.ApiService.Data.Entities.DecisionReview", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("Deadline")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("DecisionId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("RequestedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("RequestedBy")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Deadline");
-
-                    b.HasIndex("DecisionId");
-
-                    b.HasIndex("RequestedAt");
-
-                    b.HasIndex("RequestedBy");
-
-                    b.HasIndex("Status");
-
-                    b.ToTable("decision_reviews", (string)null);
-                });
-
-            modelBuilder.Entity("bmadServer.ApiService.Data.Entities.DecisionReviewResponse", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Comments")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<DateTime>("RespondedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ResponseType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<Guid>("ReviewId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ReviewerId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RespondedAt");
-
-                    b.HasIndex("ReviewId");
-
-                    b.HasIndex("ReviewerId");
-
-                    b.HasIndex("ReviewId", "ReviewerId")
-                        .IsUnique();
-
-                    b.ToTable("decision_review_responses", (string)null);
-                });
-
-            modelBuilder.Entity("bmadServer.ApiService.Data.Entities.DecisionVersion", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ChangeReason")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<string>("Context")
-                        .HasColumnType("jsonb");
-
-                    b.Property<Guid>("DecisionId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("ModifiedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("ModifiedBy")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Options")
-                        .HasColumnType("jsonb");
-
-                    b.Property<string>("Question")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<string>("Reasoning")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
-                    b.Property<string>("Value")
-                        .HasColumnType("jsonb");
-
-                    b.Property<int>("VersionNumber")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Context");
-
-                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Context"), "gin");
-
-                    b.HasIndex("DecisionId");
-
-                    b.HasIndex("ModifiedAt");
-
-                    b.HasIndex("ModifiedBy");
-
-                    b.HasIndex("Options");
-
-                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Options"), "gin");
-
-                    b.HasIndex("Value");
-
-                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Value"), "gin");
-
-                    b.HasIndex("VersionNumber");
-
-                    b.HasIndex("DecisionId", "VersionNumber")
-                        .IsUnique();
-
-                    b.ToTable("decision_versions", (string)null);
+                    b.ToTable("agent_message_logs", (string)null);
                 });
 
             modelBuilder.Entity("bmadServer.ApiService.Data.Entities.RefreshToken", b =>
@@ -556,6 +244,117 @@ namespace bmadServer.ApiService.Migrations
                     b.ToTable("workflows", (string)null);
                 });
 
+            modelBuilder.Entity("bmadServer.ApiService.Models.Workflows.AgentHandoff", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FromAgentId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ToAgentId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("WorkflowInstanceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("WorkflowStepId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("WorkflowInstanceId");
+
+                    b.HasIndex("WorkflowInstanceId", "Timestamp");
+
+                    b.ToTable("agent_handoffs", (string)null);
+                });
+
+            modelBuilder.Entity("bmadServer.ApiService.Models.Workflows.ApprovalRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AgentId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<double>("ConfidenceScore")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("ModifiedResponse")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProposedResponse")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Reasoning")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RequestedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ResolvedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("StepId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("WorkflowInstanceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RequestedAt");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("WorkflowInstanceId");
+
+                    b.HasIndex("WorkflowInstanceId", "Status");
+
+                    b.ToTable("approval_requests", (string)null);
+                });
+
             modelBuilder.Entity("bmadServer.ApiService.Models.Workflows.WorkflowEvent", b =>
                 {
                     b.Property<Guid>("Id")
@@ -612,6 +411,10 @@ namespace bmadServer.ApiService.Migrations
                     b.Property<DateTime?>("PausedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("SharedContextJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("shared_context");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text");
@@ -641,6 +444,10 @@ namespace bmadServer.ApiService.Migrations
                     b.HasIndex("CreatedAt");
 
                     b.HasIndex("PausedAt");
+
+                    b.HasIndex("SharedContextJson");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("SharedContextJson"), "gin");
 
                     b.HasIndex("Status");
 
@@ -713,106 +520,15 @@ namespace bmadServer.ApiService.Migrations
                     b.ToTable("workflow_step_histories", (string)null);
                 });
 
-            modelBuilder.Entity("bmadServer.ApiService.Data.Entities.Decision", b =>
+            modelBuilder.Entity("bmadServer.ApiService.Data.Entities.AgentMessageLog", b =>
                 {
-                    b.HasOne("bmadServer.ApiService.Data.Entities.User", "DecisionMaker")
-                        .WithMany()
-                        .HasForeignKey("DecidedBy")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("bmadServer.ApiService.Models.Workflows.WorkflowInstance", "WorkflowInstance")
                         .WithMany()
                         .HasForeignKey("WorkflowInstanceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("DecisionMaker");
-
                     b.Navigation("WorkflowInstance");
-                });
-
-            modelBuilder.Entity("bmadServer.ApiService.Data.Entities.DecisionConflict", b =>
-                {
-                    b.HasOne("bmadServer.ApiService.Data.Entities.Decision", "Decision1")
-                        .WithMany()
-                        .HasForeignKey("DecisionId1")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("bmadServer.ApiService.Data.Entities.Decision", "Decision2")
-                        .WithMany()
-                        .HasForeignKey("DecisionId2")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("bmadServer.ApiService.Data.Entities.User", "Resolver")
-                        .WithMany()
-                        .HasForeignKey("ResolvedBy")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Decision1");
-
-                    b.Navigation("Decision2");
-
-                    b.Navigation("Resolver");
-                });
-
-            modelBuilder.Entity("bmadServer.ApiService.Data.Entities.DecisionReview", b =>
-                {
-                    b.HasOne("bmadServer.ApiService.Data.Entities.Decision", "Decision")
-                        .WithMany()
-                        .HasForeignKey("DecisionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("bmadServer.ApiService.Data.Entities.User", "Requester")
-                        .WithMany()
-                        .HasForeignKey("RequestedBy")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Decision");
-
-                    b.Navigation("Requester");
-                });
-
-            modelBuilder.Entity("bmadServer.ApiService.Data.Entities.DecisionReviewResponse", b =>
-                {
-                    b.HasOne("bmadServer.ApiService.Data.Entities.DecisionReview", "Review")
-                        .WithMany("Responses")
-                        .HasForeignKey("ReviewId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("bmadServer.ApiService.Data.Entities.User", "Reviewer")
-                        .WithMany()
-                        .HasForeignKey("ReviewerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Review");
-
-                    b.Navigation("Reviewer");
-                });
-
-            modelBuilder.Entity("bmadServer.ApiService.Data.Entities.DecisionVersion", b =>
-                {
-                    b.HasOne("bmadServer.ApiService.Data.Entities.Decision", "Decision")
-                        .WithMany("Versions")
-                        .HasForeignKey("DecisionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("bmadServer.ApiService.Data.Entities.User", "Modifier")
-                        .WithMany()
-                        .HasForeignKey("ModifiedBy")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Decision");
-
-                    b.Navigation("Modifier");
                 });
 
             modelBuilder.Entity("bmadServer.ApiService.Data.Entities.RefreshToken", b =>
@@ -846,6 +562,28 @@ namespace bmadServer.ApiService.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("bmadServer.ApiService.Models.Workflows.AgentHandoff", b =>
+                {
+                    b.HasOne("bmadServer.ApiService.Models.Workflows.WorkflowInstance", "WorkflowInstance")
+                        .WithMany()
+                        .HasForeignKey("WorkflowInstanceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("WorkflowInstance");
+                });
+
+            modelBuilder.Entity("bmadServer.ApiService.Models.Workflows.ApprovalRequest", b =>
+                {
+                    b.HasOne("bmadServer.ApiService.Models.Workflows.WorkflowInstance", "WorkflowInstance")
+                        .WithMany()
+                        .HasForeignKey("WorkflowInstanceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("WorkflowInstance");
                 });
 
             modelBuilder.Entity("bmadServer.ApiService.Models.Workflows.WorkflowEvent", b =>

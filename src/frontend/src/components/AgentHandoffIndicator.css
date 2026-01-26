@@ -1,0 +1,168 @@
+.agent-handoff-indicator {
+  display: flex;
+  justify-content: center;
+  padding: 12px 16px;
+  margin: 16px 0;
+  background: linear-gradient(135deg, rgba(24, 144, 255, 0.1) 0%, rgba(82, 196, 26, 0.05) 100%);
+  border: 1px solid rgba(24, 144, 255, 0.2);
+  border-radius: 8px;
+  opacity: 0;
+  animation: slideInAndFade 0.6s ease-out forwards;
+}
+
+@keyframes slideInAndFade {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.agent-handoff-indicator.visible {
+  opacity: 1;
+}
+
+.handoff-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.handoff-avatars {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.from-avatar,
+.to-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.swap-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background-color: rgba(24, 144, 255, 0.15);
+  border-radius: 50%;
+  color: #1890ff;
+  font-size: 16px;
+  animation: swapPulse 0.8s ease-in-out infinite;
+}
+
+@keyframes swapPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.handoff-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.handoff-message {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.handoff-text {
+  font-size: 14px;
+  color: #262626;
+  letter-spacing: 0.5px;
+}
+
+.agent-highlight {
+  color: #52c41a;
+  font-weight: 600;
+  padding: 0 4px;
+}
+
+.handoff-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.detail-item {
+  display: flex;
+  gap: 4px;
+  color: #8c8c8c;
+}
+
+.detail-item .label {
+  font-weight: 500;
+  color: #595959;
+}
+
+@media (max-width: 768px) {
+  .agent-handoff-indicator {
+    padding: 10px 12px;
+    margin: 12px 0;
+  }
+
+  .handoff-container {
+    gap: 12px;
+  }
+
+  .handoff-avatars {
+    gap: 6px;
+  }
+
+  .swap-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
+
+  .handoff-text {
+    font-size: 13px;
+  }
+
+  .handoff-details {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .handoff-container {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .handoff-avatars {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .handoff-message {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .handoff-details {
+    text-align: center;
+  }
+}

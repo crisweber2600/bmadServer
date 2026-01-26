@@ -23,5 +23,6 @@ public enum StepExecutionStatus
     Running,
     Completed,
     Failed,
-    Skipped
+    Skipped,
+    WaitingForApproval
 }

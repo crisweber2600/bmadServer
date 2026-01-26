@@ -12,3 +12,15 @@ export type { ChatInputProps } from './ChatInput';
 
 export { CommandPalette } from './CommandPalette';
 export type { CommandPaletteProps, Command } from './CommandPalette';
+
+export { AgentAttribution } from './AgentAttribution';
+export type { AgentAttributionProps } from './AgentAttribution';
+
+export { AgentHandoffIndicator } from './AgentHandoffIndicator';
+export type { AgentHandoffIndicatorProps } from './AgentHandoffIndicator';
+
+export { DecisionAttributionBanner } from './DecisionAttributionBanner';
+export type { DecisionAttributionBannerProps } from './DecisionAttributionBanner';
+
+export { ChatWithHandoffs } from './ChatWithHandoffs';
+export type { ChatWithHandoffsProps } from './ChatWithHandoffs';

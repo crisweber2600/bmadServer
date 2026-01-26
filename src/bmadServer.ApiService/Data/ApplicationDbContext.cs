@@ -20,12 +20,9 @@ public class ApplicationDbContext : DbContext
     public DbSet<WorkflowInstance> WorkflowInstances { get; set; }
     public DbSet<WorkflowEvent> WorkflowEvents { get; set; }
     public DbSet<WorkflowStepHistory> WorkflowStepHistories { get; set; }
-    public DbSet<Decision> Decisions { get; set; }
-    public DbSet<DecisionVersion> DecisionVersions { get; set; }
-    public DbSet<DecisionReview> DecisionReviews { get; set; }
-    public DbSet<DecisionReviewResponse> DecisionReviewResponses { get; set; }
-    public DbSet<DecisionConflict> DecisionConflicts { get; set; }
-    public DbSet<ConflictRule> ConflictRules { get; set; }
+    public DbSet<AgentMessageLog> AgentMessageLogs { get; set; }
+    public DbSet<AgentHandoff> AgentHandoffs { get; set; }
+    public DbSet<ApprovalRequest> ApprovalRequests { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -142,6 +139,12 @@ public class ApplicationDbContext : DbContext
                 .HasConversion(
                     v => v == null ? null : v.RootElement.GetRawText(),
                     v => v == null ? null : JsonDocument.Parse(v));
+            entity.Property(e => e.SharedContextJson)
+                .HasColumnName("shared_context")
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => v == null ? null : v.RootElement.GetRawText(),
+                    v => v == null ? null : JsonDocument.Parse(v));
             
             // Indexes
             entity.HasIndex(e => e.Status);
@@ -154,6 +157,8 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.StepData)
                 .HasMethod("gin");
             entity.HasIndex(e => e.Context)
+                .HasMethod("gin");
+            entity.HasIndex(e => e.SharedContextJson)
                 .HasMethod("gin");
         });
 
@@ -189,7 +194,6 @@ public class ApplicationDbContext : DbContext
                 .HasConversion<string>();
             entity.Property(e => e.ErrorMessage).HasMaxLength(2000);
             
-            // JSONB columns for PostgreSQL with JSON value converters for compatibility
             entity.Property(e => e.Input)
                 .HasColumnType("jsonb")
                 .HasConversion(
@@ -201,246 +205,97 @@ public class ApplicationDbContext : DbContext
                     v => v == null ? null : v.RootElement.GetRawText(),
                     v => v == null ? null : JsonDocument.Parse(v));
             
-            // Indexes
             entity.HasIndex(e => e.WorkflowInstanceId);
             entity.HasIndex(e => e.StepId);
             entity.HasIndex(e => e.StartedAt);
             entity.HasIndex(e => e.Status);
             
-            // GIN indexes for JSONB columns (PostgreSQL only)
             entity.HasIndex(e => e.Input)
                 .HasMethod("gin");
             entity.HasIndex(e => e.Output)
                 .HasMethod("gin");
             
-            // Foreign key to WorkflowInstance
             entity.HasOne(e => e.WorkflowInstance)
                 .WithMany()
                 .HasForeignKey(e => e.WorkflowInstanceId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        modelBuilder.Entity<Decision>(entity =>
+        modelBuilder.Entity<AgentMessageLog>(entity =>
         {
-            entity.ToTable("decisions");
+            entity.ToTable("agent_message_logs");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.StepId).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.DecisionType).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Question).HasMaxLength(1000);
-            entity.Property(e => e.Reasoning).HasMaxLength(4000);
             
-            // JSONB columns for PostgreSQL with JSON value converters for compatibility
-            entity.Property(e => e.Value)
+            entity.Property(e => e.SourceAgent).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.TargetAgent).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Content)
                 .HasColumnType("jsonb")
                 .HasConversion(
-                    v => v == null ? null : v.RootElement.GetRawText(),
-                    v => v == null ? null : JsonDocument.Parse(v));
-            entity.Property(e => e.Options)
-                .HasColumnType("jsonb")
-                .HasConversion(
-                    v => v == null ? null : v.RootElement.GetRawText(),
-                    v => v == null ? null : JsonDocument.Parse(v));
-            entity.Property(e => e.Context)
-                .HasColumnType("jsonb")
-                .HasConversion(
-                    v => v == null ? null : v.RootElement.GetRawText(),
-                    v => v == null ? null : JsonDocument.Parse(v));
+                    v => v.RootElement.GetRawText(),
+                    v => JsonDocument.Parse(v));
             
-            // Indexes for fast lookups
             entity.HasIndex(e => e.WorkflowInstanceId);
-            entity.HasIndex(e => e.StepId);
-            entity.HasIndex(e => e.DecidedBy);
-            entity.HasIndex(e => e.DecidedAt);
-            entity.HasIndex(e => e.DecisionType);
+            entity.HasIndex(e => e.Timestamp);
+            entity.HasIndex(e => e.CorrelationId);
             
-            // GIN indexes for JSONB columns (PostgreSQL only)
-            entity.HasIndex(e => e.Value)
+            entity.HasIndex(e => e.Content)
                 .HasMethod("gin");
-            entity.HasIndex(e => e.Options)
-                .HasMethod("gin");
-            entity.HasIndex(e => e.Context)
-                .HasMethod("gin");
+            
+            entity.HasOne(e => e.WorkflowInstance)
+                .WithMany()
+                .HasForeignKey(e => e.WorkflowInstanceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AgentHandoff>(entity =>
+        {
+            entity.ToTable("agent_handoffs");
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.FromAgentId).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.ToAgentId).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.WorkflowStepId).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.Reason).HasMaxLength(1000);
+            entity.Property(e => e.Timestamp).IsRequired();
+            
+            // Indexes for common queries
+            entity.HasIndex(e => e.WorkflowInstanceId);
+            entity.HasIndex(e => e.Timestamp);
+            entity.HasIndex(e => new { e.WorkflowInstanceId, e.Timestamp });
             
             // Foreign key to WorkflowInstance
             entity.HasOne(e => e.WorkflowInstance)
                 .WithMany()
                 .HasForeignKey(e => e.WorkflowInstanceId)
                 .OnDelete(DeleteBehavior.Cascade);
-                
-            // Foreign key to User (DecisionMaker)
-            entity.HasOne(e => e.DecisionMaker)
-                .WithMany()
-                .HasForeignKey(e => e.DecidedBy)
-                .OnDelete(DeleteBehavior.Restrict);
         });
 
-        modelBuilder.Entity<DecisionVersion>(entity =>
+        modelBuilder.Entity<ApprovalRequest>(entity =>
         {
-            entity.ToTable("decision_versions");
+            entity.ToTable("approval_requests");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Question).HasMaxLength(1000);
-            entity.Property(e => e.Reasoning).HasMaxLength(4000);
-            entity.Property(e => e.ChangeReason).HasMaxLength(1000);
             
-            // JSONB columns for PostgreSQL with JSON value converters for compatibility
-            entity.Property(e => e.Value)
-                .HasColumnType("jsonb")
-                .HasConversion(
-                    v => v == null ? null : v.RootElement.GetRawText(),
-                    v => v == null ? null : JsonDocument.Parse(v));
-            entity.Property(e => e.Options)
-                .HasColumnType("jsonb")
-                .HasConversion(
-                    v => v == null ? null : v.RootElement.GetRawText(),
-                    v => v == null ? null : JsonDocument.Parse(v));
-            entity.Property(e => e.Context)
-                .HasColumnType("jsonb")
-                .HasConversion(
-                    v => v == null ? null : v.RootElement.GetRawText(),
-                    v => v == null ? null : JsonDocument.Parse(v));
+            entity.Property(e => e.AgentId).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.ProposedResponse).IsRequired();
+            entity.Property(e => e.ConfidenceScore).IsRequired();
+            entity.Property(e => e.Reasoning).HasMaxLength(2000);
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasConversion<string>();
+            entity.Property(e => e.RequestedAt).IsRequired();
+            entity.Property(e => e.RejectionReason).HasMaxLength(2000);
+            entity.Property(e => e.StepId).HasMaxLength(100);
+            entity.Property(e => e.Version).IsConcurrencyToken();
             
-            // Indexes for fast lookups
-            entity.HasIndex(e => e.DecisionId);
-            entity.HasIndex(e => e.VersionNumber);
-            entity.HasIndex(e => e.ModifiedBy);
-            entity.HasIndex(e => e.ModifiedAt);
-            entity.HasIndex(e => new { e.DecisionId, e.VersionNumber }).IsUnique();
-            
-            // GIN indexes for JSONB columns (PostgreSQL only)
-            entity.HasIndex(e => e.Value)
-                .HasMethod("gin");
-            entity.HasIndex(e => e.Options)
-                .HasMethod("gin");
-            entity.HasIndex(e => e.Context)
-                .HasMethod("gin");
-            
-            // Foreign key to Decision
-            entity.HasOne(e => e.Decision)
-                .WithMany(d => d.Versions)
-                .HasForeignKey(e => e.DecisionId)
-                .OnDelete(DeleteBehavior.Cascade);
-                
-            // Foreign key to User (Modifier)
-            entity.HasOne(e => e.Modifier)
-                .WithMany()
-                .HasForeignKey(e => e.ModifiedBy)
-                .OnDelete(DeleteBehavior.Restrict);
-        });
-
-        modelBuilder.Entity<DecisionReview>(entity =>
-        {
-            entity.ToTable("decision_reviews");
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Status).IsRequired().HasMaxLength(50);
-            
-            // Indexes
-            entity.HasIndex(e => e.DecisionId);
-            entity.HasIndex(e => e.RequestedBy);
+            entity.HasIndex(e => e.WorkflowInstanceId);
+            entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.RequestedAt);
-            entity.HasIndex(e => e.Deadline);
-            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => new { e.WorkflowInstanceId, e.Status });
             
-            // Foreign key to Decision
-            entity.HasOne(e => e.Decision)
+            entity.HasOne(e => e.WorkflowInstance)
                 .WithMany()
-                .HasForeignKey(e => e.DecisionId)
+                .HasForeignKey(e => e.WorkflowInstanceId)
                 .OnDelete(DeleteBehavior.Cascade);
-                
-            // Foreign key to User (Requester)
-            entity.HasOne(e => e.Requester)
-                .WithMany()
-                .HasForeignKey(e => e.RequestedBy)
-                .OnDelete(DeleteBehavior.Restrict);
-        });
-
-        modelBuilder.Entity<DecisionReviewResponse>(entity =>
-        {
-            entity.ToTable("decision_review_responses");
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.ResponseType).IsRequired().HasMaxLength(50);
-            entity.Property(e => e.Comments).HasMaxLength(2000);
-            
-            // Indexes
-            entity.HasIndex(e => e.ReviewId);
-            entity.HasIndex(e => e.ReviewerId);
-            entity.HasIndex(e => e.RespondedAt);
-            entity.HasIndex(e => new { e.ReviewId, e.ReviewerId }).IsUnique();
-            
-            // Foreign key to Review
-            entity.HasOne(e => e.Review)
-                .WithMany(r => r.Responses)
-                .HasForeignKey(e => e.ReviewId)
-                .OnDelete(DeleteBehavior.Cascade);
-                
-            // Foreign key to User (Reviewer)
-            entity.HasOne(e => e.Reviewer)
-                .WithMany()
-                .HasForeignKey(e => e.ReviewerId)
-                .OnDelete(DeleteBehavior.Restrict);
-        });
-
-        modelBuilder.Entity<DecisionConflict>(entity =>
-        {
-            entity.ToTable("decision_conflicts");
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.ConflictType).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Description).IsRequired().HasMaxLength(1000);
-            entity.Property(e => e.Severity).IsRequired().HasMaxLength(50);
-            entity.Property(e => e.Status).IsRequired().HasMaxLength(50);
-            entity.Property(e => e.Resolution).HasMaxLength(2000);
-            entity.Property(e => e.OverrideJustification).HasMaxLength(2000);
-            
-            // Indexes
-            entity.HasIndex(e => e.DecisionId1);
-            entity.HasIndex(e => e.DecisionId2);
-            entity.HasIndex(e => e.ConflictType);
-            entity.HasIndex(e => e.Severity);
-            entity.HasIndex(e => e.Status);
-            entity.HasIndex(e => e.DetectedAt);
-            entity.HasIndex(e => new { e.DecisionId1, e.DecisionId2 });
-            
-            // Foreign keys to Decisions
-            entity.HasOne(e => e.Decision1)
-                .WithMany()
-                .HasForeignKey(e => e.DecisionId1)
-                .OnDelete(DeleteBehavior.Restrict);
-                
-            entity.HasOne(e => e.Decision2)
-                .WithMany()
-                .HasForeignKey(e => e.DecisionId2)
-                .OnDelete(DeleteBehavior.Restrict);
-                
-            // Foreign key to User (Resolver)
-            entity.HasOne(e => e.Resolver)
-                .WithMany()
-                .HasForeignKey(e => e.ResolvedBy)
-                .OnDelete(DeleteBehavior.Restrict);
-        });
-
-        modelBuilder.Entity<ConflictRule>(entity =>
-        {
-            entity.ToTable("conflict_rules");
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
-            entity.Property(e => e.ConflictType).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Description).IsRequired().HasMaxLength(1000);
-            entity.Property(e => e.Severity).IsRequired().HasMaxLength(50);
-            
-            // JSONB column for configuration
-            entity.Property(e => e.Configuration)
-                .HasColumnType("jsonb")
-                .HasConversion(
-                    v => v == null ? null : v.RootElement.GetRawText(),
-                    v => v == null ? null : JsonDocument.Parse(v));
-            
-            // Indexes
-            entity.HasIndex(e => e.ConflictType);
-            entity.HasIndex(e => e.IsActive);
-            entity.HasIndex(e => e.CreatedAt);
-            
-            // GIN index for JSONB column
-            entity.HasIndex(e => e.Configuration)
-                .HasMethod("gin");
         });
     }
 }

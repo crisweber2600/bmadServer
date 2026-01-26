@@ -1,11 +1,9 @@
 using System.Text.Json;
+using bmadServer.ApiService.Models.Workflows;
 
 namespace bmadServer.ApiService.Services.Workflows.Agents;
 
-/// <summary>
-/// Context provided to agent handlers for step execution
-/// </summary>
-public class AgentContext
+public record class AgentContext
 {
     public required Guid WorkflowInstanceId { get; init; }
     public required string StepId { get; init; }
@@ -15,6 +13,7 @@ public class AgentContext
     public required JsonDocument? StepParameters { get; init; }
     public required List<ConversationMessage> ConversationHistory { get; init; }
     public required string? UserInput { get; init; }
+    public SharedContext? SharedContext { get; init; }
 }
 
 /// <summary>
@@ -36,6 +35,10 @@ public class AgentResult
     public JsonDocument? Output { get; init; }
     public string? ErrorMessage { get; init; }
     public bool IsRetryable { get; init; }
+    
+    public double ConfidenceScore { get; init; } = 1.0;
+    public string? Reasoning { get; init; }
+    public bool RequiresHumanApproval => ConfidenceScore < 0.7;
 }
 
 /// <summary>

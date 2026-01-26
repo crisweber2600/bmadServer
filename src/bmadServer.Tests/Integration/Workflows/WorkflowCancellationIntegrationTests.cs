@@ -3,6 +3,7 @@ using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Hubs;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services.Workflows;
+using bmadServer.ApiService.Services.Workflows.Agents;
 using bmadServer.ServiceDefaults.Services.Workflows;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
@@ -34,9 +35,14 @@ public class WorkflowCancellationIntegrationTests : IDisposable
         var registryMock = new Mock<IWorkflowRegistry>();
         registryMock.Setup(r => r.ValidateWorkflow(It.IsAny<string>())).Returns(true);
 
+        var agentRegistryMock = new Mock<IAgentRegistry>();
+        var agentHandoffServiceMock = new Mock<IAgentHandoffService>();
+
         _workflowInstanceService = new WorkflowInstanceService(
             _context,
             registryMock.Object,
+            agentRegistryMock.Object,
+            agentHandoffServiceMock.Object,
             new Mock<ILogger<WorkflowInstanceService>>().Object);
 
         // Setup SignalR hub mock properly
@@ -49,15 +55,17 @@ public class WorkflowCancellationIntegrationTests : IDisposable
         mockClientProxy.Setup(p => p.SendCoreAsync(
             It.IsAny<string>(),
             It.IsAny<object[]>(),
-            It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-        
-        _controller = new WorkflowsController(
-            _workflowInstanceService,
-            registryMock.Object,
-            new Mock<IStepExecutor>().Object,
-            _hubContextMock.Object,
-            new Mock<ILogger<WorkflowsController>>().Object);
+             It.IsAny<CancellationToken>()))
+             .Returns(Task.CompletedTask);
+         
+         _controller = new WorkflowsController(
+             _workflowInstanceService,
+             registryMock.Object,
+             new Mock<IAgentRegistry>().Object,
+             new Mock<IStepExecutor>().Object,
+             new Mock<IApprovalService>().Object,
+             _hubContextMock.Object,
+             new Mock<ILogger<WorkflowsController>>().Object);
 
         _testUserId = Guid.NewGuid();
         var claims = new List<Claim>
@@ -231,16 +239,18 @@ public class WorkflowCancellationIntegrationTests : IDisposable
         problemResult.StatusCode.Should().Be(StatusCodes.Status404NotFound);
     }
 
-    [Fact]
-    public async Task CancelWorkflow_WithoutAuthentication_ShouldReturn401()
-    {
-        // Arrange
-        var controller = new WorkflowsController(
-            _workflowInstanceService,
-            new Mock<IWorkflowRegistry>().Object,
-            new Mock<IStepExecutor>().Object,
-            _hubContextMock.Object,
-            new Mock<ILogger<WorkflowsController>>().Object);
+     [Fact]
+     public async Task CancelWorkflow_WithoutAuthentication_ShouldReturn401()
+     {
+         // Arrange
+         var controller = new WorkflowsController(
+             _workflowInstanceService,
+             new Mock<IWorkflowRegistry>().Object,
+             new Mock<IAgentRegistry>().Object,
+             new Mock<IStepExecutor>().Object,
+             new Mock<IApprovalService>().Object,
+             _hubContextMock.Object,
+             new Mock<ILogger<WorkflowsController>>().Object);
 
         controller.ControllerContext = new ControllerContext
         {

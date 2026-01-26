@@ -11,6 +11,7 @@ public class WorkflowInstance
     public WorkflowStatus Status { get; set; }
     public JsonDocument? StepData { get; set; }
     public JsonDocument? Context { get; set; }
+    public JsonDocument? SharedContextJson { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public DateTime? PausedAt { get; set; }

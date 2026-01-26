@@ -6,6 +6,8 @@ import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { AgentAttribution, type AgentAttributionProps } from './AgentAttribution';
+import { DecisionAttributionBanner, type DecisionAttributionBannerProps } from './DecisionAttributionBanner';
 import './ChatMessage.css';
 
 const { Text } = Typography;
@@ -15,6 +17,8 @@ export interface ChatMessageProps {
   isUser: boolean;
   timestamp: Date;
   agentName?: string;
+  agentAttribution?: Omit<AgentAttributionProps, 'timestamp' | 'variant'>;
+  decisionAttribution?: Omit<DecisionAttributionBannerProps, 'timestamp'>;
 }
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({
@@ -22,6 +26,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   isUser,
   timestamp,
   agentName = 'BMAD Agent',
+  agentAttribution,
+  decisionAttribution,
 }) => {
   const formattedTime = new Intl.DateTimeFormat('en-US', {
     hour: '2-digit',
@@ -39,6 +45,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       role="article"
       aria-label={ariaLabel}
     >
+      {decisionAttribution && (
+        <DecisionAttributionBanner
+          {...decisionAttribution}
+          timestamp={timestamp}
+        />
+      )}
       {!isUser && (
         <Avatar
           icon={<RobotOutlined />}
@@ -48,11 +60,18 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         />
       )}
       <div className="message-content-wrapper">
-        {!isUser && (
+        {!isUser && agentAttribution ? (
+          <AgentAttribution
+            {...agentAttribution}
+            timestamp={timestamp}
+            variant="inline"
+            size="small"
+          />
+        ) : !isUser ? (
           <Text strong className="agent-name">
             {agentName}
           </Text>
-        )}
+        ) : null}
         <div className={`message-bubble ${isUser ? 'user-bubble' : 'agent-bubble'}`}>
           <div className="message-text">
             <ReactMarkdown

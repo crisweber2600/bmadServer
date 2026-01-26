@@ -69,11 +69,25 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IWorkflowIns
 // Register agent router as singleton (shared agent handler registry)
 builder.Services.AddSingleton<bmadServer.ApiService.Services.Workflows.IAgentRouter, bmadServer.ApiService.Services.Workflows.AgentRouter>();
 
+// Register agent registry as singleton (shared agent metadata registry)
+builder.Services.AddSingleton<bmadServer.ApiService.Services.Workflows.Agents.IAgentRegistry, bmadServer.ApiService.Services.Workflows.Agents.AgentRegistry>();
+
+// Register agent messaging service for agent-to-agent communication
+builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.Agents.IAgentMessaging, bmadServer.ApiService.Services.Workflows.Agents.AgentMessaging>();
+
 // Register step executor
 builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IStepExecutor, bmadServer.ApiService.Services.Workflows.StepExecutor>();
 
-// Register decision service
-builder.Services.AddScoped<bmadServer.ApiService.Services.Decisions.IDecisionService, bmadServer.ApiService.Services.Decisions.DecisionService>();
+// Register approval service for human approval workflows
+builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IApprovalService, bmadServer.ApiService.Services.Workflows.ApprovalService>();
+
+// Register shared context service for multi-agent workflow collaboration
+// Provides access to shared state (step outputs, decisions, preferences) across agents
+builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.ISharedContextService, bmadServer.ApiService.Services.Workflows.SharedContextService>();
+
+// Register context summarization service for managing token limits
+// Preserves decision history and recent outputs while summarizing older steps
+builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IContextSummarizationService, bmadServer.ApiService.Services.Workflows.ContextSummarizationService>();
 
 // Register FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<bmadServer.ApiService.Validators.RegisterRequestValidator>();

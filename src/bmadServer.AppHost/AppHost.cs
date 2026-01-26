@@ -24,14 +24,12 @@ var apiService = builder.AddProject<Projects.bmadServer_ApiService>("apiservice"
     .WithReference(db)
     .WaitFor(db);
 
-// Configure the Web frontend (bmadServer.Web)
+// Configure the React frontend (using Vite dev server)
 // - WithExternalHttpEndpoints() exposes the frontend to the host machine
-// - WithHttpHealthCheck("/health") enables health monitoring
 // - WithReference(apiService) injects API service endpoint for client calls
 // - WaitFor(apiService) ensures frontend starts after API is healthy
-var webfrontend = builder.AddProject<Projects.bmadServer_Web>("webfrontend")
+var frontend = builder.AddViteApp("frontend", "../frontend")
     .WithExternalHttpEndpoints()
-    .WithHttpHealthCheck("/health")
     .WithReference(apiService)
     .WaitFor(apiService);
 
@@ -39,6 +37,6 @@ var webfrontend = builder.AddProject<Projects.bmadServer_Web>("webfrontend")
 // This starts all services in dependency order:
 // 1. PostgreSQL container starts
 // 2. API service starts (after PostgreSQL is healthy)
-// 3. Web frontend starts (after API is healthy)
+// 3. React frontend (Vite dev server) starts (after API is healthy)
 // The Aspire dashboard opens automatically at https://localhost:17360
 builder.Build().Run();
