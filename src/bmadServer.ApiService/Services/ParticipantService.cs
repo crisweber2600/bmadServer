@@ -48,7 +48,10 @@ public class ParticipantService : IParticipantService
         _context.WorkflowParticipants.Add(participant);
         await _context.SaveChangesAsync();
 
-        return participant;
+        // Reload with User navigation property
+        return await _context.WorkflowParticipants
+            .Include(p => p.User)
+            .FirstAsync(p => p.Id == participant.Id);
     }
 
     public async Task<bool> RemoveParticipantAsync(Guid workflowId, Guid userId)

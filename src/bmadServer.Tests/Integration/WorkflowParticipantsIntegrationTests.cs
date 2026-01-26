@@ -49,8 +49,10 @@ public class WorkflowParticipantsIntegrationTests : IClassFixture<TestWebApplica
 
         var createWorkflowRequest = new { WorkflowId = "create-prd" };
         var workflowResponse = await _client.PostAsJsonAsync("/api/v1/workflows", createWorkflowRequest);
+        workflowResponse.EnsureSuccessStatusCode();
         var workflow = await workflowResponse.Content.ReadFromJsonAsync<WorkflowInstance>();
-        _testWorkflowId = workflow!.Id;
+        Assert.NotNull(workflow);
+        _testWorkflowId = workflow.Id;
 
         // Create another user to add as participant
         var participantRegisterRequest = new
@@ -63,8 +65,10 @@ public class WorkflowParticipantsIntegrationTests : IClassFixture<TestWebApplica
         // Need to use a separate client without auth header for registration
         using var tempClient = _factory.CreateClient();
         var participantResponse = await tempClient.PostAsJsonAsync("/api/v1/auth/register", participantRegisterRequest);
+        participantResponse.EnsureSuccessStatusCode();
         var participantData = await participantResponse.Content.ReadFromJsonAsync<UserResponse>();
-        _testUserId = participantData!.Id;
+        Assert.NotNull(participantData);
+        _testUserId = participantData.Id;
     }
 
     public Task DisposeAsync() => Task.CompletedTask;
