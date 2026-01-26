@@ -1,9 +1,11 @@
 using bmadServer.ApiService.Data;
+using bmadServer.ApiService.Hubs;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services.Workflows;
 using bmadServer.ApiService.Services.Workflows.Agents;
 using bmadServer.ServiceDefaults.Models.Workflows;
 using bmadServer.ServiceDefaults.Services.Workflows;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -19,6 +21,7 @@ public class StepExecutorTests : IDisposable
     private readonly Mock<IWorkflowRegistry> _workflowRegistryMock;
     private readonly Mock<IWorkflowInstanceService> _workflowInstanceServiceMock;
     private readonly Mock<IAgentHandoffService> _agentHandoffServiceMock;
+    private readonly Mock<IHubContext<ChatHub>> _hubContextMock;
     private readonly Mock<ILogger<StepExecutor>> _loggerMock;
     private readonly StepExecutor _stepExecutor;
 
@@ -34,6 +37,7 @@ public class StepExecutorTests : IDisposable
         _workflowRegistryMock = new Mock<IWorkflowRegistry>();
         _workflowInstanceServiceMock = new Mock<IWorkflowInstanceService>();
         _agentHandoffServiceMock = new Mock<IAgentHandoffService>();
+        _hubContextMock = new Mock<IHubContext<ChatHub>>();
         _loggerMock = new Mock<ILogger<StepExecutor>>();
 
         var sharedContextServiceMock = new Mock<ISharedContextService>();
@@ -47,6 +51,7 @@ public class StepExecutorTests : IDisposable
             _workflowInstanceServiceMock.Object,
             sharedContextServiceMock.Object,
             _agentHandoffServiceMock.Object,
+            _hubContextMock.Object,
             _loggerMock.Object);
     }
 
