@@ -20,6 +20,7 @@ public class StepExecutor : IStepExecutor
     private readonly IWorkflowRegistry _workflowRegistry;
     private readonly IWorkflowInstanceService _workflowInstanceService;
     private readonly ISharedContextService _sharedContextService;
+    private readonly IAgentHandoffService _agentHandoffService;
     private readonly ILogger<StepExecutor> _logger;
     
     private const int StreamingThresholdSeconds = 5;
@@ -30,6 +31,7 @@ public class StepExecutor : IStepExecutor
         IWorkflowRegistry workflowRegistry,
         IWorkflowInstanceService workflowInstanceService,
         ISharedContextService sharedContextService,
+        IAgentHandoffService agentHandoffService,
         ILogger<StepExecutor> logger)
     {
         _context = context;
@@ -37,6 +39,7 @@ public class StepExecutor : IStepExecutor
         _workflowRegistry = workflowRegistry;
         _workflowInstanceService = workflowInstanceService;
         _sharedContextService = sharedContextService;
+        _agentHandoffService = agentHandoffService;
         _logger = logger;
     }
 
@@ -122,6 +125,40 @@ public class StepExecutor : IStepExecutor
                     Status = StepExecutionStatus.Failed,
                     ErrorMessage = $"No handler found for agent {step.AgentId}"
                 };
+            }
+
+            // Record agent handoff if agent changed
+            var previousStep = instance.CurrentStep > 1 
+                ? definition.Steps[instance.CurrentStep - 2] 
+                : null;
+            
+            if (previousStep != null && previousStep.AgentId != step.AgentId)
+            {
+                try
+                {
+                    // Generate handoff reason based on step metadata
+                    var handoffReason = $"Step requires {step.AgentId} expertise";
+                    
+                    // Record handoff (non-blocking, logs errors)
+                    await _agentHandoffService.RecordHandoffAsync(
+                        workflowInstanceId,
+                        previousStep.AgentId,
+                        step.AgentId,
+                        step.StepId,
+                        handoffReason,
+                        cancellationToken);
+                    
+                    _logger.LogInformation(
+                        "Recorded handoff from {FromAgent} to {ToAgent} for step {StepId}",
+                        previousStep.AgentId, step.AgentId, step.StepId);
+                }
+                catch (Exception ex)
+                {
+                    // Non-blocking error handling - log but continue workflow
+                    _logger.LogWarning(ex, 
+                        "Failed to record handoff from {FromAgent} to {ToAgent}",
+                        previousStep.AgentId, step.AgentId);
+                }
             }
 
             // Prepare agent context

@@ -18,6 +18,7 @@ public class StepExecutorTests : IDisposable
     private readonly Mock<IAgentRouter> _agentRouterMock;
     private readonly Mock<IWorkflowRegistry> _workflowRegistryMock;
     private readonly Mock<IWorkflowInstanceService> _workflowInstanceServiceMock;
+    private readonly Mock<IAgentHandoffService> _agentHandoffServiceMock;
     private readonly Mock<ILogger<StepExecutor>> _loggerMock;
     private readonly StepExecutor _stepExecutor;
 
@@ -32,6 +33,7 @@ public class StepExecutorTests : IDisposable
         _agentRouterMock = new Mock<IAgentRouter>();
         _workflowRegistryMock = new Mock<IWorkflowRegistry>();
         _workflowInstanceServiceMock = new Mock<IWorkflowInstanceService>();
+        _agentHandoffServiceMock = new Mock<IAgentHandoffService>();
         _loggerMock = new Mock<ILogger<StepExecutor>>();
 
         var sharedContextServiceMock = new Mock<ISharedContextService>();
@@ -44,6 +46,7 @@ public class StepExecutorTests : IDisposable
             _workflowRegistryMock.Object,
             _workflowInstanceServiceMock.Object,
             sharedContextServiceMock.Object,
+            _agentHandoffServiceMock.Object,
             _loggerMock.Object);
     }
 

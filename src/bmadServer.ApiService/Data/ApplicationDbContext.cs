@@ -21,6 +21,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<WorkflowEvent> WorkflowEvents { get; set; }
     public DbSet<WorkflowStepHistory> WorkflowStepHistories { get; set; }
     public DbSet<AgentMessageLog> AgentMessageLogs { get; set; }
+    public DbSet<AgentHandoff> AgentHandoffs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -239,6 +240,29 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.Content)
                 .HasMethod("gin");
             
+            entity.HasOne(e => e.WorkflowInstance)
+                .WithMany()
+                .HasForeignKey(e => e.WorkflowInstanceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AgentHandoff>(entity =>
+        {
+            entity.ToTable("agent_handoffs");
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.FromAgentId).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.ToAgentId).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.WorkflowStepId).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.Reason).HasMaxLength(1000);
+            entity.Property(e => e.Timestamp).IsRequired();
+            
+            // Indexes for common queries
+            entity.HasIndex(e => e.WorkflowInstanceId);
+            entity.HasIndex(e => e.Timestamp);
+            entity.HasIndex(e => new { e.WorkflowInstanceId, e.Timestamp });
+            
+            // Foreign key to WorkflowInstance
             entity.HasOne(e => e.WorkflowInstance)
                 .WithMany()
                 .HasForeignKey(e => e.WorkflowInstanceId)
