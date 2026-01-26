@@ -72,6 +72,9 @@ builder.Services.AddSingleton<bmadServer.ApiService.Services.Workflows.Agents.IA
 // Register agent messaging as singleton (shared message history)
 builder.Services.AddSingleton<bmadServer.ApiService.Services.Workflows.Agents.IAgentMessaging, bmadServer.ApiService.Services.Workflows.Agents.AgentMessaging>();
 
+// Register workflow context manager as singleton (shared workflow contexts)
+builder.Services.AddSingleton<bmadServer.ApiService.Services.Workflows.Agents.IWorkflowContextManager, bmadServer.ApiService.Services.Workflows.Agents.WorkflowContextManager>();
+
 // Register agent router as singleton (shared agent handler registry)
 builder.Services.AddSingleton<bmadServer.ApiService.Services.Workflows.IAgentRouter, bmadServer.ApiService.Services.Workflows.AgentRouter>();
 
