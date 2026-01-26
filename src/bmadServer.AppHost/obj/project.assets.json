@@ -2,15 +2,15 @@
   "version": 3,
   "targets": {
     "net10.0": {
-      "Aspire.Dashboard.Sdk.osx-arm64/13.1.0": {
+      "Aspire.Dashboard.Sdk.linux-x64/13.1.0": {
         "type": "package",
         "build": {
-          "buildTransitive/Aspire.Dashboard.Sdk.osx-arm64.props": {},
-          "buildTransitive/Aspire.Dashboard.Sdk.osx-arm64.targets": {}
+          "buildTransitive/Aspire.Dashboard.Sdk.linux-x64.props": {},
+          "buildTransitive/Aspire.Dashboard.Sdk.linux-x64.targets": {}
         },
         "buildMultiTargeting": {
-          "buildMultiTargeting/Aspire.Dashboard.Sdk.osx-arm64.props": {},
-          "buildMultiTargeting/Aspire.Dashboard.Sdk.osx-arm64.targets": {}
+          "buildMultiTargeting/Aspire.Dashboard.Sdk.linux-x64.props": {},
+          "buildMultiTargeting/Aspire.Dashboard.Sdk.linux-x64.targets": {}
         }
       },
       "Aspire.Hosting/13.1.0": {
@@ -181,13 +181,13 @@
           }
         }
       },
-      "Aspire.Hosting.Orchestration.osx-arm64/13.1.0": {
+      "Aspire.Hosting.Orchestration.linux-x64/13.1.0": {
         "type": "package",
         "build": {
-          "buildTransitive/Aspire.Hosting.Orchestration.osx-arm64.targets": {}
+          "buildTransitive/Aspire.Hosting.Orchestration.linux-x64.targets": {}
         },
         "buildMultiTargeting": {
-          "buildMultiTargeting/Aspire.Hosting.Orchestration.osx-arm64.targets": {}
+          "buildMultiTargeting/Aspire.Hosting.Orchestration.linux-x64.targets": {}
         }
       },
       "Aspire.Hosting.PostgreSQL/13.1.0": {
@@ -1470,24 +1470,24 @@
     }
   },
   "libraries": {
-    "Aspire.Dashboard.Sdk.osx-arm64/13.1.0": {
-      "sha512": "gPPoB34mZokO4NY4oBv4Mk3yPS9L4kFOkK9o1yLL0Tgu3T7eVQFtzsCercPk9yHcxJr66IGeEOrpiYDJedE1uQ==",
+    "Aspire.Dashboard.Sdk.linux-x64/13.1.0": {
+      "sha512": "gIvMR7NdVGw+mUpK9qZsGuuYfDp4CHvBDLlykSSP9pCh5XGlMgDNR3uOMfvKVlqH1hAsOuecvxEcfQ9kjufrWw==",
       "type": "package",
-      "path": "aspire.dashboard.sdk.osx-arm64/13.1.0",
+      "path": "aspire.dashboard.sdk.linux-x64/13.1.0",
       "hasTools": true,
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "Icon.png",
         "THIRD-PARTY-NOTICES.TXT",
-        "aspire.dashboard.sdk.osx-arm64.13.1.0.nupkg.sha512",
-        "aspire.dashboard.sdk.osx-arm64.nuspec",
-        "build/Aspire.Dashboard.Sdk.osx-arm64.props",
-        "build/Aspire.Dashboard.Sdk.osx-arm64.targets",
-        "buildMultiTargeting/Aspire.Dashboard.Sdk.osx-arm64.props",
-        "buildMultiTargeting/Aspire.Dashboard.Sdk.osx-arm64.targets",
-        "buildTransitive/Aspire.Dashboard.Sdk.osx-arm64.props",
-        "buildTransitive/Aspire.Dashboard.Sdk.osx-arm64.targets",
+        "aspire.dashboard.sdk.linux-x64.13.1.0.nupkg.sha512",
+        "aspire.dashboard.sdk.linux-x64.nuspec",
+        "build/Aspire.Dashboard.Sdk.linux-x64.props",
+        "build/Aspire.Dashboard.Sdk.linux-x64.targets",
+        "buildMultiTargeting/Aspire.Dashboard.Sdk.linux-x64.props",
+        "buildMultiTargeting/Aspire.Dashboard.Sdk.linux-x64.targets",
+        "buildTransitive/Aspire.Dashboard.Sdk.linux-x64.props",
+        "buildTransitive/Aspire.Dashboard.Sdk.linux-x64.targets",
         "data/UnixFilePermissions.xml",
         "tools/Aspire.Dashboard",
         "tools/Aspire.Dashboard.deps.json",
@@ -1693,25 +1693,25 @@
         "lib/net8.0/Aspire.Hosting.JavaScript.xml"
       ]
     },
-    "Aspire.Hosting.Orchestration.osx-arm64/13.1.0": {
-      "sha512": "Odw4PC2fvcC0QyG8C9OO9npGZznNZ9o86OhL7nSsc3MCv34n4zVFhp1OLKy/r6JNdiLoU1hdqF5ge8vzjdR++w==",
+    "Aspire.Hosting.Orchestration.linux-x64/13.1.0": {
+      "sha512": "V8u8ukncoflImciXeHG03x1pWbOiR4z1bIl2lwOKgdy7/JshFrlEaabaNuGmAIZFdWEM/fsc/hVDjecQyHF2aQ==",
       "type": "package",
-      "path": "aspire.hosting.orchestration.osx-arm64/13.1.0",
+      "path": "aspire.hosting.orchestration.linux-x64/13.1.0",
       "hasTools": true,
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "Icon.png",
         "THIRD-PARTY-NOTICES.TXT",
-        "aspire.hosting.orchestration.osx-arm64.13.1.0.nupkg.sha512",
-        "aspire.hosting.orchestration.osx-arm64.nuspec",
-        "build/Aspire.Hosting.Orchestration.osx-arm64.targets",
-        "buildMultiTargeting/Aspire.Hosting.Orchestration.osx-arm64.targets",
-        "buildTransitive/Aspire.Hosting.Orchestration.osx-arm64.targets",
+        "aspire.hosting.orchestration.linux-x64.13.1.0.nupkg.sha512",
+        "aspire.hosting.orchestration.linux-x64.nuspec",
+        "build/Aspire.Hosting.Orchestration.linux-x64.targets",
+        "buildMultiTargeting/Aspire.Hosting.Orchestration.linux-x64.targets",
+        "buildTransitive/Aspire.Hosting.Orchestration.linux-x64.targets",
         "data/UnixFilePermissions.xml",
         "tools/EULA.rtf",
         "tools/NOTICE",
-        "tools/_manifest/spdx_2.2/ESRPClientLogs1212224139564.json",
+        "tools/_manifest/spdx_2.2/ESRPClientLogs1212223249949.json",
         "tools/_manifest/spdx_2.2/bsi.cose",
         "tools/_manifest/spdx_2.2/bsi.json",
         "tools/_manifest/spdx_2.2/manifest.cat",
@@ -3518,33 +3518,32 @@
   },
   "projectFileDependencyGroups": {
     "net10.0": [
-      "Aspire.Dashboard.Sdk.osx-arm64 >= 13.1.0",
+      "Aspire.Dashboard.Sdk.linux-x64 >= 13.1.0",
       "Aspire.Hosting.AppHost >= 13.1.0",
       "Aspire.Hosting.JavaScript >= 13.1.0",
-      "Aspire.Hosting.Orchestration.osx-arm64 >= 13.1.0",
+      "Aspire.Hosting.Orchestration.linux-x64 >= 13.1.0",
       "Aspire.Hosting.PostgreSQL >= 13.1.0"
     ]
   },
   "packageFolders": {
-    "/Users/cris/.nuget/packages/": {}
+    "/home/runner/.nuget/packages/": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/cris/bmadServer/src/bmadServer.AppHost/bmadServer.AppHost.csproj",
+      "projectUniqueName": "/home/runner/work/bmadServer/bmadServer/src/bmadServer.AppHost/bmadServer.AppHost.csproj",
       "projectName": "bmadServer.AppHost",
-      "projectPath": "/Users/cris/bmadServer/src/bmadServer.AppHost/bmadServer.AppHost.csproj",
-      "packagesPath": "/Users/cris/.nuget/packages/",
-      "outputPath": "/Users/cris/bmadServer/src/bmadServer.AppHost/obj/",
+      "projectPath": "/home/runner/work/bmadServer/bmadServer/src/bmadServer.AppHost/bmadServer.AppHost.csproj",
+      "packagesPath": "/home/runner/.nuget/packages/",
+      "outputPath": "/home/runner/work/bmadServer/bmadServer/src/bmadServer.AppHost/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/Users/cris/.nuget/NuGet/NuGet.Config"
+        "/home/runner/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net10.0"
       ],
       "sources": {
-        "/opt/homebrew/Cellar/dotnet/10.0.102/libexec/library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -3569,7 +3568,7 @@
       "net10.0": {
         "targetAlias": "net10.0",
         "dependencies": {
-          "Aspire.Dashboard.Sdk.osx-arm64": {
+          "Aspire.Dashboard.Sdk.linux-x64": {
             "target": "Package",
             "version": "[13.1.0, )",
             "autoReferenced": true
@@ -3583,7 +3582,7 @@
             "target": "Package",
             "version": "[13.1.0, )"
           },
-          "Aspire.Hosting.Orchestration.osx-arm64": {
+          "Aspire.Hosting.Orchestration.linux-x64": {
             "target": "Package",
             "version": "[13.1.0, )",
             "autoReferenced": true
@@ -3609,7 +3608,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/opt/homebrew/Cellar/dotnet/10.0.102/libexec/sdk/10.0.102/PortableRuntimeIdentifierGraph.json",
+        "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/10.0.102/PortableRuntimeIdentifierGraph.json",
         "packagesToPrune": {
           "Microsoft.CSharp": "(,4.7.32767]",
           "Microsoft.VisualBasic": "(,10.4.32767]",

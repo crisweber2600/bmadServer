@@ -28,7 +28,7 @@ public interface IContextSummarizationService
     /// - Returns original context if within token limit
     /// </summary>
     /// <param name="context">The shared context to potentially summarize</param>
-    /// <param name="tokenLimit">Maximum token count allowed (default: 50,000)</param>
+    /// <param name="tokenLimit">Maximum token count allowed</param>
     /// <returns>Summarized context (or original if within limit)</returns>
     SharedContext SummarizeIfNeeded(SharedContext context, int tokenLimit);
 }
