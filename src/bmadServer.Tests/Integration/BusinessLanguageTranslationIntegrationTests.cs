@@ -50,9 +50,9 @@ public class BusinessLanguageTranslationIntegrationTests : IClassFixture<TestWeb
             PersonaType.Technical);
 
         // Assert
-        Assert.Contains("container orchestration platform", businessResult);
-        Assert.DoesNotContain("Kubernetes", businessResult);
-        Assert.Equal(technicalContent, technicalResult); // Technical persona gets original
+        Assert.Contains("container orchestration platform", businessResult.Content);
+        Assert.DoesNotContain("Kubernetes", businessResult.Content);
+        Assert.Equal(technicalContent, technicalResult.Content); // Technical persona gets original
     }
 
     [Fact]

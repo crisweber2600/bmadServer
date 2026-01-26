@@ -55,16 +55,16 @@ public class TranslationServiceTests : IDisposable
         var technicalContent = "The API endpoint uses database caching for better performance.";
 
         // Act
-        var result = await _translationService.TranslateToBusinessLanguageAsync(technicalContent, PersonaType.Business);
+        var translationResult = await _translationService.TranslateToBusinessLanguageAsync(technicalContent, PersonaType.Business);
 
         // Assert
-        Assert.Contains("system connection", result);
-        Assert.Contains("connection point", result);
-        Assert.Contains("data storage", result);
-        Assert.Contains("temporary storage", result);
-        Assert.DoesNotContain("API", result);
-        Assert.DoesNotContain("endpoint", result);
-        Assert.DoesNotContain("database", result);
+        Assert.Contains("system connection", translationResult.Content);
+        Assert.Contains("connection point", translationResult.Content);
+        Assert.Contains("data storage", translationResult.Content);
+        Assert.Contains("temporary storage", translationResult.Content);
+        Assert.DoesNotContain("API", translationResult.Content);
+        Assert.DoesNotContain("endpoint", translationResult.Content);
+        Assert.DoesNotContain("database", translationResult.Content);
     }
 
     [Fact]
@@ -74,10 +74,10 @@ public class TranslationServiceTests : IDisposable
         var technicalContent = "The API endpoint uses database caching for better performance.";
 
         // Act
-        var result = await _translationService.TranslateToBusinessLanguageAsync(technicalContent, PersonaType.Technical);
+        var translationResult = await _translationService.TranslateToBusinessLanguageAsync(technicalContent, PersonaType.Technical);
 
         // Assert
-        Assert.Equal(technicalContent, result);
+        Assert.Equal(technicalContent, translationResult.Content);
     }
 
     [Fact]
@@ -87,11 +87,11 @@ public class TranslationServiceTests : IDisposable
         var errorContent = "Failed with 409 Conflict: optimistic concurrency violation";
 
         // Act
-        var result = await _translationService.TranslateToBusinessLanguageAsync(errorContent, PersonaType.Business);
+        var translationResult = await _translationService.TranslateToBusinessLanguageAsync(errorContent, PersonaType.Business);
 
         // Assert
-        Assert.Contains("another team member is editing this", result);
-        Assert.DoesNotContain("409 Conflict", result);
+        Assert.Contains("another team member is editing this", translationResult.Content);
+        Assert.DoesNotContain("409 Conflict", translationResult.Content);
     }
 
     [Fact]
@@ -101,11 +101,11 @@ public class TranslationServiceTests : IDisposable
         var architectureContent = "Implementing CDN caching layer to improve response times.";
 
         // Act
-        var result = await _translationService.TranslateToBusinessLanguageAsync(architectureContent, PersonaType.Business);
+        var translationResult = await _translationService.TranslateToBusinessLanguageAsync(architectureContent, PersonaType.Business);
 
         // Assert
-        Assert.Contains("faster loading times for users", result);
-        Assert.DoesNotContain("CDN caching layer", result);
+        Assert.Contains("faster loading times for users", translationResult.Content);
+        Assert.DoesNotContain("CDN caching layer", translationResult.Content);
     }
 
     [Fact]
@@ -115,11 +115,11 @@ public class TranslationServiceTests : IDisposable
         var content = "This API is deprecated and uses microservices.";
 
         // Act
-        var result = await _translationService.TranslateToBusinessLanguageAsync(content, PersonaType.Business);
+        var translationResult = await _translationService.TranslateToBusinessLanguageAsync(content, PersonaType.Business);
 
         // Assert
-        Assert.Contains("modular application components", result);
-        Assert.Contains("deprecated", result); // Should not be translated (inactive)
+        Assert.Contains("modular application components", translationResult.Content);
+        Assert.Contains("deprecated", translationResult.Content); // Should not be translated (inactive)
     }
 
     [Fact]
@@ -129,12 +129,12 @@ public class TranslationServiceTests : IDisposable
         var content = "The api uses DATABASE and caching.";
 
         // Act
-        var result = await _translationService.TranslateToBusinessLanguageAsync(content, PersonaType.Business);
+        var translationResult = await _translationService.TranslateToBusinessLanguageAsync(content, PersonaType.Business);
 
         // Assert
-        Assert.Contains("system connection", result);
-        Assert.Contains("data storage", result);
-        Assert.Contains("temporary storage for faster access", result);
+        Assert.Contains("system connection", translationResult.Content);
+        Assert.Contains("data storage", translationResult.Content);
+        Assert.Contains("temporary storage for faster access", translationResult.Content);
     }
 
     [Fact]

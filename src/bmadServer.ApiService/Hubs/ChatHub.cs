@@ -188,13 +188,19 @@ public class ChatHub : Hub
             {
                 // Translate content based on persona
                 var content = $"Step '{result.StepName}' completed successfully.";
-                var translatedContent = await _translationService.TranslateToBusinessLanguageAsync(content, personaType);
+                var translation = await _translationService.TranslateToBusinessLanguageAsync(content, personaType);
                 
                 await Clients.Caller.SendAsync("ReceiveMessage", new
                 {
                     Role = "agent",
-                    Content = translatedContent,
-                    OriginalContent = content, // Keep original for "Show Technical Details" feature
+                    Content = translation.Content,
+                    OriginalContent = translation.OriginalContent,
+                    ContentMetadata = new
+                    {
+                        PersonaType = translation.PersonaType.ToString(),
+                        WasTranslated = translation.WasTranslated,
+                        ContentType = personaType == Data.Entities.PersonaType.Technical ? "technical" : "business"
+                    },
                     StepId = result.StepId,
                     NextStep = result.NextStep,
                     WorkflowStatus = result.NewWorkflowStatus?.ToString(),
@@ -209,13 +215,19 @@ public class ChatHub : Hub
             {
                 // Translate error messages for business users
                 var errorContent = $"Step execution failed: {result.ErrorMessage}";
-                var translatedError = await _translationService.TranslateToBusinessLanguageAsync(errorContent, personaType);
+                var translation = await _translationService.TranslateToBusinessLanguageAsync(errorContent, personaType);
                 
                 await Clients.Caller.SendAsync("ReceiveMessage", new
                 {
                     Role = "system",
-                    Content = translatedError,
-                    OriginalContent = errorContent,
+                    Content = translation.Content,
+                    OriginalContent = translation.OriginalContent,
+                    ContentMetadata = new
+                    {
+                        PersonaType = translation.PersonaType.ToString(),
+                        WasTranslated = translation.WasTranslated,
+                        ContentType = personaType == Data.Entities.PersonaType.Technical ? "technical" : "business"
+                    },
                     StepId = result.StepId,
                     WorkflowStatus = result.NewWorkflowStatus?.ToString(),
                     Timestamp = DateTime.UtcNow

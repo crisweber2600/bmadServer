@@ -20,11 +20,17 @@ public class TranslationService : ITranslationService
         _logger = logger;
     }
 
-    public async Task<string> TranslateToBusinessLanguageAsync(string technicalContent, PersonaType personaType)
+    public async Task<TranslationResult> TranslateToBusinessLanguageAsync(string technicalContent, PersonaType personaType)
     {
         if (personaType == PersonaType.Technical)
         {
-            return technicalContent;
+            return new TranslationResult
+            {
+                Content = technicalContent,
+                OriginalContent = technicalContent,
+                WasTranslated = false,
+                PersonaType = personaType
+            };
         }
 
         if (personaType == PersonaType.Business || personaType == PersonaType.Hybrid)
@@ -34,7 +40,13 @@ public class TranslationService : ITranslationService
             if (_translationCache == null || _translationCache.Count == 0)
             {
                 _logger.LogWarning("No translation mappings available");
-                return technicalContent;
+                return new TranslationResult
+                {
+                    Content = technicalContent,
+                    OriginalContent = technicalContent,
+                    WasTranslated = false,
+                    PersonaType = personaType
+                };
             }
 
             var translatedContent = technicalContent;
@@ -52,11 +64,25 @@ public class TranslationService : ITranslationService
                 );
             }
 
-            _logger.LogDebug("Translated content for {PersonaType} persona", personaType);
-            return translatedContent;
+            var wasTranslated = translatedContent != technicalContent;
+            _logger.LogDebug("Translated content for {PersonaType} persona (Changed: {WasTranslated})", personaType, wasTranslated);
+            
+            return new TranslationResult
+            {
+                Content = translatedContent,
+                OriginalContent = technicalContent,
+                WasTranslated = wasTranslated,
+                PersonaType = personaType
+            };
         }
 
-        return technicalContent;
+        return new TranslationResult
+        {
+            Content = technicalContent,
+            OriginalContent = technicalContent,
+            WasTranslated = false,
+            PersonaType = personaType
+        };
     }
 
     public async Task<IEnumerable<TranslationMapping>> GetTranslationMappingsAsync()
