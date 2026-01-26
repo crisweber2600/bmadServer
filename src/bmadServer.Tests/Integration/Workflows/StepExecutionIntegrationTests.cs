@@ -46,11 +46,17 @@ public class StepExecutionIntegrationTests : IDisposable
             _workflowRegistry,
             new Mock<ILogger<WorkflowInstanceService>>().Object);
 
+        var sharedContextServiceMock = new Mock<ISharedContextService>();
+        sharedContextServiceMock
+            .Setup(x => x.GetContextAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((SharedContext?)null);
+
         _stepExecutor = new StepExecutor(
             _context,
             _agentRouter,
             _workflowRegistry,
             _workflowInstanceService,
+            sharedContextServiceMock.Object,
             new Mock<ILogger<StepExecutor>>().Object);
 
         _controller = new WorkflowsController(

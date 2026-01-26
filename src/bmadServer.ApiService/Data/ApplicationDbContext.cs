@@ -137,6 +137,12 @@ public class ApplicationDbContext : DbContext
                 .HasConversion(
                     v => v == null ? null : v.RootElement.GetRawText(),
                     v => v == null ? null : JsonDocument.Parse(v));
+            entity.Property(e => e.SharedContextJson)
+                .HasColumnName("shared_context")
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => v == null ? null : v.RootElement.GetRawText(),
+                    v => v == null ? null : JsonDocument.Parse(v));
             
             // Indexes
             entity.HasIndex(e => e.Status);
@@ -149,6 +155,8 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.StepData)
                 .HasMethod("gin");
             entity.HasIndex(e => e.Context)
+                .HasMethod("gin");
+            entity.HasIndex(e => e.SharedContextJson)
                 .HasMethod("gin");
         });
 

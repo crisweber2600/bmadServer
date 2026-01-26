@@ -19,6 +19,7 @@ public class StepExecutor : IStepExecutor
     private readonly IAgentRouter _agentRouter;
     private readonly IWorkflowRegistry _workflowRegistry;
     private readonly IWorkflowInstanceService _workflowInstanceService;
+    private readonly ISharedContextService _sharedContextService;
     private readonly ILogger<StepExecutor> _logger;
     
     private const int StreamingThresholdSeconds = 5;
@@ -28,12 +29,14 @@ public class StepExecutor : IStepExecutor
         IAgentRouter agentRouter,
         IWorkflowRegistry workflowRegistry,
         IWorkflowInstanceService workflowInstanceService,
+        ISharedContextService sharedContextService,
         ILogger<StepExecutor> logger)
     {
         _context = context;
         _agentRouter = agentRouter;
         _workflowRegistry = workflowRegistry;
         _workflowInstanceService = workflowInstanceService;
+        _sharedContextService = sharedContextService;
         _logger = logger;
     }
 
@@ -123,6 +126,10 @@ public class StepExecutor : IStepExecutor
 
             // Prepare agent context
             var agentContext = PrepareAgentContext(instance, step, userInput);
+            
+            // Load shared context before execution
+            var sharedContext = await _sharedContextService.GetContextAsync(workflowInstanceId, cancellationToken);
+            agentContext = agentContext with { SharedContext = sharedContext };
 
             // Execute step via agent handler
             var agentResult = await handler.ExecuteAsync(agentContext, cancellationToken);
@@ -159,6 +166,23 @@ public class StepExecutor : IStepExecutor
                 stepHistory.Status = StepExecutionStatus.Completed;
                 stepHistory.Output = agentResult.Output;
                 await _context.SaveChangesAsync(cancellationToken);
+
+                // Persist agent output to shared context
+                if (agentResult.Output != null)
+                {
+                    try
+                    {
+                        await _sharedContextService.AddStepOutputAsync(
+                            workflowInstanceId,
+                            step.StepId,
+                            agentResult.Output,
+                            cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to persist step output to shared context for step {StepId}", step.StepId);
+                    }
+                }
 
                 // Update workflow instance
                 var nextStep = instance.CurrentStep + 1;
@@ -290,11 +314,14 @@ public class StepExecutor : IStepExecutor
         }
 
         var agentContext = PrepareAgentContext(instance, step, userInput);
+        
+        var sharedContext = await _sharedContextService.GetContextAsync(workflowInstanceId, cancellationToken);
+        agentContext = agentContext with { SharedContext = sharedContext };
+        
         var stopwatch = Stopwatch.StartNew();
 
         await foreach (var progress in handler.ExecuteWithStreamingAsync(agentContext, cancellationToken))
         {
-            // Only start streaming after threshold
             if (stopwatch.Elapsed.TotalSeconds >= StreamingThresholdSeconds)
             {
                 yield return progress;
@@ -330,7 +357,8 @@ public class StepExecutor : IStepExecutor
             StepData = instance.StepData,
             StepParameters = stepParameters,
             ConversationHistory = new List<ConversationMessage>(),
-            UserInput = userInput
+            UserInput = userInput,
+            SharedContext = null
         };
     }
 
