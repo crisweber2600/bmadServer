@@ -41,6 +41,6 @@ public class ChatMessage
     public Guid? UserId { get; set; } // Null for agent messages
     public string? DisplayName { get; set; } // User's display name
     public string? AvatarUrl { get; set; } // User profile picture URL
-    public string InputType { get; set; } = "Message"; // Message, Decision, StepAdvance, Checkpoint
+    public string InputType { get; set; } = InputTypes.Message; // Message, Decision, StepAdvance, Checkpoint
     public string? WorkflowStep { get; set; } // Current step when input was made
 }

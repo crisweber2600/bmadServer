@@ -1,6 +1,7 @@
 using System.Text.Json;
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.DTOs;
+using bmadServer.ApiService.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 
@@ -96,7 +97,7 @@ public class ContributionMetricsService : IContributionMetricsService
         }
 
         // Process workflow events (decisions)
-        foreach (var evt in events.Where(e => e.InputType == "Decision"))
+        foreach (var evt in events.Where(e => e.InputType == InputTypes.Decision))
         {
             if (!contributorMetrics.ContainsKey(evt.UserId))
             {

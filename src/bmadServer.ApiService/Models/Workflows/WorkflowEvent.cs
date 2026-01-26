@@ -12,10 +12,24 @@ public class WorkflowEvent
     public DateTime Timestamp { get; set; }
     public Guid UserId { get; set; }
     
-    // Enhanced attribution fields (Story 7.3)
+    /// <summary>
+    /// User's display name at the time of the event (Story 7.3)
+    /// </summary>
     public string? DisplayName { get; set; }
+    
+    /// <summary>
+    /// Full event details stored as JSONB (e.g., decision text, confidence, rationale) (Story 7.3)
+    /// </summary>
     public JsonDocument? Payload { get; set; }
+    
+    /// <summary>
+    /// Type of input: Message, Decision, Checkpoint, etc. (Story 7.3)
+    /// </summary>
     public string? InputType { get; set; }
+    
+    /// <summary>
+    /// For decisions, tracks alternatives that were considered but not chosen (Story 7.3)
+    /// </summary>
     public JsonDocument? AlternativesConsidered { get; set; }
     
     public WorkflowInstance? WorkflowInstance { get; set; }
