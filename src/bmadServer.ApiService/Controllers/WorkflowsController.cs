@@ -2,6 +2,7 @@ using bmadServer.ApiService.DTOs;
 using bmadServer.ApiService.Hubs;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services.Workflows;
+using bmadServer.ApiService.Services.Workflows.Agents;
 using bmadServer.ServiceDefaults.Services.Workflows;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,6 +21,7 @@ public class WorkflowsController : ControllerBase
 {
     private readonly IWorkflowInstanceService _workflowInstanceService;
     private readonly IWorkflowRegistry _workflowRegistry;
+    private readonly IAgentRegistry _agentRegistry;
     private readonly IStepExecutor _stepExecutor;
     private readonly IHubContext<ChatHub> _hubContext;
     private readonly ILogger<WorkflowsController> _logger;
@@ -27,12 +29,14 @@ public class WorkflowsController : ControllerBase
     public WorkflowsController(
         IWorkflowInstanceService workflowInstanceService,
         IWorkflowRegistry workflowRegistry,
+        IAgentRegistry agentRegistry,
         IStepExecutor stepExecutor,
         IHubContext<ChatHub> hubContext,
         ILogger<WorkflowsController> logger)
     {
         _workflowInstanceService = workflowInstanceService;
         _workflowRegistry = workflowRegistry;
+        _agentRegistry = agentRegistry;
         _stepExecutor = stepExecutor;
         _hubContext = hubContext;
         _logger = logger;
@@ -658,6 +662,155 @@ public class WorkflowsController : ControllerBase
                 title: "Internal Server Error",
                 detail: ex.Message);
         }
+    }
+
+    /// <summary>
+    /// Get audit log of agent handoffs for a workflow instance with pagination support
+    /// </summary>
+    /// <param name="id">Workflow instance ID</param>
+    /// <param name="page">Page number (1-based, default: 1)</param>
+    /// <param name="pageSize">Number of items per page (default: 20, max: 100)</param>
+    /// <param name="fromDate">Filter handoffs from this date (optional)</param>
+    /// <param name="toDate">Filter handoffs until this date (optional)</param>
+    /// <returns>Paginated list of agent handoff records with attribution details</returns>
+    [HttpGet("{id}/handoffs")]
+    [ProducesResponseType(typeof(PagedResult<AgentHandoffDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PagedResult<AgentHandoffDto>>> GetWorkflowHandoffs(
+        Guid id,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] DateTime? fromDate = null,
+        [FromQuery] DateTime? toDate = null)
+    {
+        try
+        {
+            // Validate pagination parameters
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 100) pageSize = 100;
+
+            // Get workflow instance to verify ownership and existence
+            var instance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
+            if (instance == null)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Workflow Not Found",
+                    Detail = $"Workflow instance {id} not found"
+                });
+            }
+
+            // Check authorization: user must own workflow or be admin
+            var userId = GetUserIdFromClaims();
+            if (instance.UserId != userId && !User.IsInRole("admin"))
+            {
+                return Forbid();
+            }
+
+            // Get handoffs with filtering
+            var allHandoffs = await _workflowInstanceService.GetWorkflowHandoffsAsync(id);
+
+            // Apply date range filtering if provided
+            var filteredHandoffs = allHandoffs.AsEnumerable();
+            if (fromDate.HasValue)
+            {
+                filteredHandoffs = filteredHandoffs.Where(h => h.Timestamp >= fromDate.Value);
+            }
+            if (toDate.HasValue)
+            {
+                filteredHandoffs = filteredHandoffs.Where(h => h.Timestamp <= toDate.Value);
+            }
+
+            // Convert to DTOs
+            var handoffDtos = filteredHandoffs
+                .Select(h => new AgentHandoffDto
+                {
+                    FromAgent = GetAgentAttribution(h.FromAgentId),
+                    ToAgent = GetAgentAttribution(h.ToAgentId),
+                    Timestamp = h.Timestamp,
+                    StepName = h.WorkflowStepId,
+                    StepId = h.WorkflowStepId,
+                    Reason = h.Reason
+                })
+                .OrderByDescending(h => h.Timestamp)
+                .ToList();
+
+            // Apply pagination
+            var totalItems = handoffDtos.Count;
+            var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
+            var paginatedItems = handoffDtos
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return Ok(new PagedResult<AgentHandoffDto>
+            {
+                Items = paginatedItems,
+                Page = page,
+                PageSize = pageSize,
+                TotalItems = totalItems,
+                TotalPages = totalPages,
+                HasPrevious = page > 1,
+                HasNext = page < totalPages
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving handoffs for workflow instance {InstanceId}", id);
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "Failed to retrieve workflow handoff audit log");
+        }
+    }
+
+    /// <summary>
+    /// Helper method to get agent attribution from registry or create placeholder
+    /// </summary>
+    private AgentAttributionDto GetAgentAttribution(string agentId)
+    {
+        var agentDef = _agentRegistry.GetAgent(agentId);
+        if (agentDef != null)
+        {
+            return new AgentAttributionDto
+            {
+                AgentId = agentDef.AgentId,
+                AgentName = agentDef.Name,
+                AgentDescription = agentDef.Description ?? string.Empty,
+                AgentAvatarUrl = null,
+                Capabilities = agentDef.Capabilities.ToList(),
+                CurrentStepResponsibility = null
+            };
+        }
+
+        return new AgentAttributionDto
+        {
+            AgentId = agentId,
+            AgentName = agentId,
+            AgentDescription = "Unknown Agent",
+            AgentAvatarUrl = null,
+            Capabilities = new List<string>(),
+            CurrentStepResponsibility = null
+        };
+    }
+
+    /// <summary>
+    /// Extract user ID from JWT claims
+    /// </summary>
+    private Guid GetUserIdFromClaims()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("sub")?.Value;
+
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim, out var userId))
+        {
+            throw new InvalidOperationException("User ID not found in claims");
+        }
+
+        return userId;
     }
 }
 
