@@ -314,27 +314,79 @@ public async Task<byte[]> ExportAsPdfAsync(
 }
 ```
 
-**Data Redaction:**
+**Data Redaction (Recursive for Nested JSON):**
 ```csharp
+using System.Text.Json;
+
 public class DataRedactionService : IDataRedactor
 {
+    private static readonly HashSet<string> SensitiveKeys = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "password",
+        "apiKey",
+        "secret",
+        "token",
+        "credentials"
+    };
+
     public JsonDocument RedactSensitiveData(JsonDocument data, UserRole role)
     {
         if (role == UserRole.Admin)
             return data; // Admins see everything
-            
-        var jsonString = data.RootElement.ToString();
-        var jsonObject = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonString);
-        
-        // Redact sensitive fields
-        if (jsonObject.ContainsKey("password"))
-            jsonObject["password"] = "[REDACTED]";
-        if (jsonObject.ContainsKey("apiKey"))
-            jsonObject["apiKey"] = "[REDACTED]";
-        if (jsonObject.ContainsKey("secret"))
-            jsonObject["secret"] = "[REDACTED]";
-            
-        return JsonSerializer.SerializeToDocument(jsonObject);
+
+        // Recreate the JSON document while redacting sensitive fields at any depth
+        var stream = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(stream))
+        {
+            RedactElement(data.RootElement, writer);
+        }
+
+        stream.Position = 0;
+        return JsonDocument.Parse(stream);
+    }
+
+    private static bool IsSensitiveKey(string propertyName)
+    {
+        return SensitiveKeys.Contains(propertyName);
+    }
+
+    private static void RedactElement(JsonElement element, Utf8JsonWriter writer)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                writer.WriteStartObject();
+                foreach (var property in element.EnumerateObject())
+                {
+                    writer.WritePropertyName(property.Name);
+                    if (IsSensitiveKey(property.Name))
+                    {
+                        writer.WriteStringValue("[REDACTED]");
+                    }
+                    else
+                    {
+                        // Recursively process nested objects/arrays
+                        RedactElement(property.Value, writer);
+                    }
+                }
+                writer.WriteEndObject();
+                break;
+
+            case JsonValueKind.Array:
+                writer.WriteStartArray();
+                foreach (var item in element.EnumerateArray())
+                {
+                    // Recursively process array items
+                    RedactElement(item, writer);
+                }
+                writer.WriteEndArray();
+                break;
+
+            default:
+                // Copy primitive values as-is
+                element.WriteTo(writer);
+                break;
+        }
     }
 }
 ```

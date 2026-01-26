@@ -112,8 +112,12 @@ As an administrator, I want audit logs retained properly, so that we meet compli
 - Create service: `src/bmadServer.ApiService/Services/Audit/AuditLogRetentionService.cs` (background)
 - Create service: `src/bmadServer.ApiService/Services/Audit/AuditLogQueryService.cs`
 - Create service: `src/bmadServer.ApiService/Services/Audit/ComplianceExportService.cs`
+- Create background service: `src/bmadServer.ApiService/Services/Background/AuditLogCleanupService.cs`
 - Create controller: `src/bmadServer.ApiService/Controllers/Admin/AuditLogsController.cs`
-- Migration: `src/bmadServer.ApiService/Data/Migrations/XXX_AddPreviousEventHashToWorkflowEvents.cs`
+- Migration: `src/bmadServer.ApiService/Migrations/XXX_AddHashFieldsToWorkflowAuditEvents.cs`
+
+**Note:** This story extends Story 9.1's WorkflowAuditEvent entity (not the simple WorkflowEvent).
+The migration adds EventHash and PreviousEventHash fields to the workflow_audit_events table.
 
 ### Technical Requirements
 
@@ -142,9 +146,11 @@ public class AuditLogSettings
 }
 ```
 
-**Enhanced WorkflowEvent with Hash Chain:**
+**Enhanced WorkflowAuditEvent with Hash Chain:**
 ```csharp
-public class WorkflowEvent
+// Note: Extends Story 9.1's WorkflowAuditEvent entity
+// Migration adds these fields to existing workflow_audit_events table
+public class WorkflowAuditEvent
 {
     public Guid Id { get; init; }
     public Guid WorkflowInstanceId { get; init; }
@@ -155,13 +161,14 @@ public class WorkflowEvent
     public string? CorrelationId { get; init; }
     public long SequenceNumber { get; init; }
     
-    // Tamper-evident hash chain
-    public string EventHash { get; init; }
+    // Added by Story 9.6: Tamper-evident hash chain
+    public string? EventHash { get; init; }
     public string? PreviousEventHash { get; init; }
     
     public string ComputeHash()
     {
-        var data = $"{Id}|{EventType}|{Timestamp:O}|{Payload.RootElement}|{PreviousEventHash ?? ""}";
+        // Use GetRawText() for consistent, deterministic JSON serialization
+        var data = $"{Id}|{EventType}|{Timestamp:O}|{Payload.RootElement.GetRawText()}|{PreviousEventHash ?? ""}";
         using var sha256 = SHA256.Create();
         var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(data));
         return Convert.ToBase64String(hashBytes);
@@ -181,25 +188,36 @@ public async Task AppendAsync(
         .OrderByDescending(e => e.SequenceNumber)
         .FirstOrDefaultAsync(cancellationToken);
     
-    // Create new event with hash chain
-    var newEvent = new WorkflowEvent
+    // Get next sequence number
+    var nextSequence = (previousEvent?.SequenceNumber ?? 0) + 1;
+    
+    // Create new event with hash chain - compute hash during construction
+    var previousHash = previousEvent?.EventHash;
+    var eventId = Guid.NewGuid();
+    var timestamp = DateTime.UtcNow;
+    
+    // Compute hash with all values known
+    var tempData = $"{eventId}|{evt.EventType}|{timestamp:O}|{evt.Payload.RootElement.GetRawText()}|{previousHash ?? ""}";
+    using var sha256 = SHA256.Create();
+    var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(tempData));
+    var eventHash = Convert.ToBase64String(hashBytes);
+    
+    // Create event with all fields including hash
+    var newEvent = new WorkflowAuditEvent
     {
-        Id = Guid.NewGuid(),
+        Id = eventId,
         WorkflowInstanceId = evt.WorkflowInstanceId,
         EventType = evt.EventType,
         Payload = evt.Payload,
         UserId = evt.UserId,
-        Timestamp = DateTime.UtcNow,
+        Timestamp = timestamp,
         CorrelationId = evt.CorrelationId,
-        SequenceNumber = (previousEvent?.SequenceNumber ?? 0) + 1,
-        PreviousEventHash = previousEvent?.EventHash
+        SequenceNumber = nextSequence,
+        PreviousEventHash = previousHash,
+        EventHash = eventHash
     };
     
-    // Compute hash for this event
-    var eventHash = newEvent.ComputeHash();
-    newEvent = newEvent with { EventHash = eventHash };
-    
-    _context.WorkflowEvents.Add(newEvent);
+    _context.WorkflowAuditEvents.Add(newEvent);
     await _context.SaveChangesAsync(cancellationToken);
 }
 ```
@@ -460,15 +478,22 @@ public async Task<PagedResult<WorkflowEvent>> GetAuditLogsAsync(
     
     // Apply pagination
     var events = await query
-        .Skip((filter.PageNumber - 1) * filter.PageSize)
+        .Skip((filter.Page - 1) * filter.PageSize)
         .Take(filter.PageSize)
         .ToListAsync(cancellationToken);
     
-    return new PagedResult<WorkflowEvent>
+    // Calculate total pages
+    var totalPages = (int)Math.Ceiling(total / (double)filter.PageSize);
+    
+    return new PagedResult<WorkflowAuditEvent>
     {
         Items = events,
-        TotalCount = total,
-        PageNumber = filter.PageNumber,
+        TotalItems = total,
+        Page = filter.Page,
+        PageSize = filter.PageSize,
+        TotalPages = totalPages,
+        HasPrevious = filter.Page > 1,
+        HasNext = filter.Page < totalPages
         PageSize = filter.PageSize
     };
 }

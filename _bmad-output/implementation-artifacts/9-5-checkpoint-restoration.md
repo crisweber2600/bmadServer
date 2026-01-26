@@ -111,7 +111,7 @@ As a user (Sarah), I want to restore previous checkpoints, so that I can recover
 - Create background service: `src/bmadServer.ApiService/Services/Checkpoints/AutomaticCheckpointService.cs`
 - Create background service: `src/bmadServer.ApiService/Services/Checkpoints/CheckpointArchivalService.cs`
 - Create controller: `src/bmadServer.ApiService/Controllers/CheckpointsController.cs`
-- Migration: `src/bmadServer.ApiService/Data/Migrations/XXX_CreateWorkflowCheckpointsTable.cs`
+- Migration: `src/bmadServer.ApiService/Migrations/XXX_CreateWorkflowCheckpointsTable.cs`
 
 ### Technical Requirements
 
@@ -133,7 +133,9 @@ public class WorkflowCheckpoint
     
     public DateTime CreatedAt { get; set; }
     public Guid CreatedBy { get; set; }
-    public User CreatedByUser { get; set; }
+    
+    // Navigation property - User is in bmadServer.ApiService.Data.Entities namespace
+    public bmadServer.ApiService.Data.Entities.User? CreatedByUser { get; set; }
     
     // Archival
     public bool IsArchived { get; set; }
@@ -296,9 +298,9 @@ public async Task<Guid> RestoreCheckpointAsync(
         })
     };
     
-    // Restore state from snapshot
+    // Restore state from snapshot - use GetRawText() for efficient parsing
     var snapshotData = snapshot.RootElement.GetProperty("workflowState");
-    branchedWorkflow.State = JsonDocument.Parse(snapshotData.GetProperty("state").ToString());
+    branchedWorkflow.State = JsonDocument.Parse(snapshotData.GetProperty("state").GetRawText());
     branchedWorkflow.Version = 1; // New workflow starts at version 1
     branchedWorkflow.CurrentStepId = snapshotData.GetProperty("currentStep").GetString();
     

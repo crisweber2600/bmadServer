@@ -78,18 +78,21 @@ As a developer, I want all workflow events logged immutably, so that we have a c
 
 **Source:** [ARCHITECTURE.MD - Event Log, JSONB Storage]
 
-- Create entity: `src/bmadServer.ApiService/Models/Events/WorkflowEvent.cs`
+- Create entity: `src/bmadServer.ApiService/Models/Events/WorkflowAuditEvent.cs` (Note: Renamed to avoid conflict with existing WorkflowEvent.cs)
 - Create enum: `src/bmadServer.ApiService/Models/Events/WorkflowEventType.cs`
 - Create service: `src/bmadServer.ApiService/Services/Events/EventStore.cs`
 - Create interface: `src/bmadServer.ApiService/Services/Events/IEventStore.cs`
-- Migration: `src/bmadServer.ApiService/Data/Migrations/XXX_CreateWorkflowEventsTable.cs`
+- Migration: `src/bmadServer.ApiService/Migrations/XXX_CreateWorkflowEventsTable.cs`
 - Follow PostgreSQL JSONB pattern from existing event_logs table structure
 
 ### Technical Requirements
 
 **Event Log Schema:**
 ```csharp
-public class WorkflowEvent
+// Note: Named WorkflowAuditEvent to avoid conflict with existing WorkflowEvent.cs
+// The existing WorkflowEvent is used for simple status change tracking.
+// This new entity is for comprehensive event sourcing with JSONB payloads.
+public class WorkflowAuditEvent
 {
     public Guid Id { get; init; }
     public Guid WorkflowInstanceId { get; init; }
@@ -105,7 +108,9 @@ public class WorkflowEvent
 **PostgreSQL Partitioning:**
 ```sql
 -- Create partitioned table by month
-CREATE TABLE workflow_events (
+-- Note: Using workflow_audit_events to avoid conflict with existing workflow_events table
+-- sequence_number is application-managed per workflow (not BIGSERIAL for global sequence)
+CREATE TABLE workflow_audit_events (
     id UUID PRIMARY KEY,
     workflow_instance_id UUID NOT NULL,
     event_type VARCHAR(100) NOT NULL,
@@ -113,34 +118,42 @@ CREATE TABLE workflow_events (
     user_id UUID,
     timestamp TIMESTAMP NOT NULL,
     correlation_id VARCHAR(255),
-    sequence_number BIGSERIAL NOT NULL
+    sequence_number BIGINT NOT NULL  -- Application manages per-workflow sequencing
 ) PARTITION BY RANGE (timestamp);
 
+-- Create unique index to enforce per-workflow sequential ordering
+CREATE UNIQUE INDEX idx_workflow_audit_events_workflow_sequence 
+    ON workflow_audit_events (workflow_instance_id, sequence_number);
+
 -- Create index on JSONB payload for querying
-CREATE INDEX idx_workflow_events_payload ON workflow_events USING GIN (payload);
-CREATE INDEX idx_workflow_events_workflow_sequence ON workflow_events (workflow_instance_id, sequence_number);
+CREATE INDEX idx_workflow_audit_events_payload ON workflow_audit_events USING GIN (payload);
 
 -- Example partition for January 2026
-CREATE TABLE workflow_events_2026_01 PARTITION OF workflow_events
+CREATE TABLE workflow_audit_events_2026_01 PARTITION OF workflow_audit_events
     FOR VALUES FROM ('2026-01-01') TO ('2026-02-01');
 ```
 
 **Append-Only Enforcement:**
 ```csharp
-// In EventStore, prevent UPDATE/DELETE
+// In EventStore, configure entity with proper key
 protected override void OnModelCreating(ModelBuilder modelBuilder)
 {
-    modelBuilder.Entity<WorkflowEvent>()
-        .ToTable("workflow_events")
-        .HasNoKey(); // Prevent EF from attempting updates
+    modelBuilder.Entity<WorkflowAuditEvent>(builder =>
+    {
+        builder.ToTable("workflow_audit_events");
+        builder.HasKey(e => e.Id);
         
-    // All operations go through AppendAsync only
+        // Append-only is enforced by:
+        // 1. Service layer only exposes AppendAsync (no Update/Delete methods)
+        // 2. Database trigger prevents UPDATE/DELETE operations
+        // 3. All properties use 'init' accessors (immutable after construction)
+    });
 }
 ```
 
 **Event Replay Pattern:**
 ```csharp
-public async Task<IEnumerable<WorkflowEvent>> ReplayAsync(
+public async Task<IEnumerable<WorkflowAuditEvent>> ReplayAsync(
     Guid workflowId, 
     long fromSequence = 0, 
     CancellationToken cancellationToken = default)
@@ -160,11 +173,41 @@ public async Task<IEnumerable<WorkflowEvent>> ReplayAsync(
 src/bmadServer.ApiService/
 ├── Models/
 │   └── Events/
-│       ├── WorkflowEvent.cs (new)
+│       ├── WorkflowAuditEvent.cs (new - renamed to avoid conflict with existing WorkflowEvent)
 │       └── WorkflowEventType.cs (new)
 ├── Services/
 │   └── Events/
 │       ├── IEventStore.cs (new)
+│       └── EventStore.cs (new)
+└── Migrations/
+    └── XXX_CreateWorkflowAuditEventsTable.cs (new)
+```
+
+**EventStore Implementation with Per-Workflow Sequencing:**
+```csharp
+public class EventStore : IEventStore
+{
+    private readonly ApplicationDbContext _context;
+    
+    public async Task AppendEventAsync(WorkflowAuditEvent @event)
+    {
+        // Get next sequence number for this workflow
+        var nextSequence = await _context.WorkflowAuditEvents
+            .Where(e => e.WorkflowInstanceId == @event.WorkflowInstanceId)
+            .MaxAsync(e => (long?)e.SequenceNumber) ?? 0;
+        
+        var eventWithSequence = @event with 
+        { 
+            SequenceNumber = nextSequence + 1,
+            Id = @event.Id == Guid.Empty ? Guid.NewGuid() : @event.Id,
+            Timestamp = @event.Timestamp == default ? DateTime.UtcNow : @event.Timestamp
+        };
+        
+        _context.WorkflowAuditEvents.Add(eventWithSequence);
+        await _context.SaveChangesAsync();
+    }
+}
+```
 │       ├── EventStore.cs (new)
 │       └── PartitionManagementService.cs (new - background service)
 └── Data/

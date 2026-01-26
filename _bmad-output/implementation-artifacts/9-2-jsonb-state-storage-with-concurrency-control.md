@@ -92,7 +92,7 @@ As a developer, I want JSONB state storage with proper concurrency control, so t
 - Modify service: `src/bmadServer.ApiService/Services/Workflows/WorkflowInstanceService.cs`
 - Create utilities: `src/bmadServer.ApiService/Services/Workflows/StateConflictResolver.cs`
 - Create exception: `src/bmadServer.ApiService/Exceptions/ConcurrencyException.cs`
-- Migration: `src/bmadServer.ApiService/Data/Migrations/XXX_AddVersioningAndStateToWorkflowInstance.cs`
+- Migration: `src/bmadServer.ApiService/Migrations/XXX_AddVersioningAndStateToWorkflowInstance.cs`
 
 ### Technical Requirements
 
@@ -151,28 +151,35 @@ public async Task<WorkflowInstance> UpdateStateAsync(
             
         if (workflow == null)
             throw new NotFoundException($"Workflow {workflowId} not found");
-            
-        // Check version for optimistic concurrency
-        if (workflow.Version != expectedVersion)
+        
+        // Update state atomically
+        // EF Core's [ConcurrencyCheck] attribute on Version property will automatically
+        // throw DbUpdateConcurrencyException if version doesn't match
+        workflow.State = newState;
+        workflow.Version++;  // Increment for next update
+        workflow.LastModifiedBy = userId;
+        workflow.LastModifiedAt = DateTime.UtcNow;
+        
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
         {
             _logger.LogWarning(
-                "Concurrency conflict: expected version {Expected}, actual {Actual}",
-                expectedVersion, workflow.Version);
-                
+                "Concurrency conflict when saving workflow {WorkflowId} with expected version {Expected}",
+                workflowId,
+                expectedVersion);
+
+            // Reload the current database values to return to the caller
+            await _context.Entry(workflow).ReloadAsync(cancellationToken);
+
             throw new ConcurrencyException(
                 "Workflow state has been modified by another user",
                 workflow.Version,
                 workflow.State);
         }
-        
-        // Update state atomically
-        workflow.State = newState;
-        workflow.Version++;
-        workflow.LastModifiedBy = userId;
-        workflow.LastModifiedAt = DateTime.UtcNow;
-        
-        await _context.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
         
         // Log state change event
         await _eventStore.AppendAsync(new WorkflowEvent

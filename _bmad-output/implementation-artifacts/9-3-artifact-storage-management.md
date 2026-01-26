@@ -108,7 +108,7 @@ As a user (Sarah), I want workflow artifacts stored securely, so that I can acce
 - Create service: `src/bmadServer.ApiService/Services/Storage/FileSystemStorage.cs`
 - Create service: `src/bmadServer.ApiService/Services/Artifacts/ArtifactService.cs`
 - Create controller: `src/bmadServer.ApiService/Controllers/ArtifactsController.cs`
-- Migration: `src/bmadServer.ApiService/Data/Migrations/XXX_CreateArtifactsTable.cs`
+- Migration: `src/bmadServer.ApiService/Migrations/XXX_CreateArtifactsTable.cs`
 
 ### Technical Requirements
 
@@ -136,7 +136,9 @@ public class Artifact
     
     public DateTime CreatedAt { get; set; }
     public Guid CreatedBy { get; set; }
-    public User CreatedByUser { get; set; }
+    
+    // Navigation property - User is in bmadServer.ApiService.Data.Entities namespace
+    public bmadServer.ApiService.Data.Entities.User? CreatedByUser { get; set; }
     
     // For small artifacts (< 1MB) - stored inline
     public byte[]? ContentData { get; set; }
@@ -189,9 +191,16 @@ public class FileSystemStorage : IFileStorage
         
         if (encrypt)
         {
+            // Encrypt stream using Data Protection API
+            // Note: ASP.NET Core Data Protection doesn't have built-in stream encryption
+            // We need to read, encrypt chunks, and write
             var protector = _dataProtection.CreateProtector("ArtifactStorage");
-            // Encrypt stream before writing
-            await EncryptStreamAsync(content, fileStream, protector, cancellationToken);
+            
+            using var ms = new MemoryStream();
+            await content.CopyToAsync(ms, cancellationToken);
+            var plainBytes = ms.ToArray();
+            var encryptedBytes = protector.Protect(plainBytes);
+            await fileStream.WriteAsync(encryptedBytes, cancellationToken);
         }
         else
         {
@@ -218,12 +227,19 @@ public class ArtifactService : IArtifactService
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        // Calculate hash
-        var hash = await ComputeHashAsync(content);
-        var size = content.Length;
+        // Verify stream is seekable for length and position operations
+        if (!content.CanSeek)
+        {
+            throw new NotSupportedException("Artifact content stream must be seekable.");
+        }
         
-        // Reset stream position
+        // Calculate hash (this will read through the stream)
+        var hash = await ComputeHashAsync(content);
+        
+        // Reset stream position after hash computation
         content.Position = 0;
+        
+        var size = content.Length;
         
         // Determine storage location
         string? storageLocation = null;
@@ -300,8 +316,15 @@ public class ArtifactService : IArtifactService
     
     private async Task<string> ComputeHashAsync(Stream stream)
     {
+        // Save current position to restore later
+        var originalPosition = stream.Position;
+        
         using var sha256 = SHA256.Create();
         var hashBytes = await sha256.ComputeHashAsync(stream);
+        
+        // Restore stream position after hashing
+        stream.Position = originalPosition;
+        
         return Convert.ToBase64String(hashBytes);
     }
 }
