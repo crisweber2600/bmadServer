@@ -1,6 +1,7 @@
 using bmadServer.ApiService.DTOs;
 using bmadServer.ApiService.Hubs;
 using bmadServer.ApiService.Models.Workflows;
+using bmadServer.ApiService.Services;
 using bmadServer.ApiService.Services.Workflows;
 using bmadServer.ApiService.Services.Workflows.Agents;
 using bmadServer.ServiceDefaults.Services.Workflows;
@@ -26,6 +27,7 @@ public class WorkflowsController : ControllerBase
     private readonly IApprovalService _approvalService;
     private readonly IHubContext<ChatHub> _hubContext;
     private readonly ILogger<WorkflowsController> _logger;
+    private readonly IParticipantService _participantService;
 
     public WorkflowsController(
         IWorkflowInstanceService workflowInstanceService,
@@ -34,7 +36,8 @@ public class WorkflowsController : ControllerBase
         IStepExecutor stepExecutor,
         IApprovalService approvalService,
         IHubContext<ChatHub> hubContext,
-        ILogger<WorkflowsController> logger)
+        ILogger<WorkflowsController> logger,
+        IParticipantService participantService)
     {
         _workflowInstanceService = workflowInstanceService;
         _workflowRegistry = workflowRegistry;
@@ -43,6 +46,7 @@ public class WorkflowsController : ControllerBase
         _approvalService = approvalService;
         _hubContext = hubContext;
         _logger = logger;
+        _participantService = participantService;
     }
 
     private async Task SendWorkflowStatusChangedNotification(Guid workflowId)
@@ -668,430 +672,274 @@ public class WorkflowsController : ControllerBase
     }
 
     /// <summary>
-    /// Get audit log of agent handoffs for a workflow instance with pagination support
+    /// Add a participant to a workflow
     /// </summary>
     /// <param name="id">Workflow instance ID</param>
-    /// <param name="page">Page number (1-based, default: 1)</param>
-    /// <param name="pageSize">Number of items per page (default: 20, max: 100)</param>
-    /// <param name="fromDate">Filter handoffs from this date (optional)</param>
-    /// <param name="toDate">Filter handoffs until this date (optional)</param>
-    /// <returns>Paginated list of agent handoff records with attribution details</returns>
-    [HttpGet("{id}/handoffs")]
-    [ProducesResponseType(typeof(PagedResult<AgentHandoffDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    /// <param name="request">Participant details</param>
+    /// <returns>Created participant</returns>
+    [HttpPost("{id}/participants")]
+    [ProducesResponseType(typeof(ParticipantResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<PagedResult<AgentHandoffDto>>> GetWorkflowHandoffs(
-        Guid id,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
-        [FromQuery] DateTime? fromDate = null,
-        [FromQuery] DateTime? toDate = null)
+    public async Task<ActionResult<ParticipantResponse>> AddParticipant(
+        Guid id, 
+        [FromBody] AddParticipantRequest request)
     {
         try
         {
-            // Validate pagination parameters
-            if (page < 1) page = 1;
-            if (pageSize < 1) pageSize = 20;
-            if (pageSize > 100) pageSize = 100;
-
-            // Get workflow instance to verify ownership and existence
-            var instance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
-            if (instance == null)
+            // Get user ID from claims
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
             {
-                return NotFound(new ProblemDetails
-                {
-                    Title = "Workflow Not Found",
-                    Detail = $"Workflow instance {id} not found"
-                });
+                return Problem(
+                    statusCode: StatusCodes.Status401Unauthorized,
+                    title: "Unauthorized",
+                    detail: "User ID not found in token");
             }
 
-            // Check authorization: user must own workflow or be admin
-            var userId = GetUserIdFromClaims();
-            if (instance.UserId != userId && !User.IsInRole("admin"))
+            // Check if user is workflow owner
+            var isOwner = await _participantService.IsWorkflowOwnerAsync(id, userId);
+            if (!isOwner)
             {
-                return Forbid();
+                return Problem(
+                    statusCode: StatusCodes.Status403Forbidden,
+                    title: "Forbidden",
+                    detail: "Only workflow owner can add participants");
             }
 
-            // Get handoffs with filtering
-            var allHandoffs = await _workflowInstanceService.GetWorkflowHandoffsAsync(id);
-
-            // Apply date range filtering if provided
-            var filteredHandoffs = allHandoffs.AsEnumerable();
-            if (fromDate.HasValue)
+            // Parse role
+            if (!Enum.TryParse<ParticipantRole>(request.Role, out var role))
             {
-                filteredHandoffs = filteredHandoffs.Where(h => h.Timestamp >= fromDate.Value);
-            }
-            if (toDate.HasValue)
-            {
-                filteredHandoffs = filteredHandoffs.Where(h => h.Timestamp <= toDate.Value);
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Invalid Role",
+                    detail: "Role must be one of: Owner, Contributor, Observer");
             }
 
-            // Convert to DTOs
-            var handoffDtos = filteredHandoffs
-                .Select(h => new AgentHandoffDto
-                {
-                    FromAgent = GetAgentAttribution(h.FromAgentId),
-                    ToAgent = GetAgentAttribution(h.ToAgentId),
-                    Timestamp = h.Timestamp,
-                    StepName = h.WorkflowStepId,
-                    StepId = h.WorkflowStepId,
-                    Reason = h.Reason
-                })
-                .OrderByDescending(h => h.Timestamp)
-                .ToList();
+            // Add participant
+            var participant = await _participantService.AddParticipantAsync(
+                id, 
+                request.UserId, 
+                role, 
+                userId);
 
-            // Apply pagination
-            var totalItems = handoffDtos.Count;
-            var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
-            var paginatedItems = handoffDtos
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
-
-            return Ok(new PagedResult<AgentHandoffDto>
+            // Send notification via SignalR
+            await _hubContext.Clients.Group($"workflow-{id}").SendAsync("PARTICIPANT_ADDED", new
             {
-                Items = paginatedItems,
-                Page = page,
-                PageSize = pageSize,
-                TotalItems = totalItems,
-                TotalPages = totalPages,
-                HasPrevious = page > 1,
-                HasNext = page < totalPages
+                eventType = "PARTICIPANT_ADDED",
+                workflowId = id,
+                participantId = participant.Id,
+                userId = participant.UserId,
+                role = participant.Role.ToString(),
+                timestamp = DateTime.UtcNow
             });
+
+            var response = new ParticipantResponse
+            {
+                Id = participant.Id,
+                WorkflowId = participant.WorkflowId,
+                UserId = participant.UserId,
+                UserDisplayName = participant.User?.DisplayName ?? "",
+                UserEmail = participant.User?.Email ?? "",
+                Role = participant.Role.ToString(),
+                AddedAt = participant.AddedAt,
+                AddedBy = participant.AddedBy
+            };
+
+            _logger.LogInformation(
+                "Added participant {UserId} to workflow {WorkflowId} with role {Role}",
+                request.UserId, id, role);
+
+            return CreatedAtAction(
+                nameof(GetParticipants),
+                new { id },
+                response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad Request",
+                detail: ex.Message);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving handoffs for workflow instance {InstanceId}", id);
+            _logger.LogError(ex, "Error adding participant to workflow {WorkflowId}", id);
             return Problem(
                 statusCode: StatusCodes.Status500InternalServerError,
                 title: "Internal Server Error",
-                detail: "Failed to retrieve workflow handoff audit log");
+                detail: ex.Message);
         }
     }
 
     /// <summary>
-    /// Helper method to get agent attribution from registry or create placeholder
+    /// Get all participants for a workflow
     /// </summary>
-    private AgentAttributionDto GetAgentAttribution(string agentId)
+    /// <param name="id">Workflow instance ID</param>
+    /// <returns>List of participants</returns>
+    [HttpGet("{id}/participants")]
+    [ProducesResponseType(typeof(List<ParticipantResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<List<ParticipantResponse>>> GetParticipants(Guid id)
     {
-        var agentDef = _agentRegistry.GetAgent(agentId);
-        if (agentDef != null)
+        try
         {
-            return new AgentAttributionDto
-            {
-                AgentId = agentDef.AgentId,
-                AgentName = agentDef.Name,
-                AgentDescription = agentDef.Description ?? string.Empty,
-                AgentAvatarUrl = null,
-                Capabilities = agentDef.Capabilities.ToList(),
-                CurrentStepResponsibility = null
-            };
-        }
+            var participants = await _participantService.GetParticipantsAsync(id);
 
-        return new AgentAttributionDto
+            var responses = participants.Select(p => new ParticipantResponse
+            {
+                Id = p.Id,
+                WorkflowId = p.WorkflowId,
+                UserId = p.UserId,
+                UserDisplayName = p.User?.DisplayName ?? "",
+                UserEmail = p.User?.Email ?? "",
+                Role = p.Role.ToString(),
+                AddedAt = p.AddedAt,
+                AddedBy = p.AddedBy
+            }).ToList();
+
+            return Ok(responses);
+        }
+        catch (Exception ex)
         {
-            AgentId = agentId,
-            AgentName = agentId,
-            AgentDescription = "Unknown Agent",
-            AgentAvatarUrl = null,
-            Capabilities = new List<string>(),
-            CurrentStepResponsibility = null
-        };
+            _logger.LogError(ex, "Error retrieving participants for workflow {WorkflowId}", id);
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: ex.Message);
+        }
     }
 
     /// <summary>
-    /// Get the pending approval request for a workflow instance
+    /// Remove a participant from a workflow
     /// </summary>
-    /// <param name="id">The workflow instance ID</param>
-    /// <returns>The pending approval request if one exists</returns>
-    [HttpGet("{id}/approvals/pending")]
-    [ProducesResponseType(typeof(ApprovalRequestDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<ApprovalRequestDto?>> GetPendingApproval(Guid id)
+    /// <param name="id">Workflow instance ID</param>
+    /// <param name="userId">User ID to remove</param>
+    /// <returns>No content on success</returns>
+    [HttpDelete("{id}/participants/{userId}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RemoveParticipant(Guid id, Guid userId)
     {
-        var instance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
-        if (instance == null)
+        try
         {
-            return NotFound(new ProblemDetails
+            // Get user ID from claims
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var currentUserId))
             {
-                Title = "Workflow Not Found",
-                Detail = $"Workflow instance {id} not found"
+                return Problem(
+                    statusCode: StatusCodes.Status401Unauthorized,
+                    title: "Unauthorized",
+                    detail: "User ID not found in token");
+            }
+
+            // Check if user is workflow owner
+            var isOwner = await _participantService.IsWorkflowOwnerAsync(id, currentUserId);
+            if (!isOwner)
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status403Forbidden,
+                    title: "Forbidden",
+                    detail: "Only workflow owner can remove participants");
+            }
+
+            // Remove participant
+            var result = await _participantService.RemoveParticipantAsync(id, userId);
+            if (!result)
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Not Found",
+                    detail: $"Participant {userId} not found in workflow {id}");
+            }
+
+            // Send notification via SignalR
+            await _hubContext.Clients.Group($"workflow-{id}").SendAsync("PARTICIPANT_REMOVED", new
+            {
+                eventType = "PARTICIPANT_REMOVED",
+                workflowId = id,
+                userId,
+                timestamp = DateTime.UtcNow
             });
-        }
 
-        // Check authorization
-        var userId = GetUserIdFromClaims();
-        if (instance.UserId != userId && !User.IsInRole("admin"))
+            _logger.LogInformation(
+                "Removed participant {UserId} from workflow {WorkflowId}",
+                userId, id);
+
+            return NoContent();
+        }
+        catch (Exception ex)
         {
-            return Forbid();
+            _logger.LogError(ex, "Error removing participant from workflow {WorkflowId}", id);
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: ex.Message);
         }
-
-        var approval = await _approvalService.GetPendingApprovalAsync(id);
-        if (approval == null)
-        {
-            return Ok(null as ApprovalRequestDto);
-        }
-
-        return Ok(MapApprovalRequestToDto(approval));
     }
 
     /// <summary>
-    /// Get a specific approval request by ID
+    /// Get contribution metrics for a workflow (Story 7.3 AC#4)
     /// </summary>
-    /// <param name="approvalId">The approval request ID</param>
-    /// <returns>The approval request details</returns>
-    [HttpGet("approvals/{approvalId}")]
-    [ProducesResponseType(typeof(ApprovalRequestDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<ApprovalRequestDto>> GetApprovalRequest(Guid approvalId)
+    /// <param name="id">Workflow ID</param>
+    /// <returns>Per-user contribution metrics</returns>
+    /// <response code="200">Returns contribution metrics</response>
+    /// <response code="403">User is not a participant</response>
+    /// <response code="404">Workflow not found</response>
+    [HttpGet("{id}/contributions")]
+    [ProducesResponseType(typeof(ContributionMetricsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetContributions(Guid id, [FromServices] IContributionMetricsService contributionMetricsService)
     {
-        var approval = await _approvalService.GetApprovalRequestAsync(approvalId);
-        if (approval == null)
+        try
         {
-            return NotFound(new ProblemDetails
+            // Get current user ID
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
             {
-                Title = "Approval Request Not Found",
-                Detail = $"Approval request {approvalId} not found"
-            });
-        }
+                return Unauthorized();
+            }
 
-        // Check authorization
-        var userId = GetUserIdFromClaims();
-        if (approval.WorkflowInstance?.UserId != userId && !User.IsInRole("admin"))
-        {
-            return Forbid();
-        }
-
-        return Ok(MapApprovalRequestToDto(approval));
-    }
-
-    /// <summary>
-    /// Approve an approval request as-is
-    /// </summary>
-    /// <param name="approvalId">The approval request ID</param>
-    /// <returns>The updated approval request</returns>
-    [HttpPost("approvals/{approvalId}/approve")]
-    [ProducesResponseType(typeof(ApprovalRequestDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<ApprovalRequestDto>> ApproveRequest(Guid approvalId)
-    {
-        var approval = await _approvalService.GetApprovalRequestAsync(approvalId);
-        if (approval == null)
-        {
-            return NotFound(new ProblemDetails
+            // Verify workflow exists
+            var workflowInstance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
+            if (workflowInstance == null)
             {
-                Title = "Approval Request Not Found",
-                Detail = $"Approval request {approvalId} not found"
-            });
-        }
+                return NotFound(new ProblemDetails
+                {
+                    Type = "https://bmadserver.api/errors/workflow-not-found",
+                    Title = "Workflow Not Found",
+                    Status = StatusCodes.Status404NotFound,
+                    Detail = $"Workflow {id} does not exist"
+                });
+            }
 
-        // Check authorization
-        var userId = GetUserIdFromClaims();
-        if (approval.WorkflowInstance?.UserId != userId && !User.IsInRole("admin"))
-        {
-            return Forbid();
-        }
-
-        var (success, message, updatedApproval) = await _approvalService.ApproveAsync(approvalId, userId);
-        if (!success)
-        {
-            return BadRequest(new ProblemDetails
+            // Verify user is owner or participant
+            var isParticipant = await _participantService.IsParticipantAsync(id, userId);
+            if (!isParticipant && workflowInstance.UserId != userId)
             {
-                Title = "Approval Failed",
-                Detail = message
-            });
+                return Problem(
+                    statusCode: StatusCodes.Status403Forbidden,
+                    title: "Access Denied",
+                    detail: "You must be a participant or owner to view contribution metrics",
+                    type: "https://bmadserver.api/errors/access-denied");
+            }
+
+            // Get contribution metrics
+            var metrics = await contributionMetricsService.GetContributionMetricsAsync(id);
+            
+            return Ok(metrics);
         }
-
-        // Send SignalR notification
-        await _hubContext.Clients.User(userId.ToString())
-            .SendAsync("APPROVAL_RESOLVED", new
-            {
-                approvalRequestId = approvalId,
-                workflowInstanceId = approval.WorkflowInstanceId,
-                action = "Approved",
-                resolvedBy = userId,
-                resolvedAt = DateTime.UtcNow
-            });
-
-        return Ok(MapApprovalRequestToDto(updatedApproval!));
-    }
-
-    /// <summary>
-    /// Approve an approval request with modifications
-    /// </summary>
-    /// <param name="approvalId">The approval request ID</param>
-    /// <param name="request">The modified response</param>
-    /// <returns>The updated approval request</returns>
-    [HttpPost("approvals/{approvalId}/modify")]
-    [ProducesResponseType(typeof(ApprovalRequestDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<ApprovalRequestDto>> ModifyApprovalRequest(
-        Guid approvalId,
-        [FromBody] ApprovalModifyRequest request)
-    {
-        if (string.IsNullOrWhiteSpace(request.ModifiedResponse))
+        catch (Exception ex)
         {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Validation Failed",
-                Detail = "Modified response cannot be empty"
-            });
+            _logger.LogError(ex, "Error getting contribution metrics for workflow {WorkflowId}", id);
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: ex.Message);
         }
-
-        var approval = await _approvalService.GetApprovalRequestAsync(approvalId);
-        if (approval == null)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Title = "Approval Request Not Found",
-                Detail = $"Approval request {approvalId} not found"
-            });
-        }
-
-        // Check authorization
-        var userId = GetUserIdFromClaims();
-        if (approval.WorkflowInstance?.UserId != userId && !User.IsInRole("admin"))
-        {
-            return Forbid();
-        }
-
-        var (success, message, updatedApproval) = await _approvalService.ModifyAndApproveAsync(
-            approvalId, userId, request.ModifiedResponse);
-
-        if (!success)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Modification Failed",
-                Detail = message
-            });
-        }
-
-        // Send SignalR notification
-        await _hubContext.Clients.User(userId.ToString())
-            .SendAsync("APPROVAL_RESOLVED", new
-            {
-                approvalRequestId = approvalId,
-                workflowInstanceId = approval.WorkflowInstanceId,
-                action = "Modified",
-                resolvedBy = userId,
-                resolvedAt = DateTime.UtcNow
-            });
-
-        return Ok(MapApprovalRequestToDto(updatedApproval!));
-    }
-
-    /// <summary>
-    /// Reject an approval request
-    /// </summary>
-    /// <param name="approvalId">The approval request ID</param>
-    /// <param name="request">The rejection reason</param>
-    /// <returns>The updated approval request</returns>
-    [HttpPost("approvals/{approvalId}/reject")]
-    [ProducesResponseType(typeof(ApprovalRequestDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<ApprovalRequestDto>> RejectApprovalRequest(
-        Guid approvalId,
-        [FromBody] ApprovalRejectRequest request)
-    {
-        if (string.IsNullOrWhiteSpace(request.RejectionReason))
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Validation Failed",
-                Detail = "Rejection reason cannot be empty"
-            });
-        }
-
-        var approval = await _approvalService.GetApprovalRequestAsync(approvalId);
-        if (approval == null)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Title = "Approval Request Not Found",
-                Detail = $"Approval request {approvalId} not found"
-            });
-        }
-
-        // Check authorization
-        var userId = GetUserIdFromClaims();
-        if (approval.WorkflowInstance?.UserId != userId && !User.IsInRole("admin"))
-        {
-            return Forbid();
-        }
-
-        var (success, message, updatedApproval) = await _approvalService.RejectAsync(
-            approvalId, userId, request.RejectionReason);
-
-        if (!success)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Rejection Failed",
-                Detail = message
-            });
-        }
-
-        // Send SignalR notification
-        await _hubContext.Clients.User(userId.ToString())
-            .SendAsync("APPROVAL_RESOLVED", new
-            {
-                approvalRequestId = approvalId,
-                workflowInstanceId = approval.WorkflowInstanceId,
-                action = "Rejected",
-                resolvedBy = userId,
-                resolvedAt = DateTime.UtcNow
-            });
-
-        return Ok(MapApprovalRequestToDto(updatedApproval!));
-    }
-
-    /// <summary>
-    /// Map ApprovalRequest domain model to DTO
-    /// </summary>
-    private ApprovalRequestDto MapApprovalRequestToDto(ApprovalRequest approval)
-    {
-        return new ApprovalRequestDto
-        {
-            Id = approval.Id,
-            WorkflowInstanceId = approval.WorkflowInstanceId,
-            AgentId = approval.AgentId,
-            StepId = approval.StepId,
-            ProposedResponse = approval.ProposedResponse,
-            ConfidenceScore = approval.ConfidenceScore,
-            Reasoning = approval.Reasoning,
-            Status = approval.Status.ToString(),
-            RequestedAt = approval.RequestedAt,
-            ResolvedAt = approval.ResolvedAt,
-            ResolvedBy = approval.ResolvedBy,
-            ModifiedResponse = approval.ModifiedResponse,
-            RejectionReason = approval.RejectionReason
-        };
-    }
-
-    /// <summary>
-    /// Extract user ID from JWT claims
-    /// </summary>
-    private Guid GetUserIdFromClaims()
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.FindFirst("sub")?.Value;
-
-        if (userIdClaim == null || !Guid.TryParse(userIdClaim, out var userId))
-        {
-            throw new InvalidOperationException("User ID not found in claims");
-        }
-
-        return userId;
     }
 }
 

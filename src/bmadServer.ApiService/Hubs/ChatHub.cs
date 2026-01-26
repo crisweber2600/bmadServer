@@ -1,3 +1,4 @@
+using bmadServer.ApiService.Models.Events;
 using bmadServer.ApiService.Services;
 using bmadServer.ApiService.Services.Workflows;
 using Microsoft.AspNetCore.Authorization;
@@ -17,15 +18,24 @@ public class ChatHub : Hub
     private readonly ISessionService _sessionService;
     private readonly IStepExecutor _stepExecutor;
     private readonly ILogger<ChatHub> _logger;
+    private readonly IParticipantService _participantService;
+    private readonly IPresenceTrackingService _presenceService;
+    private readonly IUpdateBatchingService _batchingService;
 
     public ChatHub(
         ISessionService sessionService, 
         IStepExecutor stepExecutor,
-        ILogger<ChatHub> logger)
+        ILogger<ChatHub> logger,
+        IParticipantService participantService,
+        IPresenceTrackingService presenceService,
+        IUpdateBatchingService batchingService)
     {
         _sessionService = sessionService;
         _stepExecutor = stepExecutor;
         _logger = logger;
+        _participantService = participantService;
+        _presenceService = presenceService;
+        _batchingService = batchingService;
     }
 
     /// <summary>
@@ -214,5 +224,190 @@ public class ChatHub : Hub
                 Timestamp = DateTime.UtcNow
             });
         }
+    }
+
+    /// <summary>
+    /// Join a workflow to receive real-time updates and enable presence tracking
+    /// </summary>
+    public async Task JoinWorkflow(Guid workflowId)
+    {
+        var userId = GetUserIdFromClaims();
+
+        // Verify user is a participant or owner
+        var isParticipant = await _participantService.IsParticipantAsync(workflowId, userId);
+        var isOwner = await _participantService.IsWorkflowOwnerAsync(workflowId, userId);
+
+        if (!isParticipant && !isOwner)
+        {
+            throw new HubException("Not authorized to join this workflow");
+        }
+
+        // Add to SignalR group
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"workflow-{workflowId}");
+
+        // Track presence
+        await _presenceService.TrackUserOnlineAsync(userId, workflowId, Context.ConnectionId);
+
+        // Broadcast USER_ONLINE event
+        var evt = new WorkflowEvent
+        {
+            EventType = "USER_ONLINE",
+            WorkflowId = workflowId,
+            UserId = userId,
+            DisplayName = Context.User?.Identity?.Name ?? "Unknown User",
+            Timestamp = DateTime.UtcNow,
+            Data = new PresenceEvent { IsOnline = true, LastSeen = DateTime.UtcNow }
+        };
+        _batchingService.QueueUpdate(workflowId, evt);
+
+        _logger.LogInformation("User {UserId} joined workflow {WorkflowId}", userId, workflowId);
+    }
+
+    /// <summary>
+    /// Leave a workflow group
+    /// </summary>
+    public async Task LeaveWorkflow(Guid workflowId)
+    {
+        var userId = GetUserIdFromClaims();
+
+        // Remove from SignalR group
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"workflow-{workflowId}");
+
+        // Track offline
+        await _presenceService.TrackUserOfflineAsync(userId, workflowId);
+
+        // Broadcast USER_OFFLINE event
+        var evt = new WorkflowEvent
+        {
+            EventType = "USER_OFFLINE",
+            WorkflowId = workflowId,
+            UserId = userId,
+            DisplayName = Context.User?.Identity?.Name ?? "Unknown User",
+            Timestamp = DateTime.UtcNow,
+            Data = new PresenceEvent { IsOnline = false, LastSeen = DateTime.UtcNow }
+        };
+        _batchingService.QueueUpdate(workflowId, evt);
+
+        _logger.LogInformation("User {UserId} left workflow {WorkflowId}", userId, workflowId);
+    }
+
+    /// <summary>
+    /// Send typing indicator to other participants
+    /// </summary>
+    public async Task SendTypingIndicator(Guid workflowId)
+    {
+        var userId = GetUserIdFromClaims();
+
+        // Broadcast typing indicator to others in the workflow group
+        await Clients.OthersInGroup($"workflow-{workflowId}").SendAsync("USER_TYPING", new
+        {
+            eventType = "USER_TYPING",
+            userId,
+            userName = Context.User?.Identity?.Name ?? "Unknown User",
+            timestamp = DateTime.UtcNow
+        });
+    }
+
+    /// <summary>
+    /// Broadcast message to workflow participants
+    /// </summary>
+    public async Task BroadcastMessageToWorkflow(Guid workflowId, string message)
+    {
+        var userId = GetUserIdFromClaims();
+        var displayName = Context.User?.Identity?.Name ?? "Unknown User";
+
+        var evt = new WorkflowEvent
+        {
+            EventType = "MESSAGE_RECEIVED",
+            WorkflowId = workflowId,
+            UserId = userId,
+            DisplayName = displayName,
+            Timestamp = DateTime.UtcNow,
+            Data = new MessageReceivedEvent 
+            { 
+                Message = message, 
+                MessageId = Guid.NewGuid() 
+            }
+        };
+
+        await Clients.Group($"workflow-{workflowId}").SendAsync("MESSAGE_RECEIVED", evt);
+    }
+
+    /// <summary>
+    /// Broadcast decision event to workflow participants
+    /// </summary>
+    public async Task BroadcastDecision(Guid workflowId, string decision, List<string>? alternatives = null, double? confidence = null)
+    {
+        var userId = GetUserIdFromClaims();
+        var displayName = Context.User?.Identity?.Name ?? "Unknown User";
+
+        var evt = new WorkflowEvent
+        {
+            EventType = "DECISION_MADE",
+            WorkflowId = workflowId,
+            UserId = userId,
+            DisplayName = displayName,
+            Timestamp = DateTime.UtcNow,
+            Data = new DecisionMadeEvent 
+            { 
+                Decision = decision,
+                Alternatives = alternatives,
+                Confidence = confidence
+            }
+        };
+
+        _batchingService.QueueUpdate(workflowId, evt);
+    }
+
+    /// <summary>
+    /// Broadcast step change event to workflow participants
+    /// </summary>
+    public async Task BroadcastStepChange(Guid workflowId, string stepId, string stepName, string status)
+    {
+        var userId = GetUserIdFromClaims();
+        var displayName = Context.User?.Identity?.Name ?? "Unknown User";
+
+        var evt = new WorkflowEvent
+        {
+            EventType = "STEP_CHANGED",
+            WorkflowId = workflowId,
+            UserId = userId,
+            DisplayName = displayName,
+            Timestamp = DateTime.UtcNow,
+            Data = new StepChangedEvent 
+            { 
+                StepId = stepId,
+                StepName = stepName,
+                Status = status
+            }
+        };
+
+        _batchingService.QueueUpdate(workflowId, evt);
+    }
+
+    /// <summary>
+    /// Broadcast conflict detected event
+    /// </summary>
+    public async Task BroadcastConflict(Guid workflowId, Guid conflictId, string fieldName, List<string> conflictingValues)
+    {
+        var userId = GetUserIdFromClaims();
+        var displayName = Context.User?.Identity?.Name ?? "Unknown User";
+
+        var evt = new WorkflowEvent
+        {
+            EventType = "CONFLICT_DETECTED",
+            WorkflowId = workflowId,
+            UserId = userId,
+            DisplayName = displayName,
+            Timestamp = DateTime.UtcNow,
+            Data = new ConflictEvent
+            {
+                ConflictId = conflictId,
+                FieldName = fieldName,
+                ConflictingValues = conflictingValues
+            }
+        };
+
+        await Clients.Group($"workflow-{workflowId}").SendAsync("CONFLICT_DETECTED", evt);
     }
 }

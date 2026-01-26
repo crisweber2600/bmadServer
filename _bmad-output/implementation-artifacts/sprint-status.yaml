@@ -114,13 +114,13 @@ development_status:
   # =============================================
   # EPIC 7: Collaboration & Multi-User Support
   # =============================================
-  epic-7: backlog
-  7-1-multi-user-workflow-participation: backlog
-  7-2-safe-checkpoint-system: backlog
-  7-3-input-attribution-history: backlog
-  7-4-conflict-detection-buffering: backlog
-  7-5-real-time-collaboration-updates: backlog
-  epic-7-retrospective: optional
+  epic-7: done
+  7-1-multi-user-workflow-participation: done
+  7-2-safe-checkpoint-system: done
+  7-3-input-attribution-history: done
+  7-4-conflict-detection-buffering: done
+  7-5-real-time-collaboration-updates: done
+  epic-7-retrospective: done
 
   # ==================================================
   # EPIC 8: Persona Translation & Language Adaptation

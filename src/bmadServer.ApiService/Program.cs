@@ -78,19 +78,31 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.Agents.IAgen
 // Register step executor
 builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IStepExecutor, bmadServer.ApiService.Services.Workflows.StepExecutor>();
 
-// Register approval service for human approval workflows
-builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IApprovalService, bmadServer.ApiService.Services.Workflows.ApprovalService>();
+// Register participant service
+builder.Services.AddScoped<bmadServer.ApiService.Services.IParticipantService, bmadServer.ApiService.Services.ParticipantService>();
 
-// Register shared context service for multi-agent workflow collaboration
-// Provides access to shared state (step outputs, decisions, preferences) across agents
-builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.ISharedContextService, bmadServer.ApiService.Services.Workflows.SharedContextService>();
+// Register checkpoint services
+builder.Services.AddScoped<bmadServer.ApiService.Services.Checkpoints.ICheckpointService, bmadServer.ApiService.Services.Checkpoints.CheckpointService>();
+builder.Services.AddScoped<bmadServer.ApiService.Services.Checkpoints.IInputQueueService, bmadServer.ApiService.Services.Checkpoints.InputQueueService>();
 
-// Register context summarization service for managing token limits
-// Preserves decision history and recent outputs while summarizing older steps
-builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IContextSummarizationService, bmadServer.ApiService.Services.Workflows.ContextSummarizationService>();
+// Register memory cache for user profile caching (Story 7.3)
+builder.Services.AddMemoryCache();
 
-// Register decision service for workflow decision management
-builder.Services.AddScoped<bmadServer.ApiService.Services.Decisions.IDecisionService, bmadServer.ApiService.Services.Decisions.DecisionService>();
+// Register distributed cache for contribution metrics (Story 7.3)
+// Using in-memory distributed cache for MVP (replace with Redis in production)
+builder.Services.AddDistributedMemoryCache();
+
+// Register contribution metrics service (Story 7.3)
+builder.Services.AddScoped<bmadServer.ApiService.Services.IContributionMetricsService, bmadServer.ApiService.Services.ContributionMetricsService>();
+
+// Register conflict detection services (Story 7.4)
+builder.Services.AddScoped<bmadServer.ApiService.Services.IConflictDetectionService, bmadServer.ApiService.Services.ConflictDetectionService>();
+builder.Services.AddScoped<bmadServer.ApiService.Services.IConflictResolutionService, bmadServer.ApiService.Services.ConflictResolutionService>();
+builder.Services.AddHostedService<bmadServer.ApiService.BackgroundServices.ConflictEscalationJob>();
+
+// Register real-time collaboration services (Story 7.5)
+builder.Services.AddSingleton<bmadServer.ApiService.Services.IPresenceTrackingService, bmadServer.ApiService.Services.PresenceTrackingService>();
+builder.Services.AddSingleton<bmadServer.ApiService.Services.IUpdateBatchingService, bmadServer.ApiService.Services.UpdateBatchingService>();
 
 // Register FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<bmadServer.ApiService.Validators.RegisterRequestValidator>();

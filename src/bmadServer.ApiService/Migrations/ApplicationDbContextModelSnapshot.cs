@@ -244,115 +244,119 @@ namespace bmadServer.ApiService.Migrations
                     b.ToTable("workflows", (string)null);
                 });
 
-            modelBuilder.Entity("bmadServer.ApiService.Models.Workflows.AgentHandoff", b =>
+            modelBuilder.Entity("bmadServer.ApiService.Models.Workflows.QueuedInput", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("FromAgentId")
+                    b.Property<string>("Content")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("jsonb");
 
-                    b.Property<string>("Reason")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
+                    b.Property<string>("InputType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
-                    b.Property<DateTime>("Timestamp")
+                    b.Property<DateTime?>("ProcessedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("ToAgentId")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<Guid>("WorkflowInstanceId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("WorkflowStepId")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Timestamp");
-
-                    b.HasIndex("WorkflowInstanceId");
-
-                    b.HasIndex("WorkflowInstanceId", "Timestamp");
-
-                    b.ToTable("agent_handoffs", (string)null);
-                });
-
-            modelBuilder.Entity("bmadServer.ApiService.Models.Workflows.ApprovalRequest", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("AgentId")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<double>("ConfidenceScore")
-                        .HasColumnType("double precision");
-
-                    b.Property<string>("ModifiedResponse")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ProposedResponse")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Reasoning")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
+                    b.Property<DateTime>("QueuedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("RejectionReason")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
-                    b.Property<DateTime>("RequestedAt")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<long>("SequenceNumber")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
 
-                    b.Property<Guid>("RequestedBy")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("ResolvedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("ResolvedBy")
-                        .HasColumnType("uuid");
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("SequenceNumber"));
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Queued");
 
-                    b.Property<string>("StepId")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
 
-                    b.Property<int>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("WorkflowInstanceId")
+                    b.Property<Guid>("WorkflowId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("RequestedAt");
+                    b.HasIndex("Content");
 
-                    b.HasIndex("Status");
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Content"), "gin");
 
-                    b.HasIndex("WorkflowInstanceId");
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("idx_queued_inputs_user");
 
-                    b.HasIndex("WorkflowInstanceId", "Status");
+                    b.HasIndex("WorkflowId", "Status", "SequenceNumber")
+                        .HasDatabaseName("idx_queued_inputs_workflow_status");
 
-                    b.ToTable("approval_requests", (string)null);
+                    b.ToTable("queued_inputs", (string)null);
+                });
+
+            modelBuilder.Entity("bmadServer.ApiService.Models.Workflows.WorkflowCheckpoint", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CheckpointType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Metadata")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("StateSnapshot")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("StepId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("TriggeredBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Version")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("WorkflowId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Metadata");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Metadata"), "gin");
+
+                    b.HasIndex("StateSnapshot");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("StateSnapshot"), "gin");
+
+                    b.HasIndex("TriggeredBy");
+
+                    b.HasIndex("WorkflowId", "CreatedAt")
+                        .HasDatabaseName("idx_checkpoints_workflow_time");
+
+                    b.HasIndex("WorkflowId", "Version")
+                        .HasDatabaseName("idx_checkpoints_version");
+
+                    b.ToTable("workflow_checkpoints", (string)null);
                 });
 
             modelBuilder.Entity("bmadServer.ApiService.Models.Workflows.WorkflowEvent", b =>
@@ -361,8 +365,19 @@ namespace bmadServer.ApiService.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AlternativesConsidered")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
                     b.Property<string>("EventType")
                         .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("InputType")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
@@ -371,6 +386,9 @@ namespace bmadServer.ApiService.Migrations
 
                     b.Property<string>("OldStatus")
                         .HasColumnType("text");
+
+                    b.Property<string>("Payload")
+                        .HasColumnType("jsonb");
 
                     b.Property<DateTime>("Timestamp")
                         .HasColumnType("timestamp with time zone");
@@ -383,9 +401,20 @@ namespace bmadServer.ApiService.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AlternativesConsidered");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("AlternativesConsidered"), "gin");
+
+                    b.HasIndex("Payload");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Payload"), "gin");
+
                     b.HasIndex("Timestamp");
 
                     b.HasIndex("WorkflowInstanceId");
+
+                    b.HasIndex("UserId", "Timestamp")
+                        .HasDatabaseName("idx_workflow_events_user_time");
 
                     b.ToTable("workflow_events", (string)null);
                 });
@@ -458,6 +487,41 @@ namespace bmadServer.ApiService.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("workflow_instances", (string)null);
+                });
+
+            modelBuilder.Entity("bmadServer.ApiService.Models.Workflows.WorkflowParticipant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AddedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("AddedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("WorkflowId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("WorkflowId");
+
+                    b.HasIndex("WorkflowId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("workflow_participants", (string)null);
                 });
 
             modelBuilder.Entity("bmadServer.ApiService.Models.Workflows.WorkflowStepHistory", b =>
@@ -564,26 +628,42 @@ namespace bmadServer.ApiService.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("bmadServer.ApiService.Models.Workflows.AgentHandoff", b =>
+            modelBuilder.Entity("bmadServer.ApiService.Models.Workflows.QueuedInput", b =>
                 {
-                    b.HasOne("bmadServer.ApiService.Models.Workflows.WorkflowInstance", "WorkflowInstance")
+                    b.HasOne("bmadServer.ApiService.Data.Entities.User", "User")
                         .WithMany()
-                        .HasForeignKey("WorkflowInstanceId")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("bmadServer.ApiService.Models.Workflows.WorkflowInstance", "Workflow")
+                        .WithMany()
+                        .HasForeignKey("WorkflowId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("WorkflowInstance");
+                    b.Navigation("User");
+
+                    b.Navigation("Workflow");
                 });
 
-            modelBuilder.Entity("bmadServer.ApiService.Models.Workflows.ApprovalRequest", b =>
+            modelBuilder.Entity("bmadServer.ApiService.Models.Workflows.WorkflowCheckpoint", b =>
                 {
-                    b.HasOne("bmadServer.ApiService.Models.Workflows.WorkflowInstance", "WorkflowInstance")
+                    b.HasOne("bmadServer.ApiService.Data.Entities.User", "TriggeredByUser")
                         .WithMany()
-                        .HasForeignKey("WorkflowInstanceId")
+                        .HasForeignKey("TriggeredBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("bmadServer.ApiService.Models.Workflows.WorkflowInstance", "Workflow")
+                        .WithMany()
+                        .HasForeignKey("WorkflowId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("WorkflowInstance");
+                    b.Navigation("TriggeredByUser");
+
+                    b.Navigation("Workflow");
                 });
 
             modelBuilder.Entity("bmadServer.ApiService.Models.Workflows.WorkflowEvent", b =>
@@ -595,6 +675,25 @@ namespace bmadServer.ApiService.Migrations
                         .IsRequired();
 
                     b.Navigation("WorkflowInstance");
+                });
+
+            modelBuilder.Entity("bmadServer.ApiService.Models.Workflows.WorkflowParticipant", b =>
+                {
+                    b.HasOne("bmadServer.ApiService.Data.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("bmadServer.ApiService.Models.Workflows.WorkflowInstance", "Workflow")
+                        .WithMany()
+                        .HasForeignKey("WorkflowId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+
+                    b.Navigation("Workflow");
                 });
 
             modelBuilder.Entity("bmadServer.ApiService.Models.Workflows.WorkflowStepHistory", b =>
