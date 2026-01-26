@@ -116,4 +116,44 @@ public interface IDecisionService
         Guid userId,
         string reason,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Request a review for a decision
+    /// </summary>
+    /// <param name="id">The decision ID</param>
+    /// <param name="userId">The user requesting the review</param>
+    /// <param name="reviewerIds">List of reviewer user IDs</param>
+    /// <param name="deadline">Optional deadline for review</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The created review</returns>
+    Task<DecisionReview> RequestReviewAsync(
+        Guid id,
+        Guid userId,
+        List<Guid> reviewerIds,
+        DateTime? deadline,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Submit a review response (approve or request changes)
+    /// </summary>
+    /// <param name="reviewId">The review ID</param>
+    /// <param name="userId">The reviewer user ID</param>
+    /// <param name="responseType">Response type ("Approved" or "ChangesRequested")</param>
+    /// <param name="comments">Optional comments</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The updated review</returns>
+    Task<DecisionReview> SubmitReviewResponseAsync(
+        Guid reviewId,
+        Guid userId,
+        string responseType,
+        string? comments,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get review for a decision
+    /// </summary>
+    /// <param name="id">The decision ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The review, or null if not found</returns>
+    Task<DecisionReview?> GetDecisionReviewAsync(Guid id, CancellationToken cancellationToken = default);
 }

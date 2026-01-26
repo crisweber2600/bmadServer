@@ -515,6 +515,251 @@ public class DecisionsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Request a review for a decision
+    /// </summary>
+    /// <param name="id">The decision ID</param>
+    /// <param name="request">The review request</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The created review</returns>
+    [HttpPost("decisions/{id:guid}/request-review")]
+    [ProducesResponseType(typeof(Models.Decisions.DecisionReviewResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<Models.Decisions.DecisionReviewResponse>> RequestReview(
+        Guid id,
+        [FromBody] RequestReviewRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Get the authenticated user ID
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return Unauthorized(new ProblemDetails
+                {
+                    Title = "Unauthorized",
+                    Detail = "User ID not found in claims",
+                    Status = StatusCodes.Status401Unauthorized
+                });
+            }
+
+            var review = await _decisionService.RequestReviewAsync(
+                id,
+                userId,
+                request.ReviewerIds,
+                request.Deadline,
+                cancellationToken);
+
+            var response = new Models.Decisions.DecisionReviewResponse
+            {
+                Id = review.Id,
+                DecisionId = review.DecisionId,
+                RequestedBy = review.RequestedBy,
+                RequestedAt = review.RequestedAt,
+                Deadline = review.Deadline,
+                Status = review.Status,
+                CompletedAt = review.CompletedAt,
+                Responses = review.Responses.Select(r => new ReviewerResponseInfo
+                {
+                    ReviewerId = r.ReviewerId,
+                    ResponseType = r.ResponseType,
+                    Comments = r.Comments,
+                    RespondedAt = r.RespondedAt
+                }).ToList()
+            };
+
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation when requesting review for decision {DecisionId}", id);
+            
+            if (ex.Message.Contains("not found"))
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Decision not found",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status404NotFound
+                });
+            }
+            
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Cannot request review",
+                Detail = ex.Message,
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error requesting review for decision {DecisionId}", id);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ProblemDetails
+                {
+                    Title = "Error requesting review",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status500InternalServerError
+                });
+        }
+    }
+
+    /// <summary>
+    /// Submit a review response
+    /// </summary>
+    /// <param name="reviewId">The review ID</param>
+    /// <param name="request">The review response</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The updated review</returns>
+    [HttpPost("reviews/{reviewId:guid}/respond")]
+    [ProducesResponseType(typeof(Models.Decisions.DecisionReviewResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<Models.Decisions.DecisionReviewResponse>> SubmitReviewResponse(
+        Guid reviewId,
+        [FromBody] SubmitReviewRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Get the authenticated user ID
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return Unauthorized(new ProblemDetails
+                {
+                    Title = "Unauthorized",
+                    Detail = "User ID not found in claims",
+                    Status = StatusCodes.Status401Unauthorized
+                });
+            }
+
+            var review = await _decisionService.SubmitReviewResponseAsync(
+                reviewId,
+                userId,
+                request.ResponseType,
+                request.Comments,
+                cancellationToken);
+
+            var response = new Models.Decisions.DecisionReviewResponse
+            {
+                Id = review.Id,
+                DecisionId = review.DecisionId,
+                RequestedBy = review.RequestedBy,
+                RequestedAt = review.RequestedAt,
+                Deadline = review.Deadline,
+                Status = review.Status,
+                CompletedAt = review.CompletedAt,
+                Responses = review.Responses.Select(r => new ReviewerResponseInfo
+                {
+                    ReviewerId = r.ReviewerId,
+                    ResponseType = r.ResponseType,
+                    Comments = r.Comments,
+                    RespondedAt = r.RespondedAt
+                }).ToList()
+            };
+
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation when submitting review response for review {ReviewId}", reviewId);
+            
+            if (ex.Message.Contains("not found"))
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Review not found",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status404NotFound
+                });
+            }
+            
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Cannot submit review response",
+                Detail = ex.Message,
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error submitting review response for review {ReviewId}", reviewId);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ProblemDetails
+                {
+                    Title = "Error submitting review response",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status500InternalServerError
+                });
+        }
+    }
+
+    /// <summary>
+    /// Get review for a decision
+    /// </summary>
+    /// <param name="id">The decision ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The review information</returns>
+    [HttpGet("decisions/{id:guid}/review")]
+    [ProducesResponseType(typeof(Models.Decisions.DecisionReviewResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<Models.Decisions.DecisionReviewResponse>> GetDecisionReview(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var review = await _decisionService.GetDecisionReviewAsync(id, cancellationToken);
+
+            if (review == null)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Review not found",
+                    Detail = $"No review found for decision {id}",
+                    Status = StatusCodes.Status404NotFound
+                });
+            }
+
+            var response = new Models.Decisions.DecisionReviewResponse
+            {
+                Id = review.Id,
+                DecisionId = review.DecisionId,
+                RequestedBy = review.RequestedBy,
+                RequestedAt = review.RequestedAt,
+                Deadline = review.Deadline,
+                Status = review.Status,
+                CompletedAt = review.CompletedAt,
+                Responses = review.Responses.Select(r => new ReviewerResponseInfo
+                {
+                    ReviewerId = r.ReviewerId,
+                    ResponseType = r.ResponseType,
+                    Comments = r.Comments,
+                    RespondedAt = r.RespondedAt
+                }).ToList()
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving review for decision {DecisionId}", id);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ProblemDetails
+                {
+                    Title = "Error retrieving review",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status500InternalServerError
+                });
+        }
+    }
+
     private static DecisionResponse MapToDecisionResponse(Decision decision)
     {
         return new DecisionResponse

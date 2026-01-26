@@ -22,6 +22,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<WorkflowStepHistory> WorkflowStepHistories { get; set; }
     public DbSet<Decision> Decisions { get; set; }
     public DbSet<DecisionVersion> DecisionVersions { get; set; }
+    public DbSet<DecisionReview> DecisionReviews { get; set; }
+    public DbSet<DecisionReviewResponse> DecisionReviewResponses { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -320,6 +322,58 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(e => e.Modifier)
                 .WithMany()
                 .HasForeignKey(e => e.ModifiedBy)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<DecisionReview>(entity =>
+        {
+            entity.ToTable("decision_reviews");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(50);
+            
+            // Indexes
+            entity.HasIndex(e => e.DecisionId);
+            entity.HasIndex(e => e.RequestedBy);
+            entity.HasIndex(e => e.RequestedAt);
+            entity.HasIndex(e => e.Deadline);
+            entity.HasIndex(e => e.Status);
+            
+            // Foreign key to Decision
+            entity.HasOne(e => e.Decision)
+                .WithMany()
+                .HasForeignKey(e => e.DecisionId)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            // Foreign key to User (Requester)
+            entity.HasOne(e => e.Requester)
+                .WithMany()
+                .HasForeignKey(e => e.RequestedBy)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<DecisionReviewResponse>(entity =>
+        {
+            entity.ToTable("decision_review_responses");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ResponseType).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Comments).HasMaxLength(2000);
+            
+            // Indexes
+            entity.HasIndex(e => e.ReviewId);
+            entity.HasIndex(e => e.ReviewerId);
+            entity.HasIndex(e => e.RespondedAt);
+            entity.HasIndex(e => new { e.ReviewId, e.ReviewerId }).IsUnique();
+            
+            // Foreign key to Review
+            entity.HasOne(e => e.Review)
+                .WithMany(r => r.Responses)
+                .HasForeignKey(e => e.ReviewId)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            // Foreign key to User (Reviewer)
+            entity.HasOne(e => e.Reviewer)
+                .WithMany()
+                .HasForeignKey(e => e.ReviewerId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
     }

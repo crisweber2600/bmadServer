@@ -101,6 +101,11 @@ public class Decision
     public string? LockReason { get; set; }
 
     /// <summary>
+    /// Current workflow status of the decision (Draft, UnderReview, Approved, etc.)
+    /// </summary>
+    public DecisionStatus Status { get; set; } = DecisionStatus.Draft;
+
+    /// <summary>
     /// Navigation property to the workflow instance
     /// </summary>
     public WorkflowInstance? WorkflowInstance { get; set; }

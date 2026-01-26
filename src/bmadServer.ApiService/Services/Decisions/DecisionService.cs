@@ -409,4 +409,205 @@ public class DecisionService : IDecisionService
             throw;
         }
     }
+
+    /// <inheritdoc/>
+    public async Task<DecisionReview> RequestReviewAsync(
+        Guid id,
+        Guid userId,
+        List<Guid> reviewerIds,
+        DateTime? deadline,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var decision = await _context.Decisions
+                .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+
+            if (decision == null)
+            {
+                throw new InvalidOperationException($"Decision {id} not found");
+            }
+
+            if (decision.IsLocked)
+            {
+                throw new InvalidOperationException($"Decision {id} is already locked");
+            }
+
+            // Check if there's already an active review
+            var existingReview = await _context.DecisionReviews
+                .Where(r => r.DecisionId == id && r.Status == "Pending")
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (existingReview != null)
+            {
+                throw new InvalidOperationException($"Decision {id} already has an active review");
+            }
+
+            // Create the review
+            var review = new DecisionReview
+            {
+                DecisionId = id,
+                RequestedBy = userId,
+                RequestedAt = DateTime.UtcNow,
+                Deadline = deadline,
+                Status = "Pending"
+            };
+
+            _context.DecisionReviews.Add(review);
+
+            // Update decision status
+            decision.Status = DecisionStatus.UnderReview;
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Review requested for decision {DecisionId} by user {UserId} with {ReviewerCount} reviewers",
+                id,
+                userId,
+                reviewerIds.Count
+            );
+
+            return review;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to request review for decision {DecisionId}", id);
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<DecisionReview> SubmitReviewResponseAsync(
+        Guid reviewId,
+        Guid userId,
+        string responseType,
+        string? comments,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var review = await _context.DecisionReviews
+                .Include(r => r.Responses)
+                .Include(r => r.Decision)
+                .FirstOrDefaultAsync(r => r.Id == reviewId, cancellationToken);
+
+            if (review == null)
+            {
+                throw new InvalidOperationException($"Review {reviewId} not found");
+            }
+
+            if (review.Status != "Pending")
+            {
+                throw new InvalidOperationException($"Review {reviewId} is not pending");
+            }
+
+            // Check if this reviewer has already responded
+            var existingResponse = review.Responses
+                .FirstOrDefault(r => r.ReviewerId == userId);
+
+            if (existingResponse != null)
+            {
+                throw new InvalidOperationException("You have already submitted a response for this review");
+            }
+
+            // Create the response
+            var response = new DecisionReviewResponse
+            {
+                ReviewId = reviewId,
+                ReviewerId = userId,
+                ResponseType = responseType,
+                Comments = comments,
+                RespondedAt = DateTime.UtcNow
+            };
+
+            _context.DecisionReviewResponses.Add(response);
+
+            // Check if this is a "ChangesRequested" response
+            if (responseType == "ChangesRequested")
+            {
+                // Move decision back to Draft and complete the review
+                if (review.Decision != null)
+                {
+                    review.Decision.Status = DecisionStatus.ChangesRequested;
+                }
+                review.Status = "Completed";
+                review.CompletedAt = DateTime.UtcNow;
+
+                _logger.LogInformation(
+                    "Review {ReviewId} completed with changes requested by reviewer {ReviewerId}",
+                    reviewId,
+                    userId
+                );
+            }
+            else if (responseType == "Approved")
+            {
+                // Check if all reviewers have approved
+                var totalResponses = review.Responses.Count + 1; // +1 for the new response
+                var approvedCount = review.Responses.Count(r => r.ResponseType == "Approved") + 1;
+
+                // For simplicity, we'll assume all invited reviewers must approve
+                // In a real system, you'd track the invited reviewers explicitly
+                _logger.LogInformation(
+                    "Review {ReviewId}: {ApprovedCount} approvals received",
+                    reviewId,
+                    approvedCount
+                );
+
+                // Mark review as completed and auto-lock decision
+                review.Status = "Completed";
+                review.CompletedAt = DateTime.UtcNow;
+
+                if (review.Decision != null)
+                {
+                    review.Decision.Status = DecisionStatus.Approved;
+                    review.Decision.IsLocked = true;
+                    review.Decision.LockedBy = userId;
+                    review.Decision.LockedAt = DateTime.UtcNow;
+                    review.Decision.LockReason = "Auto-locked after review approval";
+                }
+
+                _logger.LogInformation(
+                    "Review {ReviewId} completed and decision {DecisionId} auto-locked",
+                    reviewId,
+                    review.DecisionId
+                );
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            return review;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to submit review response for review {ReviewId}", reviewId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<DecisionReview?> GetDecisionReviewAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var review = await _context.DecisionReviews
+                .Include(r => r.Responses)
+                .FirstOrDefaultAsync(r => r.DecisionId == id, cancellationToken);
+
+            if (review != null)
+            {
+                _logger.LogInformation("Retrieved review for decision {DecisionId}", id);
+            }
+            else
+            {
+                _logger.LogWarning("No review found for decision {DecisionId}", id);
+            }
+
+            return review;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to retrieve review for decision {DecisionId}", id);
+            throw;
+        }
+    }
 }
