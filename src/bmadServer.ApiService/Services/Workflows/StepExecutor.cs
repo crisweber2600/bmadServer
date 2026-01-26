@@ -23,10 +23,12 @@ public class StepExecutor : IStepExecutor
     private readonly IWorkflowInstanceService _workflowInstanceService;
     private readonly ISharedContextService _sharedContextService;
     private readonly IAgentHandoffService _agentHandoffService;
+    private readonly IApprovalService _approvalService;
     private readonly IHubContext<ChatHub> _hubContext;
     private readonly ILogger<StepExecutor> _logger;
     
     private const int StreamingThresholdSeconds = 5;
+    private const double ApprovalConfidenceThreshold = 0.7;
 
     public StepExecutor(
         ApplicationDbContext context,
@@ -35,6 +37,7 @@ public class StepExecutor : IStepExecutor
         IWorkflowInstanceService workflowInstanceService,
         ISharedContextService sharedContextService,
         IAgentHandoffService agentHandoffService,
+        IApprovalService approvalService,
         IHubContext<ChatHub> hubContext,
         ILogger<StepExecutor> logger)
     {
@@ -44,6 +47,7 @@ public class StepExecutor : IStepExecutor
         _workflowInstanceService = workflowInstanceService;
         _sharedContextService = sharedContextService;
         _agentHandoffService = agentHandoffService;
+        _approvalService = approvalService;
         _hubContext = hubContext;
         _logger = logger;
     }
@@ -221,6 +225,80 @@ public class StepExecutor : IStepExecutor
                             NewWorkflowStatus = WorkflowStatus.Failed
                         };
                     }
+                }
+
+                // Check if agent result requires human approval (low confidence)
+                if (agentResult.RequiresHumanApproval)
+                {
+                    _logger.LogInformation(
+                        "Step {StepId} requires human approval (confidence: {Confidence:F2}) for workflow {InstanceId}",
+                        step.StepId, agentResult.ConfidenceScore, workflowInstanceId);
+
+                    // Store proposed response in step history
+                    stepHistory.Status = StepExecutionStatus.WaitingForApproval;
+                    stepHistory.Output = agentResult.Output;
+                    await _context.SaveChangesAsync(cancellationToken);
+
+                    // Store proposed response in StepData for later retrieval
+                    var proposedResponseJson = agentResult.Output?.RootElement.GetRawText() ?? "{}";
+                    instance.StepData = MergeStepData(
+                        instance.StepData, 
+                        $"{step.StepId}_pending_approval", 
+                        JsonDocument.Parse(JsonSerializer.Serialize(new 
+                        { 
+                            proposedResponse = proposedResponseJson,
+                            confidenceScore = agentResult.ConfidenceScore,
+                            reasoning = agentResult.Reasoning
+                        })));
+                    instance.UpdatedAt = DateTime.UtcNow;
+                    await _context.SaveChangesAsync(cancellationToken);
+
+                    // Create approval request
+                    var approvalRequest = await _approvalService.CreateApprovalRequestAsync(
+                        workflowInstanceId,
+                        step.AgentId,
+                        step.StepId,
+                        proposedResponseJson,
+                        agentResult.ConfidenceScore,
+                        agentResult.Reasoning,
+                        instance.UserId,
+                        cancellationToken);
+
+                    // Transition workflow to WaitingForApproval
+                    await _workflowInstanceService.TransitionStateAsync(workflowInstanceId, WorkflowStatus.WaitingForApproval);
+
+                    // Emit APPROVAL_REQUIRED SignalR event
+                    try
+                    {
+                        await _hubContext.Clients.All.SendAsync("APPROVAL_REQUIRED", new
+                        {
+                            ApprovalRequestId = approvalRequest.Id,
+                            WorkflowInstanceId = workflowInstanceId,
+                            AgentId = step.AgentId,
+                            StepId = step.StepId,
+                            StepName = step.Name,
+                            ProposedResponse = proposedResponseJson,
+                            ConfidenceScore = agentResult.ConfidenceScore,
+                            Reasoning = agentResult.Reasoning,
+                            RequestedAt = approvalRequest.RequestedAt,
+                            Message = $"Agent {step.AgentId} needs your approval (confidence: {agentResult.ConfidenceScore:P0})"
+                        }, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to emit APPROVAL_REQUIRED event for approval {ApprovalId}", approvalRequest.Id);
+                    }
+
+                    return new StepExecutionResult
+                    {
+                        Success = true,
+                        StepId = step.StepId,
+                        StepName = step.Name,
+                        Status = StepExecutionStatus.WaitingForApproval,
+                        NewWorkflowStatus = WorkflowStatus.WaitingForApproval,
+                        RequiresApproval = true,
+                        PendingApprovalId = approvalRequest.Id
+                    };
                 }
 
                 // Update step history with success

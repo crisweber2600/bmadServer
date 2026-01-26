@@ -843,5 +843,134 @@ public class WorkflowInstanceService : IWorkflowInstanceService
             .OrderByDescending(h => h.Timestamp)
             .ToListAsync();
     }
+
+    public async Task<(bool Success, string? Message)> ResumeAfterApprovalAsync(
+        Guid workflowInstanceId,
+        ApprovalRequest approvalRequest,
+        CancellationToken cancellationToken = default)
+    {
+        var instance = await _context.WorkflowInstances.FindAsync(workflowInstanceId);
+        if (instance == null)
+        {
+            _logger.LogWarning("Workflow instance {InstanceId} not found", workflowInstanceId);
+            return (false, "Workflow instance not found");
+        }
+
+        if (instance.Status != WorkflowStatus.WaitingForApproval)
+        {
+            _logger.LogWarning(
+                "Cannot resume approval for workflow {InstanceId} in {Status} state",
+                workflowInstanceId, instance.Status);
+            return (false, $"Workflow is not waiting for approval (current status: {instance.Status})");
+        }
+
+        var workflowDef = _workflowRegistry.GetWorkflow(instance.WorkflowDefinitionId);
+        if (workflowDef == null)
+        {
+            _logger.LogWarning(
+                "Workflow definition {WorkflowId} not found for instance {InstanceId}",
+                instance.WorkflowDefinitionId, workflowInstanceId);
+            return (false, "Workflow definition not found");
+        }
+
+        var responseToUse = approvalRequest.Status == ApprovalStatus.Modified 
+            ? approvalRequest.ModifiedResponse 
+            : approvalRequest.ProposedResponse;
+
+        var stepHistory = await _context.WorkflowStepHistories
+            .Where(h => h.WorkflowInstanceId == workflowInstanceId && 
+                       h.StepId == approvalRequest.StepId &&
+                       h.Status == StepExecutionStatus.WaitingForApproval)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (stepHistory != null)
+        {
+            stepHistory.CompletedAt = DateTime.UtcNow;
+            stepHistory.Status = StepExecutionStatus.Completed;
+            if (!string.IsNullOrEmpty(responseToUse))
+            {
+                stepHistory.Output = JsonDocument.Parse(responseToUse);
+            }
+        }
+
+        var nextStep = instance.CurrentStep + 1;
+        var isLastStep = nextStep > workflowDef.Steps.Count;
+
+        instance.CurrentStep = nextStep;
+        instance.UpdatedAt = DateTime.UtcNow;
+
+        if (!string.IsNullOrEmpty(responseToUse) && approvalRequest.StepId != null)
+        {
+            try
+            {
+                instance.StepData = MergeApprovalStepData(
+                    instance.StepData, 
+                    approvalRequest.StepId, 
+                    JsonDocument.Parse(responseToUse));
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "Failed to parse response as JSON for step {StepId}", approvalRequest.StepId);
+            }
+        }
+
+        var workflowEvent = new WorkflowEvent
+        {
+            Id = Guid.NewGuid(),
+            WorkflowInstanceId = workflowInstanceId,
+            EventType = approvalRequest.Status == ApprovalStatus.Modified 
+                ? "ApprovalModified" 
+                : "ApprovalGranted",
+            OldStatus = WorkflowStatus.WaitingForApproval,
+            NewStatus = isLastStep ? WorkflowStatus.Completed : WorkflowStatus.Running,
+            Timestamp = DateTime.UtcNow,
+            UserId = approvalRequest.ResolvedBy ?? instance.UserId
+        };
+
+        _context.WorkflowEvents.Add(workflowEvent);
+
+        if (isLastStep)
+        {
+            instance.Status = WorkflowStatus.Completed;
+        }
+        else
+        {
+            instance.Status = WorkflowStatus.Running;
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation(
+            "Workflow {InstanceId} resumed after approval {ApprovalId} (status: {Status})",
+            workflowInstanceId, approvalRequest.Id, approvalRequest.Status);
+
+        return (true, null);
+    }
+
+    private JsonDocument MergeApprovalStepData(JsonDocument? existing, string stepId, JsonDocument newData)
+    {
+        var stepDataDict = new Dictionary<string, object>();
+        
+        if (existing != null)
+        {
+            try
+            {
+                var existingDict = JsonSerializer.Deserialize<Dictionary<string, object>>(existing.RootElement.GetRawText());
+                if (existingDict != null)
+                {
+                    stepDataDict = existingDict;
+                }
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "Failed to deserialize existing step data");
+            }
+        }
+
+        stepDataDict[stepId] = JsonSerializer.Deserialize<object>(newData.RootElement.GetRawText()) ?? new { };
+        stepDataDict.Remove($"{stepId}_pending_approval");
+        
+        return JsonDocument.Parse(JsonSerializer.Serialize(stepDataDict));
+    }
  }
 

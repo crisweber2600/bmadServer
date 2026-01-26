@@ -35,6 +35,10 @@ public class AgentResult
     public JsonDocument? Output { get; init; }
     public string? ErrorMessage { get; init; }
     public bool IsRetryable { get; init; }
+    
+    public double ConfidenceScore { get; init; } = 1.0;
+    public string? Reasoning { get; init; }
+    public bool RequiresHumanApproval => ConfidenceScore < 0.7;
 }
 
 /// <summary>

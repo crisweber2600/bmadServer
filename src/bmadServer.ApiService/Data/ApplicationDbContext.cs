@@ -22,6 +22,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<WorkflowStepHistory> WorkflowStepHistories { get; set; }
     public DbSet<AgentMessageLog> AgentMessageLogs { get; set; }
     public DbSet<AgentHandoff> AgentHandoffs { get; set; }
+    public DbSet<ApprovalRequest> ApprovalRequests { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -263,6 +264,34 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => new { e.WorkflowInstanceId, e.Timestamp });
             
             // Foreign key to WorkflowInstance
+            entity.HasOne(e => e.WorkflowInstance)
+                .WithMany()
+                .HasForeignKey(e => e.WorkflowInstanceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ApprovalRequest>(entity =>
+        {
+            entity.ToTable("approval_requests");
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.AgentId).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.ProposedResponse).IsRequired();
+            entity.Property(e => e.ConfidenceScore).IsRequired();
+            entity.Property(e => e.Reasoning).HasMaxLength(2000);
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasConversion<string>();
+            entity.Property(e => e.RequestedAt).IsRequired();
+            entity.Property(e => e.RejectionReason).HasMaxLength(2000);
+            entity.Property(e => e.StepId).HasMaxLength(100);
+            entity.Property(e => e.Version).IsConcurrencyToken();
+            
+            entity.HasIndex(e => e.WorkflowInstanceId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.RequestedAt);
+            entity.HasIndex(e => new { e.WorkflowInstanceId, e.Status });
+            
             entity.HasOne(e => e.WorkflowInstance)
                 .WithMany()
                 .HasForeignKey(e => e.WorkflowInstanceId)
