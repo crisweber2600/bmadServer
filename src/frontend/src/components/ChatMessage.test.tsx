@@ -300,4 +300,130 @@ describe('ChatMessage', () => {
       expect(screen.getByText(/02:30|14:30/)).toBeInTheDocument();
     });
   });
+
+  describe('Decision Attribution', () => {
+    it('renders decision attribution banner when provided', () => {
+      render(
+        <ChatMessage
+          content="This is the decision"
+          isUser={false}
+          timestamp={mockDate}
+          decisionAttribution={{
+            agentId: 'agent-1',
+            agentName: 'BMAD Architect',
+          }}
+        />
+      );
+
+      expect(screen.getByText(/Decided by/)).toBeInTheDocument();
+      expect(screen.getByText('BMAD Architect')).toBeInTheDocument();
+    });
+
+    it('does not render decision attribution when not provided', () => {
+      render(
+        <ChatMessage
+          content="Regular message"
+          isUser={false}
+          timestamp={mockDate}
+        />
+      );
+
+      expect(screen.queryByText(/Decided by/)).not.toBeInTheDocument();
+    });
+
+    it('displays decision banner above message content', () => {
+      const { container } = render(
+        <ChatMessage
+          content="Decision message"
+          isUser={false}
+          timestamp={mockDate}
+          decisionAttribution={{
+            agentId: 'agent-1',
+            agentName: 'BMAD Architect',
+            confidence: 0.95,
+            reasoning: 'Based on requirements and best practices',
+          }}
+        />
+      );
+
+      const banner = container.querySelector('.decision-attribution-banner');
+      const bubble = container.querySelector('.message-bubble');
+
+      expect(banner).toBeInTheDocument();
+      expect(bubble).toBeInTheDocument();
+    });
+
+    it('displays confidence in decision attribution', () => {
+      render(
+        <ChatMessage
+          content="Decision message"
+          isUser={false}
+          timestamp={mockDate}
+          decisionAttribution={{
+            agentId: 'agent-1',
+            agentName: 'BMAD Architect',
+            confidence: 0.87,
+          }}
+        />
+      );
+
+      expect(screen.getByText('87%')).toBeInTheDocument();
+    });
+
+    it('displays reasoning when provided', () => {
+      const { container } = render(
+        <ChatMessage
+          content="Decision message"
+          isUser={false}
+          timestamp={mockDate}
+          decisionAttribution={{
+            agentId: 'agent-1',
+            agentName: 'BMAD Architect',
+            reasoning: 'Test reasoning content',
+          }}
+        />
+      );
+
+      expect(container.querySelector('.decision-attribution-banner')).toBeInTheDocument();
+    });
+
+    it('can have both agent attribution and decision attribution', () => {
+      render(
+        <ChatMessage
+          content="Decision with full attribution"
+          isUser={false}
+          timestamp={mockDate}
+          agentAttribution={{
+            agentId: 'agent-1',
+            agentName: 'BMAD Architect',
+            capabilities: ['Design', 'Architecture'],
+          }}
+          decisionAttribution={{
+            agentId: 'agent-1',
+            agentName: 'BMAD Architect',
+            confidence: 0.92,
+          }}
+        />
+      );
+
+      expect(screen.getByText(/Decided by/)).toBeInTheDocument();
+      expect(screen.getByText('92%')).toBeInTheDocument();
+    });
+
+    it('does not render decision banner for user messages', () => {
+      render(
+        <ChatMessage
+          content="User decision request"
+          isUser={true}
+          timestamp={mockDate}
+          decisionAttribution={{
+            agentId: 'user',
+            agentName: 'User',
+          }}
+        />
+      );
+
+      expect(screen.queryByText(/Decided by/)).not.toBeInTheDocument();
+    });
+  });
 });
