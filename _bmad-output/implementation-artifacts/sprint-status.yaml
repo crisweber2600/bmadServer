@@ -109,7 +109,7 @@ development_status:
   6-3-decision-locking-mechanism: backlog
   6-4-decision-review-workflow: backlog
   6-5-conflict-detection-resolution: backlog
-  epic-6-retrospective: optional
+  epic-6-retrospective: done
 
   # =============================================
   # EPIC 7: Collaboration & Multi-User Support
