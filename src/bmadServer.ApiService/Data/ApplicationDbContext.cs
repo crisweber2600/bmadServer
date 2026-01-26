@@ -25,6 +25,15 @@ public class ApplicationDbContext : DbContext
     public DbSet<QueuedInput> QueuedInputs { get; set; }
     public DbSet<Conflict> Conflicts { get; set; }
     public DbSet<BufferedInput> BufferedInputs { get; set; }
+    public DbSet<AgentHandoff> AgentHandoffs { get; set; }
+    public DbSet<Decision> Decisions { get; set; }
+    public DbSet<DecisionVersion> DecisionVersions { get; set; }
+    public DbSet<DecisionConflict> DecisionConflicts { get; set; }
+    public DbSet<DecisionReview> DecisionReviews { get; set; }
+    public DbSet<DecisionReviewResponse> DecisionReviewResponses { get; set; }
+    public DbSet<ApprovalRequest> ApprovalRequests { get; set; }
+    public DbSet<AgentMessageLog> AgentMessageLogs { get; set; }
+    public DbSet<ConflictRule> ConflictRules { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
