@@ -872,6 +872,68 @@ public class WorkflowsController : ControllerBase
                 detail: ex.Message);
         }
     }
+
+    /// <summary>
+    /// Get contribution metrics for a workflow (Story 7.3 AC#4)
+    /// </summary>
+    /// <param name="id">Workflow ID</param>
+    /// <returns>Per-user contribution metrics</returns>
+    /// <response code="200">Returns contribution metrics</response>
+    /// <response code="403">User is not a participant</response>
+    /// <response code="404">Workflow not found</response>
+    [HttpGet("{id}/contributions")]
+    [ProducesResponseType(typeof(ContributionMetricsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetContributions(Guid id, [FromServices] IContributionMetricsService contributionMetricsService)
+    {
+        try
+        {
+            // Get current user ID
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            // Verify workflow exists
+            var workflowInstance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
+            if (workflowInstance == null)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Type = "https://bmadserver.api/errors/workflow-not-found",
+                    Title = "Workflow Not Found",
+                    Status = StatusCodes.Status404NotFound,
+                    Detail = $"Workflow {id} does not exist"
+                });
+            }
+
+            // Verify user is owner or participant
+            var isParticipant = await _participantService.IsParticipantAsync(id, userId);
+            if (!isParticipant && workflowInstance.UserId != userId)
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status403Forbidden,
+                    title: "Access Denied",
+                    detail: "You must be a participant or owner to view contribution metrics",
+                    type: "https://bmadserver.api/errors/access-denied");
+            }
+
+            // Get contribution metrics
+            var metrics = await contributionMetricsService.GetContributionMetricsAsync(id);
+            
+            return Ok(metrics);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting contribution metrics for workflow {WorkflowId}", id);
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: ex.Message);
+        }
+    }
 }
 
 /// <summary>

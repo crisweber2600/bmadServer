@@ -82,6 +82,13 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.Checkpoints.IInputQueu
 // Register memory cache for user profile caching (Story 7.3)
 builder.Services.AddMemoryCache();
 
+// Register distributed cache for contribution metrics (Story 7.3)
+// Using in-memory distributed cache for MVP (replace with Redis in production)
+builder.Services.AddDistributedMemoryCache();
+
+// Register contribution metrics service (Story 7.3)
+builder.Services.AddScoped<bmadServer.ApiService.Services.IContributionMetricsService, bmadServer.ApiService.Services.ContributionMetricsService>();
+
 // Register FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<bmadServer.ApiService.Validators.RegisterRequestValidator>();
 

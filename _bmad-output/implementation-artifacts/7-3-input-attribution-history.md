@@ -68,22 +68,22 @@ As a user (Sarah), I want to see who provided each input and when, so that I can
   - [x] Implement caching with MemoryCache (5 min TTL)
   - [x] Return RFC 7807 ProblemDetails on user not found
 
-- [ ] Contribution metrics service (AC: #4)
-  - [ ] Create IContributionMetricsService interface
-  - [ ] Implement ContributionMetricsService
-  - [ ] Calculate messages sent from WorkflowState.ConversationHistory
-  - [ ] Calculate decisions made from WorkflowEvents where EventType = "DecisionMade"
-  - [ ] Calculate time spent from Session.CreatedAt to Session.LastAccessedAt
-  - [ ] Group metrics by UserId
-  - [ ] Add Redis caching with 5-minute TTL
+- [x] Contribution metrics service (AC: #4)
+  - [x] Create IContributionMetricsService interface
+  - [x] Implement ContributionMetricsService
+  - [x] Calculate messages sent from WorkflowState.ConversationHistory
+  - [x] Calculate decisions made from WorkflowEvents where EventType = "DecisionMade"
+  - [x] Calculate time spent from Session.CreatedAt to Session.LastActivityAt
+  - [x] Group metrics by UserId
+  - [x] Add Redis caching with 5-minute TTL
 
-- [ ] Contribution metrics API endpoint (AC: #4)
-  - [ ] Add GET `/api/v1/workflows/{id}/contributions` endpoint
-  - [ ] Validate user is workflow participant or owner
-  - [ ] Return ContributionMetricsResponse with per-user stats
-  - [ ] Include total metrics summary
-  - [ ] Add pagination support (optional, for Phase 2)
-  - [ ] Add `[Authorize]` attribute
+- [x] Contribution metrics API endpoint (AC: #4)
+  - [x] Add GET `/api/v1/workflows/{id}/contributions` endpoint
+  - [x] Validate user is workflow participant or owner
+  - [x] Return ContributionMetricsResponse with per-user stats
+  - [x] Include total metrics summary
+  - [x] Add pagination support (optional, for Phase 2)
+  - [x] Add `[Authorize]` attribute
 
 - [ ] Workflow export service enhancement (AC: #5)
   - [ ] Create IWorkflowExportService interface
