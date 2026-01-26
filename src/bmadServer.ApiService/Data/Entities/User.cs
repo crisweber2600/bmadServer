@@ -8,6 +8,11 @@ public class User
     public required string DisplayName { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
+    
+    /// <summary>
+    /// Persona type for communication preferences (default: Hybrid)
+    /// </summary>
+    public PersonaType PersonaType { get; set; } = PersonaType.Hybrid;
 
     public ICollection<Session> Sessions { get; set; } = new List<Session>();
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
