@@ -9,12 +9,14 @@ namespace bmadServer.Tests.Unit.Services.Workflows;
 public class AgentRouterTests
 {
     private readonly Mock<ILogger<AgentRouter>> _loggerMock;
+    private readonly Mock<IAgentRegistry> _registryMock;
     private readonly AgentRouter _agentRouter;
 
     public AgentRouterTests()
     {
         _loggerMock = new Mock<ILogger<AgentRouter>>();
-        _agentRouter = new AgentRouter(_loggerMock.Object);
+        _registryMock = new Mock<IAgentRegistry>();
+        _agentRouter = new AgentRouter(_registryMock.Object, _loggerMock.Object);
     }
 
     [Fact]
@@ -122,4 +124,48 @@ public class AgentRouterTests
         Assert.Same(handler2, _agentRouter.GetHandler("agent-2"));
         Assert.Same(handler3, _agentRouter.GetHandler("agent-3"));
     }
+
+    [Fact]
+    public void GetModelPreference_WithRegistryPreference_ReturnsRegistryValue()
+    {
+        // Arrange
+        var agent = new AgentDefinition
+        {
+            AgentId = "test-agent",
+            Name = "Test",
+            SystemPrompt = "Test",
+            Capabilities = [],
+            ModelPreference = "gpt-4"
+        };
+        _registryMock.Setup(r => r.GetAgent("test-agent")).Returns(agent);
+
+        // Act
+        var preference = _agentRouter.GetModelPreference("test-agent");
+
+        // Assert
+        Assert.Equal("gpt-4", preference);
+    }
+
+    [Fact]
+    public void GetModelPreference_WithOverride_ReturnsOverrideValue()
+    {
+        // Arrange
+        var agent = new AgentDefinition
+        {
+            AgentId = "test-agent",
+            Name = "Test",
+            SystemPrompt = "Test",
+            Capabilities = [],
+            ModelPreference = "gpt-4"
+        };
+        _registryMock.Setup(r => r.GetAgent("test-agent")).Returns(agent);
+        _agentRouter.SetModelOverride("gpt-5-mini");
+
+        // Act
+        var preference = _agentRouter.GetModelPreference("test-agent");
+
+        // Assert
+        Assert.Equal("gpt-5-mini", preference);
+    }
 }
+
