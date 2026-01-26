@@ -24,6 +24,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<DecisionVersion> DecisionVersions { get; set; }
     public DbSet<DecisionReview> DecisionReviews { get; set; }
     public DbSet<DecisionReviewResponse> DecisionReviewResponses { get; set; }
+    public DbSet<DecisionConflict> DecisionConflicts { get; set; }
+    public DbSet<ConflictRule> ConflictRules { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -375,6 +377,70 @@ public class ApplicationDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.ReviewerId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<DecisionConflict>(entity =>
+        {
+            entity.ToTable("decision_conflicts");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ConflictType).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Description).IsRequired().HasMaxLength(1000);
+            entity.Property(e => e.Severity).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Resolution).HasMaxLength(2000);
+            entity.Property(e => e.OverrideJustification).HasMaxLength(2000);
+            
+            // Indexes
+            entity.HasIndex(e => e.DecisionId1);
+            entity.HasIndex(e => e.DecisionId2);
+            entity.HasIndex(e => e.ConflictType);
+            entity.HasIndex(e => e.Severity);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.DetectedAt);
+            entity.HasIndex(e => new { e.DecisionId1, e.DecisionId2 });
+            
+            // Foreign keys to Decisions
+            entity.HasOne(e => e.Decision1)
+                .WithMany()
+                .HasForeignKey(e => e.DecisionId1)
+                .OnDelete(DeleteBehavior.Restrict);
+                
+            entity.HasOne(e => e.Decision2)
+                .WithMany()
+                .HasForeignKey(e => e.DecisionId2)
+                .OnDelete(DeleteBehavior.Restrict);
+                
+            // Foreign key to User (Resolver)
+            entity.HasOne(e => e.Resolver)
+                .WithMany()
+                .HasForeignKey(e => e.ResolvedBy)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ConflictRule>(entity =>
+        {
+            entity.ToTable("conflict_rules");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.ConflictType).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Description).IsRequired().HasMaxLength(1000);
+            entity.Property(e => e.Severity).IsRequired().HasMaxLength(50);
+            
+            // JSONB column for configuration
+            entity.Property(e => e.Configuration)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => v == null ? null : v.RootElement.GetRawText(),
+                    v => v == null ? null : JsonDocument.Parse(v));
+            
+            // Indexes
+            entity.HasIndex(e => e.ConflictType);
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.CreatedAt);
+            
+            // GIN index for JSONB column
+            entity.HasIndex(e => e.Configuration)
+                .HasMethod("gin");
         });
     }
 }

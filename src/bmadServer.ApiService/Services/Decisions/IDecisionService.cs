@@ -156,4 +156,47 @@ public interface IDecisionService
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The review, or null if not found</returns>
     Task<DecisionReview?> GetDecisionReviewAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get conflicts for a workflow
+    /// </summary>
+    /// <param name="workflowId">The workflow instance ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of conflicts</returns>
+    Task<List<DecisionConflict>> GetConflictsForWorkflowAsync(Guid workflowId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get conflict details with side-by-side comparison
+    /// </summary>
+    /// <param name="conflictId">The conflict ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Conflict with decision details</returns>
+    Task<(DecisionConflict conflict, Decision decision1, Decision decision2)?> GetConflictDetailsAsync(Guid conflictId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Resolve a conflict
+    /// </summary>
+    /// <param name="conflictId">The conflict ID</param>
+    /// <param name="userId">User resolving the conflict</param>
+    /// <param name="resolution">Resolution description</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The resolved conflict</returns>
+    Task<DecisionConflict> ResolveConflictAsync(Guid conflictId, Guid userId, string resolution, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Override a conflict warning
+    /// </summary>
+    /// <param name="conflictId">The conflict ID</param>
+    /// <param name="userId">User overriding</param>
+    /// <param name="justification">Justification for override</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The overridden conflict</returns>
+    Task<DecisionConflict> OverrideConflictAsync(Guid conflictId, Guid userId, string justification, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get all conflict rules
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of conflict rules</returns>
+    Task<List<ConflictRule>> GetConflictRulesAsync(CancellationToken cancellationToken = default);
 }

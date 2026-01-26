@@ -760,6 +760,275 @@ public class DecisionsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Get conflicts for a workflow
+    /// </summary>
+    /// <param name="workflowId">The workflow instance ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of conflicts</returns>
+    [HttpGet("workflows/{workflowId:guid}/conflicts")]
+    [ProducesResponseType(typeof(List<ConflictResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<List<ConflictResponse>>> GetWorkflowConflicts(
+        Guid workflowId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var conflicts = await _decisionService.GetConflictsForWorkflowAsync(workflowId, cancellationToken);
+
+            var responses = conflicts.Select(c => new ConflictResponse
+            {
+                Id = c.Id,
+                DecisionId1 = c.DecisionId1,
+                DecisionId2 = c.DecisionId2,
+                ConflictType = c.ConflictType,
+                Description = c.Description,
+                Severity = c.Severity,
+                Status = c.Status,
+                DetectedAt = c.DetectedAt,
+                ResolvedAt = c.ResolvedAt,
+                ResolvedBy = c.ResolvedBy,
+                Resolution = c.Resolution,
+                OverrideJustification = c.OverrideJustification
+            }).ToList();
+
+            return Ok(responses);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving conflicts for workflow {WorkflowId}", workflowId);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ProblemDetails
+                {
+                    Title = "Error retrieving conflicts",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status500InternalServerError
+                });
+        }
+    }
+
+    /// <summary>
+    /// Get conflict details with side-by-side comparison
+    /// </summary>
+    /// <param name="conflictId">The conflict ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Conflict comparison</returns>
+    [HttpGet("conflicts/{conflictId:guid}")]
+    [ProducesResponseType(typeof(ConflictComparisonResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ConflictComparisonResponse>> GetConflictDetails(
+        Guid conflictId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var details = await _decisionService.GetConflictDetailsAsync(conflictId, cancellationToken);
+
+            if (details == null)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Conflict not found",
+                    Detail = $"Conflict {conflictId} not found",
+                    Status = StatusCodes.Status404NotFound
+                });
+            }
+
+            var (conflict, decision1, decision2) = details.Value;
+
+            var response = new ConflictComparisonResponse
+            {
+                Conflict = new ConflictResponse
+                {
+                    Id = conflict.Id,
+                    DecisionId1 = conflict.DecisionId1,
+                    DecisionId2 = conflict.DecisionId2,
+                    ConflictType = conflict.ConflictType,
+                    Description = conflict.Description,
+                    Severity = conflict.Severity,
+                    Status = conflict.Status,
+                    DetectedAt = conflict.DetectedAt,
+                    ResolvedAt = conflict.ResolvedAt,
+                    ResolvedBy = conflict.ResolvedBy,
+                    Resolution = conflict.Resolution,
+                    OverrideJustification = conflict.OverrideJustification
+                },
+                Decision1 = MapToDecisionResponse(decision1),
+                Decision2 = MapToDecisionResponse(decision2),
+                SuggestedResolutions = new List<string>
+                {
+                    "Update Decision 1 to match Decision 2",
+                    "Update Decision 2 to match Decision 1",
+                    "Create a new decision that reconciles both"
+                }
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving conflict details for {ConflictId}", conflictId);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new ProblemDetails
+                {
+                    Title = "Error retrieving conflict details",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status500InternalServerError
+                });
+        }
+    }
+
+    /// <summary>
+    /// Resolve a conflict
+    /// </summary>
+    /// <param name="conflictId">The conflict ID</param>
+    /// <param name="request">Resolution request</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Resolved conflict</returns>
+    [HttpPost("conflicts/{conflictId:guid}/resolve")]
+    [ProducesResponseType(typeof(ConflictResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ConflictResponse>> ResolveConflict(
+        Guid conflictId,
+        [FromBody] ResolveConflictRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            var conflict = await _decisionService.ResolveConflictAsync(conflictId, userId, request.Resolution, cancellationToken);
+
+            var response = new ConflictResponse
+            {
+                Id = conflict.Id,
+                DecisionId1 = conflict.DecisionId1,
+                DecisionId2 = conflict.DecisionId2,
+                ConflictType = conflict.ConflictType,
+                Description = conflict.Description,
+                Severity = conflict.Severity,
+                Status = conflict.Status,
+                DetectedAt = conflict.DetectedAt,
+                ResolvedAt = conflict.ResolvedAt,
+                ResolvedBy = conflict.ResolvedBy,
+                Resolution = conflict.Resolution,
+                OverrideJustification = conflict.OverrideJustification
+            };
+
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation when resolving conflict {ConflictId}", conflictId);
+            return BadRequest(new ProblemDetails { Title = "Cannot resolve conflict", Detail = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resolving conflict {ConflictId}", conflictId);
+            return StatusCode(StatusCodes.Status500InternalServerError);
+        }
+    }
+
+    /// <summary>
+    /// Override a conflict warning
+    /// </summary>
+    /// <param name="conflictId">The conflict ID</param>
+    /// <param name="request">Override request</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Overridden conflict</returns>
+    [HttpPost("conflicts/{conflictId:guid}/override")]
+    [ProducesResponseType(typeof(ConflictResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<ConflictResponse>> OverrideConflict(
+        Guid conflictId,
+        [FromBody] OverrideConflictRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            var conflict = await _decisionService.OverrideConflictAsync(conflictId, userId, request.Justification, cancellationToken);
+
+            var response = new ConflictResponse
+            {
+                Id = conflict.Id,
+                DecisionId1 = conflict.DecisionId1,
+                DecisionId2 = conflict.DecisionId2,
+                ConflictType = conflict.ConflictType,
+                Description = conflict.Description,
+                Severity = conflict.Severity,
+                Status = conflict.Status,
+                DetectedAt = conflict.DetectedAt,
+                ResolvedAt = conflict.ResolvedAt,
+                ResolvedBy = conflict.ResolvedBy,
+                Resolution = conflict.Resolution,
+                OverrideJustification = conflict.OverrideJustification
+            };
+
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation when overriding conflict {ConflictId}", conflictId);
+            return BadRequest(new ProblemDetails { Title = "Cannot override conflict", Detail = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error overriding conflict {ConflictId}", conflictId);
+            return StatusCode(StatusCodes.Status500InternalServerError);
+        }
+    }
+
+    /// <summary>
+    /// Get all active conflict rules
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of conflict rules</returns>
+    [HttpGet("conflicts/rules")]
+    [ProducesResponseType(typeof(List<ConflictRuleResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<List<ConflictRuleResponse>>> GetConflictRules(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var rules = await _decisionService.GetConflictRulesAsync(cancellationToken);
+
+            var responses = rules.Select(r => new ConflictRuleResponse
+            {
+                Id = r.Id,
+                Name = r.Name,
+                ConflictType = r.ConflictType,
+                Description = r.Description,
+                Configuration = r.Configuration?.RootElement,
+                IsActive = r.IsActive,
+                Severity = r.Severity,
+                CreatedAt = r.CreatedAt,
+                UpdatedAt = r.UpdatedAt
+            }).ToList();
+
+            return Ok(responses);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving conflict rules");
+            return StatusCode(StatusCodes.Status500InternalServerError);
+        }
+    }
+
     private static DecisionResponse MapToDecisionResponse(Decision decision)
     {
         return new DecisionResponse

@@ -610,4 +610,167 @@ public class DecisionService : IDecisionService
             throw;
         }
     }
+
+    /// <inheritdoc/>
+    public async Task<List<DecisionConflict>> GetConflictsForWorkflowAsync(Guid workflowId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Get all decisions for the workflow
+            var decisionIds = await _context.Decisions
+                .Where(d => d.WorkflowInstanceId == workflowId)
+                .Select(d => d.Id)
+                .ToListAsync(cancellationToken);
+
+            // Get conflicts involving any of these decisions
+            var conflicts = await _context.DecisionConflicts
+                .Where(c => decisionIds.Contains(c.DecisionId1) || decisionIds.Contains(c.DecisionId2))
+                .ToListAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Retrieved {Count} conflicts for workflow {WorkflowId}",
+                conflicts.Count,
+                workflowId
+            );
+
+            return conflicts;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to retrieve conflicts for workflow {WorkflowId}", workflowId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<(DecisionConflict conflict, Decision decision1, Decision decision2)?> GetConflictDetailsAsync(Guid conflictId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var conflict = await _context.DecisionConflicts
+                .FirstOrDefaultAsync(c => c.Id == conflictId, cancellationToken);
+
+            if (conflict == null)
+            {
+                return null;
+            }
+
+            var decision1 = await _context.Decisions.FindAsync(new object[] { conflict.DecisionId1 }, cancellationToken);
+            var decision2 = await _context.Decisions.FindAsync(new object[] { conflict.DecisionId2 }, cancellationToken);
+
+            if (decision1 == null || decision2 == null)
+            {
+                _logger.LogWarning("Conflict {ConflictId} references non-existent decisions", conflictId);
+                return null;
+            }
+
+            _logger.LogInformation("Retrieved conflict details for {ConflictId}", conflictId);
+            return (conflict, decision1, decision2);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to retrieve conflict details for {ConflictId}", conflictId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<DecisionConflict> ResolveConflictAsync(Guid conflictId, Guid userId, string resolution, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var conflict = await _context.DecisionConflicts
+                .FirstOrDefaultAsync(c => c.Id == conflictId, cancellationToken);
+
+            if (conflict == null)
+            {
+                throw new InvalidOperationException($"Conflict {conflictId} not found");
+            }
+
+            if (conflict.Status != "Open")
+            {
+                throw new InvalidOperationException($"Conflict {conflictId} is already {conflict.Status}");
+            }
+
+            conflict.Status = "Resolved";
+            conflict.ResolvedAt = DateTime.UtcNow;
+            conflict.ResolvedBy = userId;
+            conflict.Resolution = resolution;
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Conflict {ConflictId} resolved by user {UserId}",
+                conflictId,
+                userId
+            );
+
+            return conflict;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to resolve conflict {ConflictId}", conflictId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<DecisionConflict> OverrideConflictAsync(Guid conflictId, Guid userId, string justification, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var conflict = await _context.DecisionConflicts
+                .FirstOrDefaultAsync(c => c.Id == conflictId, cancellationToken);
+
+            if (conflict == null)
+            {
+                throw new InvalidOperationException($"Conflict {conflictId} not found");
+            }
+
+            if (conflict.Status != "Open")
+            {
+                throw new InvalidOperationException($"Conflict {conflictId} is already {conflict.Status}");
+            }
+
+            conflict.Status = "Overridden";
+            conflict.ResolvedAt = DateTime.UtcNow;
+            conflict.ResolvedBy = userId;
+            conflict.OverrideJustification = justification;
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Conflict {ConflictId} overridden by user {UserId} with justification: {Justification}",
+                conflictId,
+                userId,
+                justification
+            );
+
+            return conflict;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to override conflict {ConflictId}", conflictId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<ConflictRule>> GetConflictRulesAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var rules = await _context.ConflictRules
+                .Where(r => r.IsActive)
+                .ToListAsync(cancellationToken);
+
+            _logger.LogInformation("Retrieved {Count} active conflict rules", rules.Count);
+            return rules;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to retrieve conflict rules");
+            throw;
+        }
+    }
 }
