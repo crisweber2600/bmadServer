@@ -36,7 +36,8 @@ namespace bmadServer.ApiService.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_translation_mappings_TechnicalTerm",
                 table: "translation_mappings",
-                column: "TechnicalTerm");
+                column: "TechnicalTerm",
+                unique: true);
         }
 
         /// <inheritdoc />

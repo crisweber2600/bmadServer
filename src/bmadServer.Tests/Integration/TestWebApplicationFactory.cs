@@ -9,6 +9,10 @@ using Microsoft.Extensions.Hosting;
 
 namespace bmadServer.Tests.Integration;
 
+/// <summary>
+/// Test web application factory for integration tests.
+/// Creates an in-memory test server with SQLite database.
+/// </summary>
 public class TestWebApplicationFactory : WebApplicationFactory<bmadServer.ApiService.Program>
 {
     private readonly SqliteConnection _connection;

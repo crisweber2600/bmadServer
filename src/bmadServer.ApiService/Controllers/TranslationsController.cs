@@ -65,12 +65,16 @@ public class TranslationsController : ControllerBase
             };
 
             _logger.LogInformation("Created translation mapping {Id}", mapping.Id);
-            return CreatedAtAction(nameof(GetMappings), new { id = mapping.Id }, response);
+            return Ok(response);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating translation mapping");
-            return StatusCode(500, "Failed to create translation mapping");
+            return Problem(
+                title: "Internal Server Error",
+                detail: "Failed to create translation mapping",
+                statusCode: 500
+            );
         }
     }
 
@@ -106,12 +110,20 @@ public class TranslationsController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Translation mapping {Id} not found", id);
-            return NotFound(new { message = ex.Message });
+            return Problem(
+                title: "Not Found",
+                detail: ex.Message,
+                statusCode: 404
+            );
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating translation mapping {Id}", id);
-            return StatusCode(500, "Failed to update translation mapping");
+            return Problem(
+                title: "Internal Server Error",
+                detail: "Failed to update translation mapping",
+                statusCode: 500
+            );
         }
     }
 
@@ -124,7 +136,11 @@ public class TranslationsController : ControllerBase
             var result = await _translationService.DeleteTranslationMappingAsync(id);
             if (!result)
             {
-                return NotFound(new { message = $"Translation mapping with ID {id} not found" });
+                return Problem(
+                    title: "Not Found",
+                    detail: $"Translation mapping with ID {id} not found",
+                    statusCode: 404
+                );
             }
 
             _logger.LogInformation("Deleted translation mapping {Id}", id);
@@ -133,7 +149,11 @@ public class TranslationsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting translation mapping {Id}", id);
-            return StatusCode(500, "Failed to delete translation mapping");
+            return Problem(
+                title: "Internal Server Error",
+                detail: "Failed to delete translation mapping",
+                statusCode: 500
+            );
         }
     }
 }

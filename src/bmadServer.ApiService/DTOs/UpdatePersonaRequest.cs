@@ -12,5 +12,5 @@ public class UpdatePersonaRequest
     /// Persona type preference
     /// </summary>
     [Required]
-    public PersonaType PersonaType { get; set; }
+    public PersonaType? PersonaType { get; set; }
 }

@@ -4,6 +4,7 @@ using bmadServer.ApiService.Services;
 using bmadServer.Tests.Helpers;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -18,6 +19,7 @@ public class TechnicalLanguageModeTests : IDisposable
     private readonly Mock<ILogger<ContextAnalysisService>> _contextLoggerMock;
     private readonly ContextAnalysisService _contextAnalysisService;
     private readonly TranslationService _translationService;
+    private readonly IMemoryCache _cache;
 
     public TechnicalLanguageModeTests()
     {
@@ -27,7 +29,8 @@ public class TechnicalLanguageModeTests : IDisposable
         _loggerMock = new Mock<ILogger<TranslationService>>();
         _contextLoggerMock = new Mock<ILogger<ContextAnalysisService>>();
         _contextAnalysisService = new ContextAnalysisService(_contextLoggerMock.Object);
-        _translationService = new TranslationService(_dbContext, _contextAnalysisService, _loggerMock.Object);
+        _cache = new MemoryCache(new MemoryCacheOptions());
+        _translationService = new TranslationService(_dbContext, _contextAnalysisService, _loggerMock.Object, _cache);
         
         SeedTestData();
     }

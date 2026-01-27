@@ -16,7 +16,7 @@ namespace bmadServer.ApiService.Migrations
                 table: "users",
                 type: "integer",
                 nullable: false,
-                defaultValue: 0);
+                defaultValue: 2); // Hybrid = 2
 
             migrationBuilder.CreateTable(
                 name: "user_roles",

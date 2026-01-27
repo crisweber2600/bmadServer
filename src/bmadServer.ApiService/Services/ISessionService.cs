@@ -85,8 +85,8 @@ public interface ISessionService
 public record SwitchPersonaResult
 {
     public bool Success { get; init; }
-    public PersonaType NewPersona { get; init; }
-    public PersonaType PreviousPersona { get; init; }
+    public PersonaType? NewPersona { get; init; }
+    public PersonaType? PreviousPersona { get; init; }
     public int SwitchCount { get; init; }
     public string? SuggestionMessage { get; init; }
 }

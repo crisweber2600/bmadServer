@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
 namespace bmadServer.ApiService.Services;
@@ -11,18 +12,20 @@ public class TranslationService : ITranslationService
     private readonly ApplicationDbContext _dbContext;
     private readonly IContextAnalysisService _contextAnalysisService;
     private readonly ILogger<TranslationService> _logger;
-    private Dictionary<string, string>? _translationCache;
-    private DateTime _cacheLastUpdated = DateTime.MinValue;
+    private readonly IMemoryCache _cache;
+    private const string CacheKey = "TranslationMappings";
     private readonly TimeSpan _cacheExpiry = TimeSpan.FromMinutes(5);
 
     public TranslationService(
         ApplicationDbContext dbContext, 
         IContextAnalysisService contextAnalysisService,
-        ILogger<TranslationService> logger)
+        ILogger<TranslationService> logger,
+        IMemoryCache cache)
     {
         _dbContext = dbContext;
         _contextAnalysisService = contextAnalysisService;
         _logger = logger;
+        _cache = cache;
     }
 
     public async Task<TranslationResult> TranslateToBusinessLanguageAsync(string technicalContent, PersonaType personaType, string? workflowStep = null)
@@ -53,7 +56,9 @@ public class TranslationService : ITranslationService
         {
             await EnsureCacheLoadedAsync();
             
-            if (_translationCache == null || _translationCache.Count == 0)
+            if (!_cache.TryGetValue(CacheKey, out Dictionary<string, string>? translationCache) || 
+                translationCache == null || 
+                translationCache.Count == 0)
             {
                 _logger.LogWarning("No translation mappings available");
                 return new TranslationResult
@@ -70,7 +75,7 @@ public class TranslationService : ITranslationService
             var translatedContent = technicalContent;
 
             // Sort by length descending to replace longer phrases first
-            foreach (var (technicalTerm, businessTerm) in _translationCache.OrderByDescending(kvp => kvp.Key.Length))
+            foreach (var (technicalTerm, businessTerm) in translationCache.OrderByDescending(kvp => kvp.Key.Length))
             {
                 var pattern = $@"\b{Regex.Escape(technicalTerm)}\b";
                 translatedContent = Regex.Replace(
@@ -180,7 +185,7 @@ public class TranslationService : ITranslationService
 
     private async Task EnsureCacheLoadedAsync()
     {
-        if (_translationCache != null && DateTime.UtcNow - _cacheLastUpdated < _cacheExpiry)
+        if (_cache.TryGetValue(CacheKey, out Dictionary<string, string>? cachedMappings) && cachedMappings != null)
         {
             return;
         }
@@ -189,19 +194,28 @@ public class TranslationService : ITranslationService
             .Where(m => m.IsActive)
             .ToListAsync();
 
-        _translationCache = mappings.ToDictionary(
-            m => m.TechnicalTerm,
-            m => m.BusinessTerm,
-            StringComparer.OrdinalIgnoreCase
-        );
+        var dictionary = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        
+        // Handle potential duplicates by keeping the first occurrence
+        foreach (var mapping in mappings)
+        {
+            if (!dictionary.ContainsKey(mapping.TechnicalTerm))
+            {
+                dictionary[mapping.TechnicalTerm] = mapping.BusinessTerm;
+            }
+            else
+            {
+                _logger.LogWarning("Duplicate TechnicalTerm found: {Term}. Using first occurrence.", mapping.TechnicalTerm);
+            }
+        }
 
-        _cacheLastUpdated = DateTime.UtcNow;
-        _logger.LogDebug("Loaded {Count} translation mappings into cache", _translationCache.Count);
+        _cache.Set(CacheKey, dictionary, _cacheExpiry);
+        _logger.LogDebug("Loaded {Count} translation mappings into cache", dictionary.Count);
     }
 
     private void InvalidateCache()
     {
-        _translationCache = null;
-        _cacheLastUpdated = DateTime.MinValue;
+        _cache.Remove(CacheKey);
+        _logger.LogDebug("Translation cache invalidated");
     }
 }

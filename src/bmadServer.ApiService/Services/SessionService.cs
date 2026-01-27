@@ -205,13 +205,20 @@ public class SessionService : ISessionService
         {
             _logger.LogWarning("Cannot switch persona: Session {SessionId} not found or not owned by user {UserId}", 
                 sessionId, userId);
-            return new SwitchPersonaResult { Success = false };
+            return new SwitchPersonaResult 
+            { 
+                Success = false,
+                NewPersona = null,
+                PreviousPersona = null,
+                SwitchCount = 0
+            };
         }
 
         var previousPersona = session.SessionPersona ?? session.User.PersonaType;
         session.SessionPersona = newPersona;
         session.PersonaSwitchCount++;
         session.LastActivityAt = DateTime.UtcNow;
+        session.ExpiresAt = DateTime.UtcNow.AddHours(24); // Extend expiration on activity
 
         await _dbContext.SaveChangesAsync();
 
@@ -219,8 +226,8 @@ public class SessionService : ISessionService
             "Switched session persona for session {SessionId}: {PreviousPersona} -> {NewPersona} (Count: {SwitchCount})",
             sessionId, previousPersona, newPersona, session.PersonaSwitchCount);
 
-        // Suggest Hybrid mode if user switches frequently
-        string? suggestion = session.PersonaSwitchCount > 3 
+        // Suggest Hybrid mode if user switches frequently (3 or more switches)
+        string? suggestion = session.PersonaSwitchCount >= 3 
             ? "Would you like to try Hybrid mode instead? It adapts automatically based on context."
             : null;
 

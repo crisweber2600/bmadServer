@@ -140,7 +140,12 @@ public class UsersController : ControllerBase
         }
 
         // Update persona preference
-        user.PersonaType = request.PersonaType;
+        if (!request.PersonaType.HasValue)
+        {
+            return BadRequest("PersonaType is required");
+        }
+        
+        user.PersonaType = request.PersonaType.Value;
         user.UpdatedAt = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync();

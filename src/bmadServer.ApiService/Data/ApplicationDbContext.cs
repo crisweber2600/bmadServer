@@ -34,6 +34,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<ApprovalRequest> ApprovalRequests { get; set; }
     public DbSet<AgentMessageLog> AgentMessageLogs { get; set; }
     public DbSet<ConflictRule> ConflictRules { get; set; }
+    public DbSet<TranslationMapping> TranslationMappings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -482,6 +483,38 @@ public class ApplicationDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.ConflictId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<TranslationMapping>(entity =>
+        {
+            entity.ToTable("translation_mappings");
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.TechnicalTerm)
+                .IsRequired()
+                .HasMaxLength(200);
+            
+            entity.Property(e => e.BusinessTerm)
+                .IsRequired()
+                .HasMaxLength(500);
+            
+            entity.Property(e => e.Context)
+                .HasMaxLength(500);
+            
+            entity.Property(e => e.IsActive)
+                .IsRequired();
+            
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+            
+            entity.Property(e => e.UpdatedAt)
+                .IsRequired();
+            
+            // Unique index on TechnicalTerm (case-insensitive for PostgreSQL)
+            entity.HasIndex(e => e.TechnicalTerm)
+                .IsUnique();
+            
+            entity.HasIndex(e => e.IsActive);
         });
     }
 }
