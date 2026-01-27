@@ -2,7 +2,9 @@ using bmadServer.ApiService.Configuration;
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.Middleware;
+using bmadServer.Tests.Helpers;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
@@ -13,16 +15,15 @@ namespace bmadServer.Tests.Unit;
 public class IdleTimeoutTests : IDisposable
 {
     private readonly ApplicationDbContext _dbContext;
+    private readonly SqliteConnection _connection;
     private readonly User _testUser;
     private readonly Session _testSession;
 
     public IdleTimeoutTests()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
-
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
         _dbContext = new ApplicationDbContext(options);
+        _dbContext.Database.EnsureCreated();
 
         _testUser = new User
         {
@@ -50,6 +51,7 @@ public class IdleTimeoutTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
+        _connection.Dispose();
     }
 
     [Fact]

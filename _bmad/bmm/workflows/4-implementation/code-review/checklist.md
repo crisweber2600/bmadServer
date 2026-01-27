@@ -1,5 +1,11 @@
 # Senior Developer Review - Validation Checklist
 
+## Pre-Review Gates (MANDATORY)
+- [ ] Build verified: `dotnet build` succeeds with 0 errors
+- [ ] Tests verified: `dotnet test` - no NEW failures introduced
+- [ ] Test baseline: {{pass}}/{{total}} passed, {{skip}} skipped, {{fail}} pre-existing failures
+
+## Story Validation
 - [ ] Story file loaded from `{{story_path}}`
 - [ ] Story Status verified as reviewable (review)
 - [ ] Epic and Story IDs resolved ({{epic_num}}.{{story_num}})

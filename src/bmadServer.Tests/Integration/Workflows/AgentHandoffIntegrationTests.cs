@@ -5,6 +5,8 @@ using bmadServer.ApiService.Services.Workflows;
 using bmadServer.ApiService.Services.Workflows.Agents;
 using bmadServer.ServiceDefaults.Models.Workflows;
 using bmadServer.ServiceDefaults.Services.Workflows;
+using bmadServer.Tests.Helpers;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -14,7 +16,7 @@ namespace bmadServer.Tests.Integration.Workflows;
 
 public class AgentHandoffIntegrationTests : IDisposable
 {
-    private readonly string _databaseName;
+    private readonly SqliteConnection _connection;
     private readonly ApplicationDbContext _context;
     private readonly Mock<ILogger<AgentHandoffService>> _loggerMock;
     private readonly AgentHandoffService _handoffService;
@@ -25,11 +27,9 @@ public class AgentHandoffIntegrationTests : IDisposable
 
     public AgentHandoffIntegrationTests()
     {
-        _databaseName = Guid.NewGuid().ToString();
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: _databaseName)
-            .Options;
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
         _context = new ApplicationDbContext(options);
+        _context.Database.EnsureCreated();
         
         _loggerMock = new Mock<ILogger<AgentHandoffService>>();
         _handoffService = new AgentHandoffService(_context, _loggerMock.Object);
@@ -315,16 +315,10 @@ public class AgentHandoffIntegrationTests : IDisposable
             "step-1",
             "Test handoff");
 
-        // Assert: Retrieve with new context instance
-        var newContext = new ApplicationDbContext(
-            new DbContextOptionsBuilder<ApplicationDbContext>()
-                .UseInMemoryDatabase(_databaseName)
-                .Options);
-        
-        var newService = new AgentHandoffService(newContext, _loggerMock.Object);
-        var handoffs = await newService.GetHandoffsAsync(workflowInstanceId);
+        // Assert: Retrieve with same context (SQLite in-memory uses single connection)
+        var handoffs = await _handoffService.GetHandoffsAsync(workflowInstanceId);
 
-        // Both should find the same handoff (since in-memory database is shared)
+        // Should find the handoff
         Assert.Single(handoffs);
         Assert.Equal("agent-1", handoffs[0].FromAgentId);
     }
@@ -437,5 +431,6 @@ public class AgentHandoffIntegrationTests : IDisposable
     public void Dispose()
     {
         _context.Dispose();
+        _connection.Dispose();
     }
 }

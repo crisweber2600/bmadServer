@@ -39,11 +39,14 @@ public class ContributionMetricsService : IContributionMetricsService
             }
         }
 
-        // Get all sessions related to this workflow
-        var sessions = await _dbContext.Sessions
-            .Where(s => s.WorkflowState != null && 
-                       s.WorkflowState.ActiveWorkflowInstanceId == workflowId)
+        // Get all sessions and filter client-side (WorkflowState is a JSON column)
+        var allSessions = await _dbContext.Sessions
+            .Where(s => s.WorkflowState != null)
             .ToListAsync(cancellationToken);
+        
+        var sessions = allSessions
+            .Where(s => s.WorkflowState?.ActiveWorkflowInstanceId == workflowId)
+            .ToList();
 
         // Get all workflow events for this workflow - use database filtering, not in-memory
         var events = await _dbContext.WorkflowEvents

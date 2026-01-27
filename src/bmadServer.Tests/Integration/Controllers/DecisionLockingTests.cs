@@ -3,12 +3,10 @@ using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.Models.Decisions;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services;
+using bmadServer.Tests.Integration;
 using FluentAssertions;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -17,34 +15,14 @@ using Xunit;
 
 namespace bmadServer.Tests.Integration.Controllers;
 
-public class DecisionLockingTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
+public class DecisionLockingTests : IClassFixture<TestWebApplicationFactory>, IDisposable
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly TestWebApplicationFactory _factory;
     private readonly HttpClient _client;
-    private static readonly string _databaseName = "TestDb_DecisionLocking_" + Guid.NewGuid();
 
-    public DecisionLockingTests(WebApplicationFactory<Program> factory)
+    public DecisionLockingTests(TestWebApplicationFactory factory)
     {
-        _factory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                var descriptor = services.SingleOrDefault(
-                    d => d.ServiceType == typeof(DbContextOptions<ApplicationDbContext>));
-                if (descriptor != null)
-                {
-                    services.Remove(descriptor);
-                }
-
-                services.AddDbContext<ApplicationDbContext>(options =>
-                {
-                    options.UseInMemoryDatabase(_databaseName);
-                });
-            });
-
-            builder.UseEnvironment("Test");
-        });
-
+        _factory = factory;
         _client = _factory.CreateClient();
     }
 
@@ -294,6 +272,13 @@ public class DecisionLockingTests : IClassFixture<WebApplicationFactory<Program>
         };
 
         var response = await client.PostAsJsonAsync("/api/v1/decisions", request);
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException($"Failed to create decision: {response.StatusCode} - {errorContent}");
+        }
+        
         var decision = await response.Content.ReadFromJsonAsync<DecisionResponse>();
 
         return decision!.Id;

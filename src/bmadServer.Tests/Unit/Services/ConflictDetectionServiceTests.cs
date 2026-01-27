@@ -1,6 +1,8 @@
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.Services;
+using bmadServer.Tests.Helpers;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -8,21 +10,26 @@ using Xunit;
 
 namespace bmadServer.Tests.Unit.Services;
 
-public class ConflictDetectionServiceTests
+public class ConflictDetectionServiceTests : IDisposable
 {
     private readonly ApplicationDbContext _dbContext;
+    private readonly SqliteConnection _connection;
     private readonly ConflictDetectionService _service;
     private readonly Mock<ILogger<ConflictDetectionService>> _mockLogger;
 
     public ConflictDetectionServiceTests()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
-        
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
         _dbContext = new ApplicationDbContext(options);
+        _dbContext.Database.EnsureCreated();
         _mockLogger = new Mock<ILogger<ConflictDetectionService>>();
         _service = new ConflictDetectionService(_dbContext, _mockLogger.Object);
+    }
+
+    public void Dispose()
+    {
+        _dbContext.Dispose();
+        _connection.Dispose();
     }
 
     [Fact]

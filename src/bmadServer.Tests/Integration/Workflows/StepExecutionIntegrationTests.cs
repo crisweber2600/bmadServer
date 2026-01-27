@@ -11,6 +11,7 @@ using bmadServer.Tests.Helpers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -22,6 +23,7 @@ namespace bmadServer.Tests.Integration.Workflows;
 public class StepExecutionIntegrationTests : IDisposable
 {
     private readonly ApplicationDbContext _context;
+    private readonly SqliteConnection _connection;
     private readonly TestWorkflowRegistry _workflowRegistry;
     private readonly IAgentRouter _agentRouter;
     private readonly IAgentRegistry _agentRegistry;
@@ -32,11 +34,10 @@ public class StepExecutionIntegrationTests : IDisposable
 
     public StepExecutionIntegrationTests()
     {
-        // Setup in-memory database
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
+        // Setup SQLite in-memory database
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
         _context = new ApplicationDbContext(options);
+        _context.Database.EnsureCreated();
 
         // Create real services
         _workflowRegistry = new TestWorkflowRegistry();
@@ -58,27 +59,33 @@ public class StepExecutionIntegrationTests : IDisposable
             .ReturnsAsync((SharedContext?)null);
 
         var hubContextMock = new Mock<IHubContext<ChatHub>>();
+        var approvalServiceMock = new Mock<IApprovalService>();
+        
+        // Setup hub context mock
+        var mockClients = new Mock<IHubClients>();
+        var mockClientProxy = new Mock<IClientProxy>();
+        mockClients.Setup(clients => clients.All).Returns(mockClientProxy.Object);
+        mockClients.Setup(clients => clients.Group(It.IsAny<string>())).Returns(mockClientProxy.Object);
+        hubContextMock.Setup(hub => hub.Clients).Returns(mockClients.Object);
         
         _stepExecutor = new StepExecutor(
             _context,
             _agentRouter,
             _workflowRegistry,
             _workflowInstanceService,
+            sharedContextServiceMock.Object,
+            agentHandoffServiceMock.Object,
+            approvalServiceMock.Object,
+            hubContextMock.Object,
             new Mock<ILogger<StepExecutor>>().Object);
-
-        // Setup hub context mock
-        var mockClients = new Mock<IHubClients>();
-        var mockClientProxy = new Mock<IClientProxy>();
-        mockClients.Setup(clients => clients.All).Returns(mockClientProxy.Object);
-        mockClients.Setup(clients => clients.Group(It.IsAny<string>())).Returns(mockClientProxy.Object);
-        var mockHubContext = new Mock<IHubContext<ChatHub>>();
-        mockHubContext.Setup(hub => hub.Clients).Returns(mockClients.Object);
 
         _controller = new WorkflowsController(
             _workflowInstanceService,
             _workflowRegistry,
+            new Mock<IAgentRegistry>().Object,
             _stepExecutor,
-            mockHubContext.Object,
+            approvalServiceMock.Object,
+            hubContextMock.Object,
             new Mock<ILogger<WorkflowsController>>().Object,
             new Mock<IParticipantService>().Object);
 
@@ -356,7 +363,7 @@ public class StepExecutionIntegrationTests : IDisposable
 
     public void Dispose()
     {
-        _context.Database.EnsureDeleted();
         _context.Dispose();
+        _connection.Dispose();
     }
 }

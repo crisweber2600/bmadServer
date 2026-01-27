@@ -2,6 +2,8 @@ using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services;
+using bmadServer.Tests.Helpers;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -12,6 +14,7 @@ namespace bmadServer.Tests.Unit;
 public class ParticipantServiceTests : IDisposable
 {
     private readonly ApplicationDbContext _context;
+    private readonly SqliteConnection _connection;
     private readonly ParticipantService _service;
     private readonly Mock<ILogger<ParticipantService>> _mockLogger;
     private readonly Guid _testUserId;
@@ -20,11 +23,9 @@ public class ParticipantServiceTests : IDisposable
 
     public ParticipantServiceTests()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
-
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
         _context = new ApplicationDbContext(options);
+        _context.Database.EnsureCreated();
         _mockLogger = new Mock<ILogger<ParticipantService>>();
         _service = new ParticipantService(_context, _mockLogger.Object);
 
@@ -174,7 +175,7 @@ public class ParticipantServiceTests : IDisposable
 
     public void Dispose()
     {
-        _context.Database.EnsureDeleted();
         _context.Dispose();
+        _connection.Dispose();
     }
 }

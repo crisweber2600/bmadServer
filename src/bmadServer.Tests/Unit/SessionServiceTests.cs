@@ -2,6 +2,8 @@ using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.Models;
 using bmadServer.ApiService.Services;
+using bmadServer.Tests.Helpers;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -14,29 +16,34 @@ namespace bmadServer.Tests.Unit;
 /// Unit tests for SessionService.
 /// Tests session lifecycle: create, recover, update, expire.
 /// </summary>
-public class SessionServiceTests
+public class SessionServiceTests : IDisposable
 {
     private readonly Mock<ILogger<SessionService>> _loggerMock;
+    private SqliteConnection? _connection;
 
     public SessionServiceTests()
     {
         _loggerMock = new Mock<ILogger<SessionService>>();
     }
 
-    private ApplicationDbContext CreateInMemoryDbContext()
+    private ApplicationDbContext CreateSqliteDbContext()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
+        var context = new ApplicationDbContext(options);
+        context.Database.EnsureCreated();
+        return context;
+    }
 
-        return new ApplicationDbContext(options);
+    public void Dispose()
+    {
+        _connection?.Dispose();
     }
 
     [Fact]
     public async Task CreateSessionAsync_Should_Create_New_Session()
     {
         // Arrange
-        await using var dbContext = CreateInMemoryDbContext();
+        await using var dbContext = CreateSqliteDbContext();
         var service = new SessionService(dbContext, _loggerMock.Object);
 
         var user = new User
@@ -65,7 +72,7 @@ public class SessionServiceTests
     public async Task GetActiveSessionAsync_Should_Return_Session_By_ConnectionId()
     {
         // Arrange
-        await using var dbContext = CreateInMemoryDbContext();
+        await using var dbContext = CreateSqliteDbContext();
         var service = new SessionService(dbContext, _loggerMock.Object);
 
         var user = new User
@@ -91,7 +98,7 @@ public class SessionServiceTests
     public async Task GetActiveSessionAsync_Should_Return_Null_For_Inactive_Session()
     {
         // Arrange
-        await using var dbContext = CreateInMemoryDbContext();
+        await using var dbContext = CreateSqliteDbContext();
         var service = new SessionService(dbContext, _loggerMock.Object);
 
         var user = new User
@@ -117,7 +124,7 @@ public class SessionServiceTests
     public async Task RecoverSessionAsync_Should_Return_New_Session_When_No_Existing_Session()
     {
         // Arrange
-        await using var dbContext = CreateInMemoryDbContext();
+        await using var dbContext = CreateSqliteDbContext();
         var service = new SessionService(dbContext, _loggerMock.Object);
 
         var user = new User
@@ -142,7 +149,7 @@ public class SessionServiceTests
     public async Task RecoverSessionAsync_Should_Recover_Same_Session_Within_60_Seconds()
     {
         // Arrange
-        await using var dbContext = CreateInMemoryDbContext();
+        await using var dbContext = CreateSqliteDbContext();
         var service = new SessionService(dbContext, _loggerMock.Object);
 
         var user = new User
@@ -176,7 +183,7 @@ public class SessionServiceTests
     public async Task RecoverSessionAsync_Should_Create_New_Session_After_60_Seconds_But_Restore_State()
     {
         // Arrange
-        await using var dbContext = CreateInMemoryDbContext();
+        await using var dbContext = CreateSqliteDbContext();
         var service = new SessionService(dbContext, _loggerMock.Object);
 
         var user = new User
@@ -234,7 +241,7 @@ public class SessionServiceTests
     public async Task RecoverSessionAsync_Should_Create_Fresh_Session_After_30_Minutes()
     {
         // Arrange
-        await using var dbContext = CreateInMemoryDbContext();
+        await using var dbContext = CreateSqliteDbContext();
         var service = new SessionService(dbContext, _loggerMock.Object);
 
         var user = new User
@@ -277,7 +284,7 @@ public class SessionServiceTests
     public async Task UpdateSessionStateAsync_Should_Update_WorkflowState_And_Activity()
     {
         // Arrange
-        await using var dbContext = CreateInMemoryDbContext();
+        await using var dbContext = CreateSqliteDbContext();
         var service = new SessionService(dbContext, _loggerMock.Object);
 
         var user = new User
@@ -317,7 +324,7 @@ public class SessionServiceTests
     public async Task UpdateSessionStateAsync_Should_Return_False_For_Nonexistent_Session()
     {
         // Arrange
-        await using var dbContext = CreateInMemoryDbContext();
+        await using var dbContext = CreateSqliteDbContext();
         var service = new SessionService(dbContext, _loggerMock.Object);
 
         // Act
@@ -334,7 +341,7 @@ public class SessionServiceTests
     public async Task ExpireSessionAsync_Should_Mark_Session_Inactive()
     {
         // Arrange
-        await using var dbContext = CreateInMemoryDbContext();
+        await using var dbContext = CreateSqliteDbContext();
         var service = new SessionService(dbContext, _loggerMock.Object);
 
         var user = new User
@@ -362,7 +369,7 @@ public class SessionServiceTests
     public async Task UpdateActivityAsync_Should_Update_Timestamps()
     {
         // Arrange
-        await using var dbContext = CreateInMemoryDbContext();
+        await using var dbContext = CreateSqliteDbContext();
         var service = new SessionService(dbContext, _loggerMock.Object);
 
         var user = new User
@@ -395,7 +402,7 @@ public class SessionServiceTests
     public async Task GetMostRecentActiveSessionAsync_Should_Return_Latest_Session()
     {
         // Arrange
-        await using var dbContext = CreateInMemoryDbContext();
+        await using var dbContext = CreateSqliteDbContext();
         var service = new SessionService(dbContext, _loggerMock.Object);
 
         var user = new User
@@ -423,7 +430,7 @@ public class SessionServiceTests
     public async Task RecoverSessionAsync_Should_Support_Multi_Device_Scenarios()
     {
         // Arrange
-        await using var dbContext = CreateInMemoryDbContext();
+        await using var dbContext = CreateSqliteDbContext();
         var service = new SessionService(dbContext, _loggerMock.Object);
 
         var user = new User

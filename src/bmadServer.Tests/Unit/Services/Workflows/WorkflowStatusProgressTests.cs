@@ -5,7 +5,9 @@ using bmadServer.ApiService.Services.Workflows;
 using bmadServer.ApiService.Services.Workflows.Agents;
 using bmadServer.ServiceDefaults.Models.Workflows;
 using bmadServer.ServiceDefaults.Services.Workflows;
+using bmadServer.Tests.Helpers;
 using FluentAssertions;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -16,6 +18,7 @@ namespace bmadServer.Tests.Unit.Services.Workflows;
 public class WorkflowStatusProgressTests : IDisposable
 {
     private readonly ApplicationDbContext _context;
+    private readonly SqliteConnection _connection;
     private readonly Mock<IWorkflowRegistry> _registryMock;
     private readonly Mock<IAgentRegistry> _agentRegistryMock;
     private readonly Mock<IAgentHandoffService> _agentHandoffServiceMock;
@@ -24,10 +27,9 @@ public class WorkflowStatusProgressTests : IDisposable
 
     public WorkflowStatusProgressTests()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
         _context = new ApplicationDbContext(options);
+        _context.Database.EnsureCreated();
 
         _registryMock = new Mock<IWorkflowRegistry>();
         _agentRegistryMock = new Mock<IAgentRegistry>();
@@ -38,8 +40,8 @@ public class WorkflowStatusProgressTests : IDisposable
 
     public void Dispose()
     {
-        _context.Database.EnsureDeleted();
         _context.Dispose();
+        _connection.Dispose();
     }
 
     [Fact]

@@ -615,6 +615,9 @@ public class DecisionService : IDecisionService
                 RespondedAt = DateTime.UtcNow
             };
 
+            // Count approved responses BEFORE adding the new one to avoid EF Core auto-fixup confusion
+            var existingApprovalCount = review.Responses.Count(r => r.ResponseType == "Approved");
+            
             _context.DecisionReviewResponses.Add(response);
 
             // Check if this is a "ChangesRequested" response
@@ -640,7 +643,8 @@ public class DecisionService : IDecisionService
                 var requiredApprovals = !string.IsNullOrEmpty(review.ReviewerIds) 
                     ? review.ReviewerIds.Split(",").Length 
                     : 1;
-                var approvedCount = review.Responses.Count(r => r.ResponseType == "Approved") + 1;
+                // Add 1 for the approval being submitted now
+                var approvedCount = existingApprovalCount + 1;
 
                 _logger.LogInformation(
                     "Review {ReviewId}: {ApprovedCount}/{RequiredApprovals} approvals received",

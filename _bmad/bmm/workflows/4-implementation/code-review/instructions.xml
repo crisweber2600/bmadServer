@@ -14,7 +14,100 @@
   <critical>Acceptance Criteria not implemented = HIGH severity finding</critical>
   <critical>Do not review files that are not part of the application's source code. Always exclude the _bmad/ and _bmad-output/ folders from the review. Always exclude IDE and CLI configuration folders like .cursor/ and .windsurf/ and .claude/</critical>
 
+  <!-- ============================================ -->
+  <!-- STEP 0: BUILD VERIFICATION GATE (MANDATORY) -->
+  <!-- ============================================ -->
+  <step n="0" goal="Verify code compiles before review">
+    <critical>CODE MUST BUILD BEFORE ANY REVIEW CAN PROCEED</critical>
+    <action>Detect project type and build command:
+      - If *.csproj exists: `dotnet build`
+      - If package.json exists: `npm run build` or `npm run compile`
+      - If Cargo.toml exists: `cargo build`
+      - If go.mod exists: `go build ./...`
+      - If pom.xml exists: `mvn compile`
+    </action>
+    <action>Run build command and capture output</action>
+    
+    <check if="build fails">
+      <output>🚫 **BUILD FAILED - REVIEW BLOCKED**
+        
+        Code cannot be reviewed until it compiles. This is a CRITICAL blocker.
+        
+        **Build Errors:**
+        {{build_errors}}
+        
+        **Action Required:** Fix compilation errors before requesting review.
+      </output>
+      <action>Set {{review_outcome}} = "BLOCKED"</action>
+      <action>HALT workflow - do not proceed to code review</action>
+    </check>
+    
+    <check if="build succeeds">
+      <output>✅ Build verification passed</output>
+      <action>Set {{build_status}} = "PASS"</action>
+    </check>
+  </step>
 
+  <!-- ============================================ -->
+  <!-- STEP 0.5: TEST VERIFICATION GATE            -->
+  <!-- ============================================ -->
+  <step n="0.5" goal="Verify tests pass or document baseline">
+    <critical>NO NEW TEST FAILURES ALLOWED</critical>
+    <action>Detect test command:
+      - If *.csproj exists: `dotnet test --no-build -l "console;verbosity=minimal"`
+      - If package.json exists: `npm test` or `npm run test`
+      - If Cargo.toml exists: `cargo test`
+      - If go.mod exists: `go test ./...`
+      - If pom.xml exists: `mvn test`
+    </action>
+    <action>Run test command and capture results</action>
+    <action>Parse test output for: passed_count, failed_count, skipped_count, total_count</action>
+    
+    <check if="tests cannot run">
+      <output>⚠️ Tests could not execute. Proceeding with review but TEST VERIFICATION SKIPPED.
+        
+        **Reason:** {{test_error}}
+        
+        This should be investigated after review.
+      </output>
+      <action>Set {{test_status}} = "SKIPPED"</action>
+    </check>
+    
+    <check if="new test failures introduced">
+      <output>🚫 **NEW TEST FAILURES - REVIEW BLOCKED**
+        
+        This change introduced {{new_failure_count}} new test failure(s).
+        
+        **Newly Failing Tests:**
+        {{new_failures_list}}
+        
+        **Action Required:** Fix new test failures before requesting review.
+      </output>
+      <action>Set {{review_outcome}} = "BLOCKED"</action>
+      <action>HALT workflow - do not proceed to code review</action>
+    </check>
+    
+    <check if="pre-existing failures exist">
+      <output>⚠️ **Pre-existing Test Failures:** {{failed_count}} tests failing
+        
+        These failures existed before this change and are tracked separately.
+        Tests: {{passed_count}}/{{total_count}} passed, {{skipped_count}} skipped
+        
+        Proceeding with review...
+      </output>
+      <action>Set {{test_status}} = "PASS_WITH_EXISTING_FAILURES"</action>
+      <action>Set {{test_baseline}} = {{failed_count}}</action>
+    </check>
+    
+    <check if="all tests pass">
+      <output>✅ Test verification passed: {{passed_count}}/{{total_count}} tests passing</output>
+      <action>Set {{test_status}} = "PASS"</action>
+    </check>
+  </step>
+
+  <!-- ============================================ -->
+  <!-- STEP 1: LOAD STORY AND DISCOVER CHANGES     -->
+  <!-- ============================================ -->
   <step n="1" goal="Load story and discover changes">
     <action>Use provided {{story_path}} or ask user which story file to review</action>
     <action>Read COMPLETE story file</action>

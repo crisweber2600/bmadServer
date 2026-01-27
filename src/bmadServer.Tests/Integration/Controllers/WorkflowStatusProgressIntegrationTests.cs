@@ -4,9 +4,8 @@ using bmadServer.ApiService.DTOs;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ServiceDefaults.Models.Workflows;
 using bmadServer.ServiceDefaults.Services.Workflows;
+using bmadServer.Tests.Integration;
 using FluentAssertions;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,39 +17,19 @@ using Xunit;
 
 namespace bmadServer.Tests.Integration.Controllers;
 
-public class WorkflowStatusProgressIntegrationTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
+public class WorkflowStatusProgressIntegrationTests : IClassFixture<TestWebApplicationFactory>, IDisposable
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly TestWebApplicationFactory _factory;
     private readonly HttpClient _client;
-    private static readonly string _databaseName = "TestDb_WorkflowStatusProgress_" + Guid.NewGuid();
     private static readonly JsonSerializerOptions _jsonOptions = new() 
     { 
         PropertyNameCaseInsensitive = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    public WorkflowStatusProgressIntegrationTests(WebApplicationFactory<Program> factory)
+    public WorkflowStatusProgressIntegrationTests(TestWebApplicationFactory factory)
     {
-        _factory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                var descriptor = services.SingleOrDefault(
-                    d => d.ServiceType == typeof(DbContextOptions<ApplicationDbContext>));
-                if (descriptor != null)
-                {
-                    services.Remove(descriptor);
-                }
-
-                services.AddDbContext<ApplicationDbContext>(options =>
-                {
-                    options.UseInMemoryDatabase(_databaseName);
-                });
-            });
-
-            builder.UseEnvironment("Test");
-        });
-
+        _factory = factory;
         _client = _factory.CreateClient();
     }
 
@@ -359,21 +338,24 @@ public class WorkflowStatusProgressIntegrationTests : IClassFixture<WebApplicati
         var existingUser = await context.Users.FirstOrDefaultAsync(u => u.Email == "test@example.com");
         if (existingUser != null)
         {
-            var loginRequest = new { Email = "test@example.com", Password = "TestPassword123!" };
-            var loginResponse = await _client.PostAsJsonAsync("/api/v1/auth/login", loginRequest);
-            var loginResult = await loginResponse.Content.ReadFromJsonAsync<bmadServer.ApiService.DTOs.LoginResponse>(_jsonOptions);
-            return loginResult!.AccessToken;
+            var loginReq = new { Email = "test@example.com", Password = "TestPassword123!" };
+            var loginResp = await _client.PostAsJsonAsync("/api/v1/auth/login", loginReq);
+            var loginRes = await loginResp.Content.ReadFromJsonAsync<bmadServer.ApiService.DTOs.LoginResponse>(_jsonOptions);
+            return loginRes!.AccessToken;
         }
 
         var registerRequest = new
         {
-            Name = "Test User",
+            DisplayName = "Test User",
             Email = "test@example.com",
             Password = "TestPassword123!"
         };
 
         var registerResponse = await _client.PostAsJsonAsync("/api/v1/auth/register", registerRequest);
-        var result = await registerResponse.Content.ReadFromJsonAsync<bmadServer.ApiService.DTOs.LoginResponse>(_jsonOptions);
-        return result!.AccessToken;
+        // After registration, we need to login to get the access token
+        var loginRequest = new { Email = "test@example.com", Password = "TestPassword123!" };
+        var loginResponse = await _client.PostAsJsonAsync("/api/v1/auth/login", loginRequest);
+        var loginResult = await loginResponse.Content.ReadFromJsonAsync<bmadServer.ApiService.DTOs.LoginResponse>(_jsonOptions);
+        return loginResult!.AccessToken;
     }
 }

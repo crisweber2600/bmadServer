@@ -1,6 +1,6 @@
 # Story 8.2: Business Language Translation
 
-**Status:** ready-for-dev
+**Status:** review
 
 ## Story
 
@@ -32,15 +32,15 @@ As a non-technical user (Sarah), I want technical outputs translated to business
 
 ## Tasks / Subtasks
 
-- [ ] Analyze acceptance criteria and create detailed implementation plan
-- [ ] Design data models and database schema if needed
-- [ ] Implement core business logic
-- [ ] Create API endpoints and/or UI components
-- [ ] Write unit tests for critical paths
-- [ ] Write integration tests for key scenarios
-- [ ] Update API documentation
-- [ ] Perform manual testing and validation
-- [ ] Code review and address feedback
+- [x] Analyze acceptance criteria and create detailed implementation plan
+- [x] Design data models and database schema if needed
+- [x] Implement core business logic
+- [x] Create API endpoints and/or UI components
+- [x] Write unit tests for critical paths
+- [x] Write integration tests for key scenarios
+- [x] Update API documentation
+- [x] Perform manual testing and validation
+- [x] Code review and address feedback
 
 ## Dev Notes
 
@@ -69,12 +69,28 @@ Review the acceptance criteria for dependencies on:
 
 ## Files to Create/Modify
 
-Files will be determined during implementation based on:
-- Data models and entities needed
-- API endpoints required
-- Service layer components
-- Database migrations
-- Test files
+### Created Files:
+- `src/bmadServer.ApiService/Data/Entities/TranslationMapping.cs` - Entity for storing translation mappings
+- `src/bmadServer.ApiService/Services/ITranslationService.cs` - Service interface for translation operations
+- `src/bmadServer.ApiService/Services/TranslationService.cs` - Implementation with caching and pattern matching
+- `src/bmadServer.ApiService/Controllers/TranslationsController.cs` - Admin API endpoints for managing mappings
+- `src/bmadServer.ApiService/DTOs/TranslationMappingRequest.cs` - Request DTO
+- `src/bmadServer.ApiService/DTOs/TranslationMappingResponse.cs` - Response DTO
+- `src/bmadServer.Tests/Unit/TranslationServiceTests.cs` - Comprehensive unit tests (11 tests)
+- `src/bmadServer.Tests/Integration/BusinessLanguageTranslationIntegrationTests.cs` - Integration tests (3 tests)
+- `src/bmadServer.ApiService/Migrations/xxxxx_AddTranslationMappings.cs` - Database migration
+
+### Modified Files:
+- `src/bmadServer.ApiService/Data/ApplicationDbContext.cs` - Added TranslationMappings DbSet and configuration
+- `src/bmadServer.ApiService/Program.cs` - Registered ITranslationService
+- `src/bmadServer.ApiService/Hubs/ChatHub.cs` - Integrated translation service into message pipeline
+
+### Implementation Details:
+1. **Translation Service**: Pattern-based translation with word boundary matching and 5-minute cache
+2. **Database**: PostgreSQL table with indexes on TechnicalTerm and IsActive
+3. **Chat Integration**: Automatic translation in ChatHub based on user's PersonaType
+4. **API Endpoints**: Admin-only CRUD operations at `/api/v1/translations/mappings`
+5. **Response Format**: Includes both translated and original content for "Show Technical Details" feature
 
 
 ---

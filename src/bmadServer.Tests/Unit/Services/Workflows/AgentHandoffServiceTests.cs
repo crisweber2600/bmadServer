@@ -1,6 +1,8 @@
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services.Workflows;
+using bmadServer.Tests.Helpers;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -11,16 +13,16 @@ namespace bmadServer.Tests.Unit.Services.Workflows;
 public class AgentHandoffServiceTests : IDisposable
 {
     private readonly ApplicationDbContext _context;
+    private readonly SqliteConnection _connection;
     private readonly Mock<ILogger<AgentHandoffService>> _loggerMock;
     private readonly AgentHandoffService _service;
 
     public AgentHandoffServiceTests()
     {
-        // Setup in-memory database
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
+        // Setup SQLite in-memory database
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
         _context = new ApplicationDbContext(options);
+        _context.Database.EnsureCreated();
         _loggerMock = new Mock<ILogger<AgentHandoffService>>();
 
         _service = new AgentHandoffService(_context, _loggerMock.Object);
@@ -602,5 +604,6 @@ public class AgentHandoffServiceTests : IDisposable
     public void Dispose()
     {
         _context.Dispose();
+        _connection.Dispose();
     }
 }

@@ -2,7 +2,6 @@ using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.DTOs.Checkpoints;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.Tests.Integration;
-using Microsoft.AspNetCore.Mvc.Testing;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -13,12 +12,12 @@ namespace bmadServer.Tests.Integration.Checkpoints;
 
 public record CreateCheckpointRequest(string? StepId);
 
-public class CheckpointsIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+public class CheckpointsIntegrationTests : IClassFixture<TestWebApplicationFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly TestWebApplicationFactory _factory;
     private readonly HttpClient _client;
 
-    public CheckpointsIntegrationTests(WebApplicationFactory<Program> factory)
+    public CheckpointsIntegrationTests(TestWebApplicationFactory factory)
     {
         _factory = factory;
         _client = _factory.CreateClient();
@@ -29,7 +28,7 @@ public class CheckpointsIntegrationTests : IClassFixture<WebApplicationFactory<P
     {
         // Arrange
         var (token, user) = await AuthenticateAsync();
-        var workflow = await CreateTestWorkflowAsync(user.Id);
+        var workflow = await CreateTestWorkflowAsync(token);
 
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
@@ -55,7 +54,7 @@ public class CheckpointsIntegrationTests : IClassFixture<WebApplicationFactory<P
     {
         // Arrange
         var (token, user) = await AuthenticateAsync();
-        var workflow = await CreateTestWorkflowAsync(user.Id);
+        var workflow = await CreateTestWorkflowAsync(token);
 
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
@@ -85,7 +84,7 @@ public class CheckpointsIntegrationTests : IClassFixture<WebApplicationFactory<P
     {
         // Arrange
         var (token, user) = await AuthenticateAsync();
-        var workflow = await CreateTestWorkflowAsync(user.Id);
+        var workflow = await CreateTestWorkflowAsync(token);
 
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
@@ -113,7 +112,7 @@ public class CheckpointsIntegrationTests : IClassFixture<WebApplicationFactory<P
     {
         // Arrange
         var (token, user) = await AuthenticateAsync();
-        var workflow = await CreateTestWorkflowAsync(user.Id);
+        var workflow = await CreateTestWorkflowAsync(token);
 
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
@@ -153,16 +152,20 @@ public class CheckpointsIntegrationTests : IClassFixture<WebApplicationFactory<P
         var email = $"test-{Guid.NewGuid()}@example.com";
         var password = "Test123!@#";
 
-        var registerResponse = await _client.PostAsJsonAsync("/api/auth/register", new
+        var registerResponse = await _client.PostAsJsonAsync("/api/v1/auth/register", new
         {
             email,
             password,
             displayName = "Test User"
         });
 
-        Assert.True(registerResponse.IsSuccessStatusCode);
+        if (!registerResponse.IsSuccessStatusCode)
+        {
+            var errorContent = await registerResponse.Content.ReadAsStringAsync();
+            throw new InvalidOperationException($"Registration failed: {registerResponse.StatusCode} - {errorContent}");
+        }
 
-        var loginResponse = await _client.PostAsJsonAsync("/api/auth/login", new
+        var loginResponse = await _client.PostAsJsonAsync("/api/v1/auth/login", new
         {
             email,
             password
@@ -170,7 +173,7 @@ public class CheckpointsIntegrationTests : IClassFixture<WebApplicationFactory<P
 
         var loginResult = await loginResponse.Content.ReadFromJsonAsync<JsonDocument>();
         var token = loginResult!.RootElement.GetProperty("accessToken").GetString()!;
-        var userId = Guid.Parse(loginResult.RootElement.GetProperty("userId").GetString()!);
+        var userId = Guid.Parse(loginResult.RootElement.GetProperty("user").GetProperty("id").GetString()!);
 
         return (token, new User 
         { 
@@ -181,34 +184,35 @@ public class CheckpointsIntegrationTests : IClassFixture<WebApplicationFactory<P
         });
     }
 
-    private async Task<WorkflowInstance> CreateTestWorkflowAsync(Guid userId)
+    private async Task<WorkflowInstance> CreateTestWorkflowAsync(string token)
     {
-        var workflowId = Guid.NewGuid();
+        // Set auth header for this request
+        var previousAuth = _client.DefaultRequestHeaders.Authorization;
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         
-        // Create workflow via API or directly in DB
-        // For simplicity, assuming workflow creation is working
-        var createResponse = await _client.PostAsJsonAsync("/api/v1/workflows", new
+        try
         {
-            workflowDefinitionId = "test-workflow",
-            initialContext = new { }
-        });
+            // Create workflow via API using a valid workflow definition
+            var createResponse = await _client.PostAsJsonAsync("/api/v1/workflows", new
+            {
+                WorkflowId = "create-prd",
+                InitialContext = new Dictionary<string, object>()
+            });
 
-        if (createResponse.IsSuccessStatusCode)
-        {
-            var workflow = await createResponse.Content.ReadFromJsonAsync<WorkflowInstance>();
-            return workflow!;
+            if (createResponse.IsSuccessStatusCode)
+            {
+                var workflow = await createResponse.Content.ReadFromJsonAsync<WorkflowInstance>();
+                return workflow!;
+            }
+
+            // Log the error for debugging
+            var errorContent = await createResponse.Content.ReadAsStringAsync();
+            throw new InvalidOperationException($"Workflow creation failed: {createResponse.StatusCode} - {errorContent}");
         }
-
-        // Fallback: create basic workflow instance
-        return new WorkflowInstance
+        finally
         {
-            Id = workflowId,
-            WorkflowDefinitionId = "test-workflow",
-            UserId = userId,
-            CurrentStep = 0,
-            Status = WorkflowStatus.Running,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+            // Restore previous auth header
+            _client.DefaultRequestHeaders.Authorization = previousAuth;
+        }
     }
 }

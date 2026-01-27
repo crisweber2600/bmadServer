@@ -192,5 +192,67 @@ public class SessionService : ISessionService
         session.ExpiresAt = DateTime.UtcNow.AddMinutes(IdleTimeoutMinutes);
 
         await _dbContext.SaveChangesAsync();
+        _logger.LogDebug("Updated activity for session {SessionId}", sessionId);
+    }
+
+    public async Task<SwitchPersonaResult> SwitchSessionPersonaAsync(Guid sessionId, Guid userId, PersonaType newPersona)
+    {
+        var session = await _dbContext.Sessions
+            .Include(s => s.User)
+            .FirstOrDefaultAsync(s => s.Id == sessionId && s.UserId == userId && s.IsActive);
+
+        if (session == null)
+        {
+            _logger.LogWarning("Cannot switch persona: Session {SessionId} not found or not owned by user {UserId}", 
+                sessionId, userId);
+            return new SwitchPersonaResult 
+            { 
+                Success = false,
+                NewPersona = null,
+                PreviousPersona = null,
+                SwitchCount = 0
+            };
+        }
+
+        var previousPersona = session.SessionPersona ?? session.User.PersonaType;
+        session.SessionPersona = newPersona;
+        session.PersonaSwitchCount++;
+        session.LastActivityAt = DateTime.UtcNow;
+        session.ExpiresAt = DateTime.UtcNow.AddHours(24); // Extend expiration on activity
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Switched session persona for session {SessionId}: {PreviousPersona} -> {NewPersona} (Count: {SwitchCount})",
+            sessionId, previousPersona, newPersona, session.PersonaSwitchCount);
+
+        // Suggest Hybrid mode if user switches frequently (3 or more switches)
+        string? suggestion = session.PersonaSwitchCount >= 3 
+            ? "Would you like to try Hybrid mode instead? It adapts automatically based on context."
+            : null;
+
+        return new SwitchPersonaResult
+        {
+            Success = true,
+            NewPersona = newPersona,
+            PreviousPersona = previousPersona,
+            SwitchCount = session.PersonaSwitchCount,
+            SuggestionMessage = suggestion
+        };
+    }
+
+    public async Task<PersonaType> GetEffectivePersonaAsync(Guid sessionId, Guid userId)
+    {
+        var session = await _dbContext.Sessions
+            .Include(s => s.User)
+            .FirstOrDefaultAsync(s => s.Id == sessionId && s.UserId == userId && s.IsActive);
+
+        if (session == null)
+        {
+            throw new InvalidOperationException($"Session {sessionId} not found for user {userId}");
+        }
+
+        // Session persona takes precedence over user default
+        return session.SessionPersona ?? session.User.PersonaType;
     }
 }

@@ -5,7 +5,9 @@ using bmadServer.ApiService.Services.Workflows;
 using bmadServer.ApiService.Services.Workflows.Agents;
 using bmadServer.ServiceDefaults.Models.Workflows;
 using bmadServer.ServiceDefaults.Services.Workflows;
+using bmadServer.Tests.Helpers;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -17,6 +19,7 @@ namespace bmadServer.Tests.Unit.Services.Workflows;
 public class StepExecutorTests : IDisposable
 {
     private readonly ApplicationDbContext _context;
+    private readonly SqliteConnection _connection;
     private readonly Mock<IAgentRouter> _agentRouterMock;
     private readonly Mock<IWorkflowRegistry> _workflowRegistryMock;
     private readonly Mock<IWorkflowInstanceService> _workflowInstanceServiceMock;
@@ -27,11 +30,10 @@ public class StepExecutorTests : IDisposable
 
     public StepExecutorTests()
     {
-        // Setup in-memory database
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
+        // Setup SQLite in-memory database
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
         _context = new ApplicationDbContext(options);
+        _context.Database.EnsureCreated();
 
         _agentRouterMock = new Mock<IAgentRouter>();
         _workflowRegistryMock = new Mock<IWorkflowRegistry>();
@@ -756,7 +758,7 @@ public class StepExecutorTests : IDisposable
 
     public void Dispose()
     {
-        _context.Database.EnsureDeleted();
         _context.Dispose();
+        _connection.Dispose();
     }
 }

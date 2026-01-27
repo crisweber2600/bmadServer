@@ -4,6 +4,8 @@ using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services.Workflows;
 using bmadServer.ApiService.Services.Workflows.Agents;
+using bmadServer.Tests.Helpers;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -11,9 +13,10 @@ using Xunit;
 
 namespace bmadServer.Tests.Integration.Workflows;
 
-public class AgentMessagingIntegrationTests
+public class AgentMessagingIntegrationTests : IDisposable
 {
     private readonly ApplicationDbContext _dbContext;
+    private readonly SqliteConnection _connection;
     private readonly Mock<IAgentRouter> _mockAgentRouter;
     private readonly Mock<ILogger<AgentMessaging>> _mockLogger;
     private readonly AgentRegistry _agentRegistry;
@@ -21,11 +24,9 @@ public class AgentMessagingIntegrationTests
 
     public AgentMessagingIntegrationTests()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: $"TestDb_{Guid.NewGuid()}")
-            .Options;
-
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
         _dbContext = new ApplicationDbContext(options);
+        _dbContext.Database.EnsureCreated();
         _mockAgentRouter = new Mock<IAgentRouter>();
         _mockLogger = new Mock<ILogger<AgentMessaging>>();
         var registryLogger = new Mock<ILogger<AgentRegistry>>();
@@ -36,6 +37,12 @@ public class AgentMessagingIntegrationTests
             _mockAgentRouter.Object,
             _dbContext,
             _mockLogger.Object);
+    }
+
+    public void Dispose()
+    {
+        _dbContext.Dispose();
+        _connection.Dispose();
     }
 
     [Fact]

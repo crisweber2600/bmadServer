@@ -2,6 +2,8 @@ using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.Models;
 using bmadServer.ApiService.Services;
+using bmadServer.Tests.Helpers;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -13,29 +15,34 @@ namespace bmadServer.Tests.Unit;
 /// Tests for multi-device session scenarios.
 /// Validates that users can have multiple active sessions and workflow state synchronization.
 /// </summary>
-public class MultiDeviceSessionTests
+public class MultiDeviceSessionTests : IDisposable
 {
     private readonly Mock<ILogger<SessionService>> _loggerMock;
+    private SqliteConnection? _connection;
 
     public MultiDeviceSessionTests()
     {
         _loggerMock = new Mock<ILogger<SessionService>>();
     }
 
-    private ApplicationDbContext CreateInMemoryDbContext()
+    private ApplicationDbContext CreateSqliteDbContext()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
+        var context = new ApplicationDbContext(options);
+        context.Database.EnsureCreated();
+        return context;
+    }
 
-        return new ApplicationDbContext(options);
+    public void Dispose()
+    {
+        _connection?.Dispose();
     }
 
     [Fact]
     public async Task User_Should_Have_Separate_Sessions_Per_Device()
     {
         // Arrange
-        await using var dbContext = CreateInMemoryDbContext();
+        await using var dbContext = CreateSqliteDbContext();
         var service = new SessionService(dbContext, _loggerMock.Object);
 
         var user = new User
@@ -81,7 +88,7 @@ public class MultiDeviceSessionTests
     public async Task Workflow_State_Should_Sync_Across_Devices()
     {
         // Arrange
-        await using var dbContext = CreateInMemoryDbContext();
+        await using var dbContext = CreateSqliteDbContext();
         var service = new SessionService(dbContext, _loggerMock.Object);
 
         var user = new User
@@ -127,7 +134,7 @@ public class MultiDeviceSessionTests
     public async Task Last_Write_Wins_For_Concurrent_Updates()
     {
         // Arrange
-        await using var dbContext = CreateInMemoryDbContext();
+        await using var dbContext = CreateSqliteDbContext();
         var service = new SessionService(dbContext, _loggerMock.Object);
 
         var user = new User
@@ -174,7 +181,7 @@ public class MultiDeviceSessionTests
     public async Task Most_Recent_Session_Should_Be_Recovered()
     {
         // Arrange
-        await using var dbContext = CreateInMemoryDbContext();
+        await using var dbContext = CreateSqliteDbContext();
         var service = new SessionService(dbContext, _loggerMock.Object);
 
         var user = new User

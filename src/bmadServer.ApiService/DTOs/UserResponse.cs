@@ -1,3 +1,5 @@
+using bmadServer.ApiService.Data.Entities;
+
 namespace bmadServer.ApiService.DTOs;
 
 /// <summary>
@@ -24,4 +26,9 @@ public class UserResponse
     /// Account creation timestamp (UTC)
     /// </summary>
     public DateTime CreatedAt { get; set; }
+    
+    /// <summary>
+    /// Persona type for communication preferences
+    /// </summary>
+    public PersonaType PersonaType { get; set; }
 }

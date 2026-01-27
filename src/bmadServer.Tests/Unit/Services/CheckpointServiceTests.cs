@@ -1,6 +1,8 @@
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services.Checkpoints;
+using bmadServer.Tests.Helpers;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -9,22 +11,26 @@ using Xunit;
 
 namespace bmadServer.Tests.Unit.Services;
 
-public class CheckpointServiceTests
+public class CheckpointServiceTests : IDisposable
 {
     private readonly ApplicationDbContext _context;
+    private readonly SqliteConnection _connection;
     private readonly CheckpointService _service;
     private readonly Mock<ILogger<CheckpointService>> _loggerMock;
 
     public CheckpointServiceTests()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
-        
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
         _context = new ApplicationDbContext(options);
+        _context.Database.EnsureCreated();
         _loggerMock = new Mock<ILogger<CheckpointService>>();
         _service = new CheckpointService(_context, _loggerMock.Object);
+    }
+
+    public void Dispose()
+    {
+        _context.Dispose();
+        _connection.Dispose();
     }
 
     [Fact]

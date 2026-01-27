@@ -3,12 +3,10 @@ using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.Models.Decisions;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services;
+using bmadServer.Tests.Integration;
 using FluentAssertions;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -18,40 +16,23 @@ using DecisionReviewModelResponse = bmadServer.ApiService.Models.Decisions.Decis
 
 namespace bmadServer.Tests.Integration.Controllers;
 
-public class DecisionReviewTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
+public class DecisionReviewTests : IAsyncLifetime
 {
-    private readonly WebApplicationFactory<Program> _factory;
-    private readonly HttpClient _client;
-    private static readonly string _databaseName = "TestDb_DecisionReview_" + Guid.NewGuid();
+    private TestWebApplicationFactory _factory = null!;
+    private HttpClient _client = null!;
 
-    public DecisionReviewTests(WebApplicationFactory<Program> factory)
+    public async Task InitializeAsync()
     {
-        _factory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                var descriptor = services.SingleOrDefault(
-                    d => d.ServiceType == typeof(DbContextOptions<ApplicationDbContext>));
-                if (descriptor != null)
-                {
-                    services.Remove(descriptor);
-                }
-
-                services.AddDbContext<ApplicationDbContext>(options =>
-                {
-                    options.UseInMemoryDatabase(_databaseName);
-                });
-            });
-
-            builder.UseEnvironment("Test");
-        });
-
+        // Each test gets its own factory and database to avoid data pollution
+        _factory = new TestWebApplicationFactory();
         _client = _factory.CreateClient();
+        await Task.CompletedTask;
     }
 
-    public void Dispose()
+    public async Task DisposeAsync()
     {
         _client.Dispose();
+        await _factory.DisposeAsync();
     }
 
     [Fact]

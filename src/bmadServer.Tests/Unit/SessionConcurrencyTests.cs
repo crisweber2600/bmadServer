@@ -2,6 +2,8 @@ using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.Models;
 using bmadServer.ApiService.Services;
+using bmadServer.Tests.Helpers;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -13,29 +15,34 @@ namespace bmadServer.Tests.Unit;
 /// Tests for optimistic concurrency control in session updates.
 /// Validates version tracking and conflict detection per AC.
 /// </summary>
-public class SessionConcurrencyTests
+public class SessionConcurrencyTests : IDisposable
 {
     private readonly Mock<ILogger<SessionService>> _loggerMock;
+    private SqliteConnection? _connection;
 
     public SessionConcurrencyTests()
     {
         _loggerMock = new Mock<ILogger<SessionService>>();
     }
 
-    private ApplicationDbContext CreateInMemoryDbContext()
+    private ApplicationDbContext CreateSqliteDbContext()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
+        var context = new ApplicationDbContext(options);
+        context.Database.EnsureCreated();
+        return context;
+    }
 
-        return new ApplicationDbContext(options);
+    public void Dispose()
+    {
+        _connection?.Dispose();
     }
 
     [Fact]
     public async Task UpdateSessionStateAsync_Should_Increment_Version_On_Each_Update()
     {
         // Arrange
-        await using var dbContext = CreateInMemoryDbContext();
+        await using var dbContext = CreateSqliteDbContext();
         var service = new SessionService(dbContext, _loggerMock.Object);
 
         var user = new User
@@ -76,7 +83,7 @@ public class SessionConcurrencyTests
     public async Task UpdateSessionStateAsync_Should_Track_LastModifiedBy()
     {
         // Arrange
-        await using var dbContext = CreateInMemoryDbContext();
+        await using var dbContext = CreateSqliteDbContext();
         var service = new SessionService(dbContext, _loggerMock.Object);
 
         var user = new User
@@ -108,7 +115,7 @@ public class SessionConcurrencyTests
     public async Task UpdateSessionStateAsync_Should_Update_ExpiresAt_On_Activity()
     {
         // Arrange
-        await using var dbContext = CreateInMemoryDbContext();
+        await using var dbContext = CreateSqliteDbContext();
         var service = new SessionService(dbContext, _loggerMock.Object);
 
         var user = new User
@@ -142,7 +149,7 @@ public class SessionConcurrencyTests
     public async Task Concurrent_Updates_Should_Use_Version_Tracking()
     {
         // Arrange
-        await using var dbContext = CreateInMemoryDbContext();
+        await using var dbContext = CreateSqliteDbContext();
         var service = new SessionService(dbContext, _loggerMock.Object);
 
         var user = new User

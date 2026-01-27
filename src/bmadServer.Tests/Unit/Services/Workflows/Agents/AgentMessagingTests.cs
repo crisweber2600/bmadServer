@@ -2,6 +2,8 @@ using System.Text.Json;
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Services.Workflows;
 using bmadServer.ApiService.Services.Workflows.Agents;
+using bmadServer.Tests.Helpers;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -14,16 +16,15 @@ public class AgentMessagingTests : IDisposable
     private readonly Mock<IAgentRegistry> _mockAgentRegistry;
     private readonly Mock<IAgentRouter> _mockAgentRouter;
     private readonly ApplicationDbContext _dbContext;
+    private readonly SqliteConnection _connection;
     private readonly Mock<ILogger<AgentMessaging>> _mockLogger;
     private readonly AgentMessaging _sut;
 
     public AgentMessagingTests()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: $"TestDb_{Guid.NewGuid()}")
-            .Options;
-
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
         _dbContext = new ApplicationDbContext(options);
+        _dbContext.Database.EnsureCreated();
         _mockAgentRegistry = new Mock<IAgentRegistry>();
         _mockAgentRouter = new Mock<IAgentRouter>();
         _mockLogger = new Mock<ILogger<AgentMessaging>>();
@@ -38,6 +39,7 @@ public class AgentMessagingTests : IDisposable
     public void Dispose()
     {
         _dbContext?.Dispose();
+        _connection?.Dispose();
     }
 
     [Fact]

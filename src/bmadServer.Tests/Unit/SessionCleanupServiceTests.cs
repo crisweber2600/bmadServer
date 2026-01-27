@@ -1,6 +1,8 @@
 using bmadServer.ApiService.BackgroundServices;
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
+using bmadServer.Tests.Helpers;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -13,22 +15,28 @@ namespace bmadServer.Tests.Unit;
 /// Unit tests for SessionCleanupService background worker.
 /// Tests automatic expiration of idle sessions while preserving audit trail.
 /// </summary>
-public class SessionCleanupServiceTests
+public class SessionCleanupServiceTests : IDisposable
 {
-    private ApplicationDbContext CreateInMemoryDbContext()
-    {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
+    private SqliteConnection? _connection;
 
-        return new ApplicationDbContext(options);
+    private ApplicationDbContext CreateSqliteDbContext()
+    {
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
+        var context = new ApplicationDbContext(options);
+        context.Database.EnsureCreated();
+        return context;
+    }
+
+    public void Dispose()
+    {
+        _connection?.Dispose();
     }
 
     [Fact]
     public async Task CleanupService_Should_Expire_Sessions_Past_ExpiresAt()
     {
         // Arrange
-        await using var dbContext = CreateInMemoryDbContext();
+        await using var dbContext = CreateSqliteDbContext();
         
         var user = new User
         {
@@ -97,7 +105,7 @@ public class SessionCleanupServiceTests
     public async Task CleanupService_Should_Preserve_Session_For_Audit_Trail()
     {
         // Arrange
-        await using var dbContext = CreateInMemoryDbContext();
+        await using var dbContext = CreateSqliteDbContext();
         
         var user = new User
         {
@@ -150,7 +158,7 @@ public class SessionCleanupServiceTests
     public async Task CleanupService_Should_Not_Affect_Already_Inactive_Sessions()
     {
         // Arrange
-        await using var dbContext = CreateInMemoryDbContext();
+        await using var dbContext = CreateSqliteDbContext();
         
         var user = new User
         {

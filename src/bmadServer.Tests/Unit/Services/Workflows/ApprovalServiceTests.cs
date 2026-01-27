@@ -1,7 +1,9 @@
+using bmadServer.Tests.Helpers;
 using FluentAssertions;
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services.Workflows;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -9,21 +11,26 @@ using Xunit;
 
 namespace bmadServer.Tests.Unit.Services.Workflows;
 
-public class ApprovalServiceTests
+public class ApprovalServiceTests : IDisposable
 {
     private readonly ApplicationDbContext _context;
+    private readonly SqliteConnection _connection;
     private readonly Mock<ILogger<ApprovalService>> _mockLogger;
     private readonly ApprovalService _service;
 
     public ApprovalServiceTests()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"TestDb_{Guid.NewGuid()}")
-            .Options;
-
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
         _context = new ApplicationDbContext(options);
+        _context.Database.EnsureCreated();
         _mockLogger = new Mock<ILogger<ApprovalService>>();
         _service = new ApprovalService(_context, _mockLogger.Object);
+    }
+
+    public void Dispose()
+    {
+        _context.Dispose();
+        _connection.Dispose();
     }
 
     #region CreateApprovalRequestAsync Tests
@@ -195,6 +202,21 @@ public class ApprovalServiceTests
         // Arrange
         var workflowId = Guid.NewGuid();
         var userId = Guid.NewGuid();
+        
+        // Create WorkflowInstance first (required for ApproveAsync validation)
+        var instance = new WorkflowInstance
+        {
+            Id = workflowId,
+            WorkflowDefinitionId = "test-workflow",
+            UserId = userId,
+            Status = WorkflowStatus.Running,
+            CurrentStep = 1,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _context.WorkflowInstances.Add(instance);
+        await _context.SaveChangesAsync();
+        
         var approval = await _service.CreateApprovalRequestAsync(
             workflowId, "agent", "step", "response", 0.65, null, userId);
 
@@ -219,9 +241,10 @@ public class ApprovalServiceTests
         var approval = CreateAndSaveApprovalRequest();
         var userId = approval.RequestedBy;
 
-        // Create workflow instance
-        var workflowInstance = CreateAndSaveWorkflowInstance(approval.WorkflowInstanceId, userId);
-        approval.WorkflowInstance = workflowInstance;
+        // WorkflowInstance already created by CreateAndSaveApprovalRequest
+        // Just fetch the existing instance to link it
+        var workflowInstance = await _context.WorkflowInstances.FindAsync(approval.WorkflowInstanceId);
+        approval.WorkflowInstance = workflowInstance!;
         await _context.SaveChangesAsync();
 
         // Act
@@ -257,8 +280,10 @@ public class ApprovalServiceTests
         // Arrange
         var approval = CreateAndSaveApprovalRequest();
         var otherUserId = Guid.NewGuid();
-        var workflowInstance = CreateAndSaveWorkflowInstance(approval.WorkflowInstanceId, approval.RequestedBy);
-        approval.WorkflowInstance = workflowInstance;
+        
+        // WorkflowInstance already created by CreateAndSaveApprovalRequest
+        var workflowInstance = await _context.WorkflowInstances.FindAsync(approval.WorkflowInstanceId);
+        approval.WorkflowInstance = workflowInstance!;
         await _context.SaveChangesAsync();
 
         // Act
@@ -281,8 +306,10 @@ public class ApprovalServiceTests
         var approval = CreateAndSaveApprovalRequest();
         var userId = approval.RequestedBy;
         var modifiedResponse = "This is the modified response.";
-        var workflowInstance = CreateAndSaveWorkflowInstance(approval.WorkflowInstanceId, userId);
-        approval.WorkflowInstance = workflowInstance;
+        
+        // WorkflowInstance already created by CreateAndSaveApprovalRequest
+        var workflowInstance = await _context.WorkflowInstances.FindAsync(approval.WorkflowInstanceId);
+        approval.WorkflowInstance = workflowInstance!;
         await _context.SaveChangesAsync();
 
         // Act
@@ -326,8 +353,10 @@ public class ApprovalServiceTests
         var approval = CreateAndSaveApprovalRequest();
         var userId = approval.RequestedBy;
         var rejectionReason = "Does not meet requirements.";
-        var workflowInstance = CreateAndSaveWorkflowInstance(approval.WorkflowInstanceId, userId);
-        approval.WorkflowInstance = workflowInstance;
+        
+        // WorkflowInstance already created by CreateAndSaveApprovalRequest
+        var workflowInstance = await _context.WorkflowInstances.FindAsync(approval.WorkflowInstanceId);
+        approval.WorkflowInstance = workflowInstance!;
         await _context.SaveChangesAsync();
 
         // Act
@@ -369,6 +398,20 @@ public class ApprovalServiceTests
         // Arrange
         var workflowId = Guid.NewGuid();
         var userId = Guid.NewGuid();
+
+        // Create WorkflowInstance first (required for foreign key)
+        var instance = new WorkflowInstance
+        {
+            Id = workflowId,
+            WorkflowDefinitionId = "test-workflow",
+            UserId = userId,
+            Status = WorkflowStatus.Running,
+            CurrentStep = 1,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _context.WorkflowInstances.Add(instance);
+        await _context.SaveChangesAsync();
 
         // Create approval with old RequestedAt (> 24 hours)
         var approval = new ApprovalRequest

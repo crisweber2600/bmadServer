@@ -57,6 +57,15 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.IRefreshTokenService, 
 // Register session service
 builder.Services.AddScoped<bmadServer.ApiService.Services.ISessionService, bmadServer.ApiService.Services.SessionService>();
 
+// Register translation service
+builder.Services.AddScoped<bmadServer.ApiService.Services.ITranslationService, bmadServer.ApiService.Services.TranslationService>();
+
+// Register context analysis service
+builder.Services.AddScoped<bmadServer.ApiService.Services.IContextAnalysisService, bmadServer.ApiService.Services.ContextAnalysisService>();
+
+// Register response metadata service
+builder.Services.AddScoped<bmadServer.ApiService.Services.IResponseMetadataService, bmadServer.ApiService.Services.ResponseMetadataService>();
+
 // Register session cleanup background service
 builder.Services.AddHostedService<bmadServer.ApiService.BackgroundServices.SessionCleanupService>();
 
@@ -78,6 +87,15 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.Agents.IAgen
 // Register step executor
 builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IStepExecutor, bmadServer.ApiService.Services.Workflows.StepExecutor>();
 
+// Register approval service (Epic 5 - Multi-Agent Collaboration)
+builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IApprovalService, bmadServer.ApiService.Services.Workflows.ApprovalService>();
+
+// Register shared context service (Story 5-3)
+builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.ISharedContextService, bmadServer.ApiService.Services.Workflows.SharedContextService>();
+
+// Register agent handoff service (Story 5-4)
+builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IAgentHandoffService, bmadServer.ApiService.Services.Workflows.AgentHandoffService>();
+
 // Register participant service
 builder.Services.AddScoped<bmadServer.ApiService.Services.IParticipantService, bmadServer.ApiService.Services.ParticipantService>();
 
@@ -94,6 +112,9 @@ builder.Services.AddDistributedMemoryCache();
 
 // Register contribution metrics service (Story 7.3)
 builder.Services.AddScoped<bmadServer.ApiService.Services.IContributionMetricsService, bmadServer.ApiService.Services.ContributionMetricsService>();
+
+// Register decision services (Epic 6 - Decision Management)
+builder.Services.AddScoped<bmadServer.ApiService.Services.Decisions.IDecisionService, bmadServer.ApiService.Services.Decisions.DecisionService>();
 
 // Register conflict detection services (Story 7.4)
 builder.Services.AddScoped<bmadServer.ApiService.Services.IConflictDetectionService, bmadServer.ApiService.Services.ConflictDetectionService>();
@@ -227,5 +248,8 @@ app.MapHub<bmadServer.ApiService.Hubs.ChatHub>("/hubs/chat");
 // Start the application
 app.Run();
 
-// Make Program class accessible to tests
-public partial class Program { }
+// Make Program class accessible to tests in bmadServer.ApiService namespace
+namespace bmadServer.ApiService
+{
+    public partial class Program { }
+}

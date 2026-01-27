@@ -4,7 +4,9 @@ using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.Models;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services;
+using bmadServer.Tests.Helpers;
 using FluentAssertions;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Moq;
@@ -12,20 +14,26 @@ using Xunit;
 
 namespace bmadServer.Tests.Unit.Services;
 
-public class ContributionMetricsServiceTests
+public class ContributionMetricsServiceTests : IDisposable
 {
     private readonly Mock<IDistributedCache> _mockCache;
     private readonly ApplicationDbContext _dbContext;
+    private readonly SqliteConnection _connection;
     private readonly IContributionMetricsService _service;
 
     public ContributionMetricsServiceTests()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"TestDb_Contributions_{Guid.NewGuid()}")
-            .Options;
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
         _dbContext = new ApplicationDbContext(options);
+        _dbContext.Database.EnsureCreated();
         _mockCache = new Mock<IDistributedCache>();
         _service = new ContributionMetricsService(_dbContext, _mockCache.Object);
+    }
+
+    public void Dispose()
+    {
+        _dbContext.Dispose();
+        _connection.Dispose();
     }
 
     [Fact]

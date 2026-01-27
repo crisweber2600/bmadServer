@@ -1,5 +1,7 @@
 using System.Text.Json;
+using bmadServer.Tests.Helpers;
 using Moq;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using bmadServer.ApiService.Data;
@@ -9,21 +11,26 @@ using Xunit;
 
 namespace bmadServer.Tests.Unit.Services.Workflows;
 
-public class SharedContextServiceTests
+public class SharedContextServiceTests : IDisposable
 {
     private readonly ApplicationDbContext _dbContext;
+    private readonly SqliteConnection _connection;
     private readonly Mock<ILogger<SharedContextService>> _loggerMock;
     private readonly SharedContextService _service;
 
     public SharedContextServiceTests()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
-
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
         _dbContext = new ApplicationDbContext(options);
+        _dbContext.Database.EnsureCreated();
         _loggerMock = new Mock<ILogger<SharedContextService>>();
         _service = new SharedContextService(_dbContext, _loggerMock.Object);
+    }
+
+    public void Dispose()
+    {
+        _dbContext.Dispose();
+        _connection.Dispose();
     }
 
     [Fact]
