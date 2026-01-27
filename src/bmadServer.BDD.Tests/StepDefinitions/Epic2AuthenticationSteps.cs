@@ -29,7 +29,6 @@ public class Epic2AuthenticationSteps : IDisposable
     private Dictionary<Guid, string> _refreshTokens = new();
     private HashSet<string> _usedRefreshTokens = new();
 
-    private HttpResponseMessage? _lastResponse;
     private string? _lastError;
     private int _lastStatusCode;
     private string? _accessToken;
@@ -221,8 +220,12 @@ public class Epic2AuthenticationSteps : IDisposable
     public void ThenThePasswordShouldBeHashedUsingBcryptWithCost(int cost)
     {
         Assert.NotNull(_currentPasswordHash);
-        // In mock, we just verify it was hashed (starts with special prefix)
-        Assert.True(_currentPasswordHash.StartsWith("$hash$"), "Password should be hashed");
+        // BCrypt hashes start with $2a$, $2b$, or $2y$ followed by cost
+        Assert.True(_currentPasswordHash.StartsWith("$2"), 
+            $"Password should be hashed with BCrypt (starts with $2), got: {_currentPasswordHash[..Math.Min(10, _currentPasswordHash.Length)]}");
+        // Verify cost factor is embedded in hash (e.g., $2a$12$)
+        Assert.True(_currentPasswordHash.Contains($"${cost}$"), 
+            $"BCrypt hash should use cost factor {cost}");
     }
 
     [Then(@"the error should indicate ""(.*)""")]
@@ -635,14 +638,13 @@ public class Epic2AuthenticationSteps : IDisposable
 
     private string HashPassword(string password)
     {
-        // Mock bcrypt hash - in real implementation uses BCrypt
-        return $"$hash${Convert.ToBase64String(Encoding.UTF8.GetBytes(password))}";
+        // Use real BCrypt with cost factor 12 as specified in AC
+        return BCrypt.Net.BCrypt.HashPassword(password, workFactor: 12);
     }
 
     private bool VerifyPassword(string password, string hash)
     {
-        var expectedHash = HashPassword(password);
-        return hash == expectedHash;
+        return BCrypt.Net.BCrypt.Verify(password, hash);
     }
 
     private string GenerateAccessToken(Guid userId, string email)

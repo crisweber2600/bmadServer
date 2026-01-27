@@ -22,8 +22,7 @@ public class Epic7CollaborationSteps : IDisposable
     private Guid? _participantUserId;
     private WorkflowParticipant? _addedParticipant;
     private List<WorkflowParticipant> _participants = new();
-    private int _lastStatusCode;
-    private string? _lastError;
+    private int _lastStatusCode;  // Used for API response simulation
 
     public Epic7CollaborationSteps()
     {

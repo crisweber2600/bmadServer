@@ -50,10 +50,9 @@ test.describe('Story 3.3: Chat Input Component with Rich Interactions', () => {
     await chatPage.sendMessageWithKeyboard(testMessage);
 
     // Then message should be sent
-    await page.waitForTimeout(500);
     const messages = page.locator('[data-testid="message"]');
     const lastMessage = messages.last();
-    await expect(lastMessage).toContainText(testMessage);
+    await expect(lastMessage).toContainText(testMessage, { timeout: 5000 });
 
     // And input should be cleared
     const inputValue = await chatPage.messageInput.inputValue();
@@ -81,12 +80,13 @@ test.describe('Story 3.3: Chat Input Component with Rich Interactions', () => {
     expect(countColor).toMatch(/rgb\((2[0-5]\d|1\d\d),\s*\d{1,2},\s*\d{1,2}\)/);
   });
 
-  test('Send button disabled at 2000+ chars @P1', async ({ page }) => {
+  test('Send button remains enabled at 2000+ chars @P1', async ({ page }) => {
     // Given I type 2000+ characters
     await chatPage.messageInput.fill('a'.repeat(2001));
 
-    // Then Send button should be disabled
-    await expect(chatPage.sendButton).toBeDisabled();
+    // Then Send button should STILL be enabled (not a hard limit)
+    // Per AC: "Character count turns red" but sending is allowed
+    await expect(chatPage.sendButton).toBeEnabled();
   });
 
   test('Draft preservation in localStorage @P1', async ({ page, context }) => {
@@ -96,7 +96,7 @@ test.describe('Story 3.3: Chat Input Component with Rich Interactions', () => {
 
     // When I navigate away
     await page.goto('/settings');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('domcontentloaded');
 
     // And return to chat
     await chatPage.goto();

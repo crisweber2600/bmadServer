@@ -9,11 +9,7 @@ namespace bmadServer.BDD.Tests.StepDefinitions;
 [Binding]
 public class Epic1FoundationSteps
 {
-    private bool _projectInitialized;
-    private bool _dotnetInstalled;
-    private bool _projectBuilt;
     private bool _aspireRunning;
-    private HttpResponseMessage? _healthResponse;
 
     [Given(@"the project is initialized")]
     public void GivenTheProjectIsInitialized()
@@ -21,14 +17,13 @@ public class Epic1FoundationSteps
         // Verify project structure exists
         var projectRoot = GetProjectRoot();
         Assert.True(Directory.Exists(projectRoot), "Project root should exist");
-        _projectInitialized = true;
     }
 
     [Given(@"\.NET (\d+) SDK is installed")]
     public void GivenDotNetSdkIsInstalled(int version)
     {
-        // Check .NET SDK version
-        _dotnetInstalled = true;
+        // .NET SDK version check - assumes installed if tests are running
+        Assert.True(version >= 8, "Requires .NET 8 or higher");
     }
 
     [When(@"the project is created from Aspire starter template")]
@@ -59,8 +54,9 @@ public class Epic1FoundationSteps
     [Given(@"the project is built successfully")]
     public void GivenTheProjectIsBuiltSuccessfully()
     {
-        // Assume project builds - actual build test done elsewhere
-        _projectBuilt = true;
+        // Assume project builds - actual build test done in CI
+        var projectRoot = GetProjectRoot();
+        Assert.True(Directory.Exists(projectRoot));
     }
 
     [When(@"I run the Aspire application")]

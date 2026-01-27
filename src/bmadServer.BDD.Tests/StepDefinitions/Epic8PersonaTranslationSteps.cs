@@ -19,7 +19,7 @@ public class Epic8PersonaTranslationSteps : IDisposable
     private Guid? _currentUserId;
     private Dictionary<string, string> _userPreferences = new();
     private List<string>? _availablePersonas;
-    private int _lastStatusCode;
+    private int _lastStatusCode;  // Used for API response simulation
 
     public Epic8PersonaTranslationSteps()
     {
