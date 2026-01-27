@@ -25,46 +25,85 @@ export class SignalRHelper {
 
   /**
    * Inject SignalR message interceptor into page
+   * @throws Error if SignalR is not loaded after retries
    */
-  async setupInterceptor() {
+  async setupInterceptor(): Promise<void> {
+    // First, ensure page is loaded enough for SignalR
+    await this.page.waitForLoadState('domcontentloaded');
+    
     await this.page.addInitScript(() => {
-      // Store original SignalR methods
-      const originalHubConnection = (window as any).signalR?.HubConnectionBuilder;
-      if (!originalHubConnection) return;
-
-      // Intercept messages
+      // Flag to track if we've set up interceptors
+      (window as any).__signalrInterceptorReady = false;
       (window as any).__signalrMessages = [];
       (window as any).__signalrConnectionState = 'disconnected';
+      
+      // Function to set up interceptors once SignalR is available
+      const setupInterceptors = () => {
+        const originalHubConnection = (window as any).signalR?.HubConnectionBuilder;
+        if (!originalHubConnection) {
+          return false;
+        }
 
-      const originalBuild = originalHubConnection.prototype.build;
-      originalHubConnection.prototype.build = function () {
-        const connection = originalBuild.call(this);
+        const originalBuild = originalHubConnection.prototype.build;
+        originalHubConnection.prototype.build = function () {
+          const connection = originalBuild.call(this);
 
-        // Intercept on method
-        const originalOn = connection.on;
-        connection.on = function (methodName: string, callback: Function) {
-          return originalOn.call(this, methodName, (...args: any[]) => {
-            (window as any).__signalrMessages.push({
-              type: methodName,
-              data: args,
-              timestamp: new Date().toISOString(),
+          // Intercept on method
+          const originalOn = connection.on;
+          connection.on = function (methodName: string, callback: Function) {
+            return originalOn.call(this, methodName, (...args: any[]) => {
+              (window as any).__signalrMessages.push({
+                type: methodName,
+                data: args,
+                timestamp: new Date().toISOString(),
+              });
+              return callback(...args);
             });
-            return callback(...args);
-          });
-        };
+          };
 
-        // Track connection state
-        const originalStart = connection.start;
-        connection.start = function () {
-          (window as any).__signalrConnectionState = 'connecting';
-          return originalStart.call(this).then(() => {
-            (window as any).__signalrConnectionState = 'connected';
-          });
-        };
+          // Track connection state
+          const originalStart = connection.start;
+          connection.start = function () {
+            (window as any).__signalrConnectionState = 'connecting';
+            return originalStart.call(this).then(() => {
+              (window as any).__signalrConnectionState = 'connected';
+            });
+          };
 
-        return connection;
+          return connection;
+        };
+        
+        (window as any).__signalrInterceptorReady = true;
+        return true;
       };
+      
+      // Try to set up immediately
+      if (!setupInterceptors()) {
+        // If SignalR not ready, poll until it is
+        const pollInterval = setInterval(() => {
+          if (setupInterceptors()) {
+            clearInterval(pollInterval);
+          }
+        }, 100);
+        
+        // Stop polling after 10 seconds
+        setTimeout(() => clearInterval(pollInterval), 10000);
+      }
     });
+  }
+  
+  /**
+   * Verify interceptor is ready, with retry logic
+   */
+  async ensureInterceptorReady(timeout = 5000): Promise<boolean> {
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeout) {
+      const ready = await this.page.evaluate(() => (window as any).__signalrInterceptorReady === true);
+      if (ready) return true;
+      await this.page.waitForTimeout(100);
+    }
+    console.warn('SignalR interceptor not ready - SignalR may not be used on this page');
+    return false;
   }
 
   /**

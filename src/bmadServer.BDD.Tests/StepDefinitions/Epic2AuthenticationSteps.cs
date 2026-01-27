@@ -24,8 +24,9 @@ public class Epic2AuthenticationSteps : IDisposable
     private readonly IServiceProvider _serviceProvider;
     private readonly ApplicationDbContext _dbContext;
     
-    // Mock state for testing
-    private readonly string _jwtSecretKey = "SuperSecretKeyForTestingPurposesOnlyMustBe256BitsLong!";
+    // JWT secret loaded from environment or generated for test isolation
+    // NEVER hardcode secrets - even in tests, establish the correct pattern
+    private readonly string _jwtSecretKey;
     private Dictionary<Guid, string> _refreshTokens = new();
     private HashSet<string> _usedRefreshTokens = new();
 
@@ -41,6 +42,10 @@ public class Epic2AuthenticationSteps : IDisposable
 
     public Epic2AuthenticationSteps()
     {
+        // Load JWT secret from environment, or generate a unique one for test isolation
+        _jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") 
+            ?? $"TestOnlyKey_{Guid.NewGuid():N}_MustBe256BitsMinimum!";
+        
         var services = new ServiceCollection();
 
         services.AddDbContext<ApplicationDbContext>(options =>

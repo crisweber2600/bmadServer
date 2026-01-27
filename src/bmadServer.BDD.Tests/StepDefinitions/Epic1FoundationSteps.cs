@@ -74,11 +74,23 @@ public class Epic1FoundationSteps
     }
 
     [Then(@"the API should respond to GET /health with (\d+) OK")]
-    public async Task ThenTheApiShouldRespondToGetHealthWithOk(int statusCode)
+    public async Task ThenTheApiShouldRespondToGetHealthWithOk(int expectedStatusCode)
     {
-        // Health check tested in integration tests
-        // For unit test, just verify the expected behavior
-        Assert.Equal(200, statusCode);
+        // Verify the health endpoint contract expectation
+        // Actual HTTP call happens in integration tests; BDD verifies the specification
+        Assert.True(expectedStatusCode == 200, 
+            $"Health endpoint specification requires 200 OK, got {expectedStatusCode}");
+        
+        // Verify health endpoint exists in the codebase
+        var projectRoot = GetProjectRoot();
+        var programCs = Path.Combine(projectRoot, "src", "bmadServer.ApiService", "Program.cs");
+        if (File.Exists(programCs))
+        {
+            var content = File.ReadAllText(programCs);
+            Assert.True(content.Contains("health", StringComparison.OrdinalIgnoreCase) || 
+                       content.Contains("MapHealthChecks", StringComparison.OrdinalIgnoreCase),
+                "Health endpoint should be configured in Program.cs");
+        }
     }
 
     [Given(@"the AppHost is running")]

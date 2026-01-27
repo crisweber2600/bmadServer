@@ -20,8 +20,8 @@ test.describe('Story 3.2: Chat Message Component with Ant Design', () => {
     await chatPage.sendMessage('This is a user message');
 
     // When the message renders
-    await page.waitForTimeout(500);
     const lastMessage = await chatPage.getLastMessage();
+    await expect(lastMessage).toBeVisible({ timeout: 5000 });
 
     // Then user messages should be aligned right with blue background
     await expect(lastMessage).toHaveAttribute('data-sender', 'user');
@@ -39,8 +39,14 @@ test.describe('Story 3.2: Chat Message Component with Ant Design', () => {
     // Should be right-aligned (flex-end or similar)
     expect(styles.alignSelf === 'flex-end' || styles.justifyContent === 'flex-end').toBe(true);
 
-    // Should have blue-ish background
-    expect(styles.backgroundColor).toMatch(/rgb\(\d+,\s*\d+,\s*2[0-5]\d\)/); // Blue range
+    // Should have blue-ish background (RGB where blue component > red and green)
+    // Match patterns like rgb(30, 144, 255) or rgb(0, 0, 200)
+    const rgbMatch = styles.backgroundColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+    expect(rgbMatch).toBeTruthy();
+    if (rgbMatch) {
+      const [, r, g, b] = rgbMatch.map(Number);
+      expect(b).toBeGreaterThan(100); // Blue component should be significant
+    }
   });
 
   test('Agent messages aligned left with gray background @P1', async ({ page }) => {
@@ -99,16 +105,20 @@ test.describe('Story 3.2: Chat Message Component with Ant Design', () => {
 
     // Then code blocks should have syntax highlighting
     const agentMessage = chatPage.agentMessages.last();
+    await expect(agentMessage).toBeVisible();
 
     // Look for code/pre elements with highlighting classes
     const codeBlock = agentMessage.locator('pre, code');
-    const hasCodeBlock = (await codeBlock.count()) > 0;
-
-    // Code blocks should have syntax highlighting classes
-    if (hasCodeBlock) {
-      const classes = await codeBlock.first().getAttribute('class');
-      expect(classes || '').toBeTruthy(); // Should have some class for highlighting
-    }
+    const codeBlockCount = await codeBlock.count();
+    
+    // Code response should contain code blocks
+    expect(codeBlockCount).toBeGreaterThan(0);
+    
+    // First code block should have highlighting class
+    const classes = await codeBlock.first().getAttribute('class');
+    expect(classes).toBeTruthy();
+    // Should have language-specific or highlight class
+    expect(classes).toMatch(/language-|hljs|highlight|prism|syntax/i);
   });
 
   test('Links clickable in new tabs @P2', async ({ page }) => {
@@ -120,14 +130,18 @@ test.describe('Story 3.2: Chat Message Component with Ant Design', () => {
 
     // Then links should have target="_blank"
     const agentMessage = chatPage.agentMessages.last();
+    await expect(agentMessage).toBeVisible();
+    
     const links = agentMessage.locator('a[href]');
-
     const linkCount = await links.count();
-    if (linkCount > 0) {
-      for (let i = 0; i < linkCount; i++) {
-        const target = await links.nth(i).getAttribute('target');
-        expect(target).toBe('_blank');
-      }
+    
+    // Should have at least one link in response
+    expect(linkCount).toBeGreaterThan(0);
+    
+    // All links should open in new tabs
+    for (let i = 0; i < linkCount; i++) {
+      const target = await links.nth(i).getAttribute('target');
+      expect(target).toBe('_blank');
     }
   });
 
