@@ -2,9 +2,12 @@ using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.DTOs;
 using bmadServer.ApiService.Controllers;
+using bmadServer.Tests.Helpers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Moq;
 using System.Security.Claims;
@@ -12,21 +15,27 @@ using Xunit;
 
 namespace bmadServer.Tests;
 
-public class PersonaConfigurationTests
+public class PersonaConfigurationTests : IDisposable
 {
     private readonly ApplicationDbContext _context;
+    private readonly SqliteConnection _connection;
     private readonly UsersController _controller;
     private readonly Mock<ILogger<UsersController>> _loggerMock;
 
     public PersonaConfigurationTests()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
-
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
         _context = new ApplicationDbContext(options);
+        _context.Database.EnsureCreated();
         _loggerMock = new Mock<ILogger<UsersController>>();
-        _controller = new UsersController(_context, _loggerMock.Object);
+        var memoryCacheMock = new Mock<IMemoryCache>();
+        _controller = new UsersController(_context, _loggerMock.Object, memoryCacheMock.Object);
+    }
+
+    public void Dispose()
+    {
+        _context.Dispose();
+        _connection.Dispose();
     }
 
     [Fact]

@@ -4,6 +4,7 @@ using bmadServer.ApiService.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace bmadServer.ApiService.Controllers;
 
@@ -16,13 +17,16 @@ public class UsersController : ControllerBase
 {
     private readonly ApplicationDbContext _dbContext;
     private readonly ILogger<UsersController> _logger;
+    private readonly IMemoryCache _memoryCache;
 
     public UsersController(
         ApplicationDbContext dbContext,
-        ILogger<UsersController> logger)
+        ILogger<UsersController> logger,
+        IMemoryCache memoryCache)
     {
         _dbContext = dbContext;
         _logger = logger;
+        _memoryCache = memoryCache;
     }
 
     /// <summary>
@@ -154,5 +158,67 @@ public class UsersController : ControllerBase
         };
 
         return Ok(response);
+    }
+
+    /// <summary>
+    /// Get user profile by ID (Story 7.3 - for attribution display)
+    /// </summary>
+    /// <param name="id">User ID</param>
+    /// <returns>User profile information</returns>
+    /// <response code="200">Returns the user's profile</response>
+    /// <response code="401">User is not authenticated</response>
+    /// <response code="404">User not found</response>
+    [HttpGet("{id}/profile")]
+    [Authorize]
+    [ProducesResponseType(typeof(UserProfileResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetUserProfile(Guid id)
+    {
+        // Try to get from cache first (5-minute TTL)
+        var cacheKey = $"UserProfile_{id}";
+        if (_memoryCache.TryGetValue<UserProfileResponse>(cacheKey, out var cachedProfile))
+        {
+            return Ok(cachedProfile);
+        }
+
+        // Lookup user in database
+        var user = await _dbContext.Users.FindAsync(id);
+
+        if (user == null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Type = "https://bmadserver.api/errors/user-not-found",
+                Title = "User Not Found",
+                Status = StatusCodes.Status404NotFound,
+                Detail = $"User {id} does not exist or is not accessible"
+            });
+        }
+
+        // Get user role (default to "Participant" if no role assigned)
+        var userRoleEnum = await _dbContext.UserRoles
+            .Where(ur => ur.UserId == id)
+            .Select(ur => ur.Role)
+            .FirstOrDefaultAsync();
+        
+        var roleString = userRoleEnum != default 
+            ? userRoleEnum.ToString() 
+            : "Participant";
+
+        // Build response
+        var profile = new UserProfileResponse
+        {
+            UserId = user.Id,
+            DisplayName = user.DisplayName,
+            AvatarUrl = null, // MVP: Phase 2 feature
+            JoinedAt = user.CreatedAt,
+            Role = roleString
+        };
+
+        // Cache for 5 minutes
+        _memoryCache.Set(cacheKey, profile, TimeSpan.FromMinutes(5));
+
+        return Ok(profile);
     }
 }

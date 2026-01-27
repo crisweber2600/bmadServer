@@ -36,4 +36,11 @@ public class ChatMessage
     public string Content { get; set; } = string.Empty;
     public DateTime Timestamp { get; set; }
     public string? AgentId { get; set; }
+    
+    // Attribution fields (Story 7.3)
+    public Guid? UserId { get; set; } // Null for agent messages
+    public string? DisplayName { get; set; } // User's display name
+    public string? AvatarUrl { get; set; } // User profile picture URL
+    public string InputType { get; set; } = InputTypes.Message; // Message, Decision, StepAdvance, Checkpoint
+    public string? WorkflowStep { get; set; } // Current step when input was made
 }

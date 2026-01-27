@@ -1,6 +1,6 @@
 # Story 6.1: Decision Capture & Storage
 
-**Status:** ready-for-dev
+**Status:** review
 
 ## Story
 
@@ -30,14 +30,14 @@ As a user (Sarah), I want my decisions to be captured and stored, so that I have
 
 ## Tasks / Subtasks
 
-- [ ] Analyze acceptance criteria and create detailed implementation plan
-- [ ] Design data models and database schema if needed
-- [ ] Implement core business logic
-- [ ] Create API endpoints and/or UI components
-- [ ] Write unit tests for critical paths
-- [ ] Write integration tests for key scenarios
-- [ ] Update API documentation
-- [ ] Perform manual testing and validation
+- [x] Analyze acceptance criteria and create detailed implementation plan
+- [x] Design data models and database schema if needed
+- [x] Implement core business logic
+- [x] Create API endpoints and/or UI components
+- [x] Write unit tests for critical paths
+- [x] Write integration tests for key scenarios
+- [x] Update API documentation
+- [x] Perform manual testing and validation
 - [ ] Code review and address feedback
 
 ## Dev Notes
@@ -67,12 +67,94 @@ Review the acceptance criteria for dependencies on:
 
 ## Files to Create/Modify
 
-Files will be determined during implementation based on:
-- Data models and entities needed
-- API endpoints required
-- Service layer components
-- Database migrations
-- Test files
+### Created Files:
+- `src/bmadServer.ApiService/Data/Entities/Decision.cs` - Decision entity with JSONB storage
+- `src/bmadServer.ApiService/Models/Decisions/DecisionModels.cs` - DTOs (CreateDecisionRequest, DecisionResponse)
+- `src/bmadServer.ApiService/Services/Decisions/IDecisionService.cs` - Service interface
+- `src/bmadServer.ApiService/Services/Decisions/DecisionService.cs` - Service implementation
+- `src/bmadServer.ApiService/Controllers/DecisionsController.cs` - API controller with 3 endpoints
+- `src/bmadServer.ApiService/Migrations/20260125233947_AddDecisionsTable.cs` - EF Core migration
+- `src/bmadServer.Tests/Integration/Controllers/DecisionsControllerTests.cs` - Integration tests (8 tests, all passing)
+
+### Modified Files:
+- `src/bmadServer.ApiService/Data/ApplicationDbContext.cs` - Added Decisions DbSet and entity configuration
+- `src/bmadServer.ApiService/Program.cs` - Registered DecisionService in DI container
+
+## Dev Agent Record
+
+### Implementation Plan
+
+**Completed Implementation:**
+1. Created Decision entity with all required fields per AC1-AC5
+2. Configured JSONB storage for value, options, and context fields
+3. Added GIN indexes on JSONB columns for efficient querying
+4. Implemented DecisionService with validation and logging
+5. Created DecisionsController with 3 REST endpoints
+6. Registered service in DI container
+7. Created EF Core migration with proper foreign keys and indexes
+8. Wrote 8 comprehensive integration tests covering all scenarios
+
+**Technical Decisions:**
+- Used JsonDocument for JSONB storage (consistent with existing WorkflowInstance pattern)
+- Used JsonElement in DTOs for type-safe JSON handling
+- Added foreign keys to both WorkflowInstance (CASCADE) and User (RESTRICT)
+- Implemented chronological ordering using DecidedAt timestamp
+- Added structured logging for all CRUD operations
+- Validated workflow existence before creating decisions
+
+### Completion Notes
+
+**Date:** 2026-01-25
+
+**Summary:**
+Successfully implemented Story 6.1: Decision Capture & Storage. All acceptance criteria met and validated:
+- ✅ AC1: Decision records created with all required fields
+- ✅ AC2: GET endpoint returns decisions in chronological order
+- ✅ AC3: Decision details include question, options, value, reasoning, context
+- ✅ AC4: JSONB storage with GIN indexes implemented
+- ✅ AC5: JSON validation via JsonElement/JsonDocument
+
+**Test Results:**
+- 8/8 integration tests passing
+- Covers: authentication, authorization, CRUD operations, complex JSON, error handling
+- All tests run in isolated in-memory database
+
+**Implementation Quality:**
+- Follows existing codebase patterns (matches WorkflowInstance, Session entities)
+- Proper separation of concerns (Entity, DTO, Service, Controller layers)
+- Comprehensive error handling and logging
+- RESTful API design with proper status codes
+- Type-safe JSON handling throughout
+
+**Next Steps:**
+- Run code review workflow
+- Apply migration to development database
+- Verify integration with WorkflowInstance operations
+
+## File List
+
+- Data/Entities/Decision.cs
+- Models/Decisions/DecisionModels.cs
+- Services/Decisions/IDecisionService.cs
+- Services/Decisions/DecisionService.cs
+- Controllers/DecisionsController.cs
+- Migrations/20260125233947_AddDecisionsTable.cs
+- Migrations/20260125233947_AddDecisionsTable.Designer.cs
+- Migrations/ApplicationDbContextModelSnapshot.cs
+- Tests/Integration/Controllers/DecisionsControllerTests.cs
+- Data/ApplicationDbContext.cs
+- Program.cs
+
+## Change Log
+
+### 2026-01-25: Story 6.1 Implementation Complete
+- Implemented Decision entity with JSONB storage for value, options, and context
+- Created DecisionService with full CRUD operations and workflow validation
+- Created DecisionsController with 3 REST endpoints (POST /decisions, GET /workflows/{id}/decisions, GET /decisions/{id})
+- Added EF Core migration with proper indexes and foreign keys
+- Wrote 8 comprehensive integration tests (all passing)
+- Registered service in DI container
+- Ready for code review
 
 
 ---

@@ -1,13 +1,18 @@
 using bmadServer.ApiService.Controllers;
 using bmadServer.ApiService.Data;
+using bmadServer.ApiService.DTOs;
 using bmadServer.ApiService.Hubs;
 using bmadServer.ApiService.Models.Workflows;
+using bmadServer.ApiService.Services;
 using bmadServer.ApiService.Services.Workflows;
+using bmadServer.ApiService.Services.Workflows.Agents;
 using bmadServer.ServiceDefaults.Services.Workflows;
+using bmadServer.Tests.Helpers;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -19,6 +24,7 @@ namespace bmadServer.Tests.Integration.Workflows;
 public class WorkflowCancellationIntegrationTests : IDisposable
 {
     private readonly ApplicationDbContext _context;
+    private readonly SqliteConnection _connection;
     private readonly IWorkflowInstanceService _workflowInstanceService;
     private readonly WorkflowsController _controller;
     private readonly Guid _testUserId;
@@ -26,17 +32,21 @@ public class WorkflowCancellationIntegrationTests : IDisposable
 
     public WorkflowCancellationIntegrationTests()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
         _context = new ApplicationDbContext(options);
+        _context.Database.EnsureCreated();
 
         var registryMock = new Mock<IWorkflowRegistry>();
         registryMock.Setup(r => r.ValidateWorkflow(It.IsAny<string>())).Returns(true);
 
+        var agentRegistryMock = new Mock<IAgentRegistry>();
+        var agentHandoffServiceMock = new Mock<IAgentHandoffService>();
+
         _workflowInstanceService = new WorkflowInstanceService(
             _context,
             registryMock.Object,
+            agentRegistryMock.Object,
+            agentHandoffServiceMock.Object,
             new Mock<ILogger<WorkflowInstanceService>>().Object);
 
         // Setup SignalR hub mock properly
@@ -55,9 +65,12 @@ public class WorkflowCancellationIntegrationTests : IDisposable
         _controller = new WorkflowsController(
             _workflowInstanceService,
             registryMock.Object,
+            agentRegistryMock.Object,
             new Mock<IStepExecutor>().Object,
+            new Mock<IApprovalService>().Object,
             _hubContextMock.Object,
-            new Mock<ILogger<WorkflowsController>>().Object);
+            new Mock<ILogger<WorkflowsController>>().Object,
+            new Mock<IParticipantService>().Object);
 
         _testUserId = Guid.NewGuid();
         var claims = new List<Claim>
@@ -238,9 +251,12 @@ public class WorkflowCancellationIntegrationTests : IDisposable
         var controller = new WorkflowsController(
             _workflowInstanceService,
             new Mock<IWorkflowRegistry>().Object,
+            new Mock<IAgentRegistry>().Object,
             new Mock<IStepExecutor>().Object,
+            new Mock<IApprovalService>().Object,
             _hubContextMock.Object,
-            new Mock<ILogger<WorkflowsController>>().Object);
+            new Mock<ILogger<WorkflowsController>>().Object,
+            new Mock<IParticipantService>().Object);
 
         controller.ControllerContext = new ControllerContext
         {
@@ -315,7 +331,9 @@ public class WorkflowCancellationIntegrationTests : IDisposable
         // Assert
         var okResult = result.Result as OkObjectResult;
         okResult.Should().NotBeNull();
-        var workflows = okResult!.Value as List<WorkflowInstanceListItem>;
+        var pagedResult = okResult!.Value as PagedResult<WorkflowInstanceListItem>;
+        pagedResult.Should().NotBeNull();
+        var workflows = pagedResult!.Items;
         workflows.Should().NotBeNull();
         workflows!.Should().HaveCount(2); // Running and Completed, but not Cancelled
         workflows.Should().NotContain(w => w.Status == WorkflowStatus.Cancelled);
@@ -357,7 +375,9 @@ public class WorkflowCancellationIntegrationTests : IDisposable
         // Assert
         var okResult = result.Result as OkObjectResult;
         okResult.Should().NotBeNull();
-        var workflows = okResult!.Value as List<WorkflowInstanceListItem>;
+        var pagedResult = okResult!.Value as PagedResult<WorkflowInstanceListItem>;
+        pagedResult.Should().NotBeNull();
+        var workflows = pagedResult!.Items;
         workflows.Should().NotBeNull();
         workflows!.Should().HaveCount(2); // Both Running and Cancelled
         workflows.Should().Contain(w => w.Status == WorkflowStatus.Cancelled);
@@ -371,5 +391,6 @@ public class WorkflowCancellationIntegrationTests : IDisposable
     public void Dispose()
     {
         _context.Dispose();
+        _connection.Dispose();
     }
 }

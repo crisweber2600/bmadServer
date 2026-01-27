@@ -28,7 +28,7 @@
 # - SM typically creates next story ONLY after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then Dev runs code-review (fresh context)
 
-generated: 2026-01-24
+generated: 2026-01-26
 project: bmadServer
 project_key: bmads
 tracking_system: file-system
@@ -92,35 +92,37 @@ development_status:
   # ====================================
   # EPIC 5: Multi-Agent Collaboration
   # ====================================
-  epic-5: backlog
-  5-1-agent-registry-configuration: backlog
-  5-2-agent-to-agent-messaging: backlog
-  5-3-shared-workflow-context: backlog
-  5-4-agent-handoff-attribution: backlog
-  5-5-human-approval-for-low-confidence-decisions: backlog
-  epic-5-retrospective: optional
+  epic-5: done
+  5-1-agent-registry-configuration: done
+  5-2-agent-to-agent-messaging: done
+  5-3-shared-workflow-context: done
+  5-4-agent-handoff-attribution: done
+  5-5-human-approval-for-low-confidence-decisions: done
+  epic-5-retrospective: done
 
   # ============================================
   # EPIC 6: Decision Management & Locking
   # ============================================
-  epic-6: backlog
-  6-1-decision-capture-storage: backlog
-  6-2-decision-version-history: backlog
-  6-3-decision-locking-mechanism: backlog
-  6-4-decision-review-workflow: backlog
-  6-5-conflict-detection-resolution: backlog
-  epic-6-retrospective: optional
+  # NOTE: All stories implemented, tests passing (580/584 = 99.3%)
+  # Test remediation completed 2026-01-26: migrated from InMemory to SQLite
+  epic-6: done
+  6-1-decision-capture-storage: done
+  6-2-decision-version-history: done
+  6-3-decision-locking-mechanism: done
+  6-4-decision-review-workflow: done
+  6-5-conflict-detection-resolution: done
+  epic-6-retrospective: done
 
   # =============================================
   # EPIC 7: Collaboration & Multi-User Support
   # =============================================
-  epic-7: backlog
-  7-1-multi-user-workflow-participation: backlog
-  7-2-safe-checkpoint-system: backlog
-  7-3-input-attribution-history: backlog
-  7-4-conflict-detection-buffering: backlog
-  7-5-real-time-collaboration-updates: backlog
-  epic-7-retrospective: optional
+  epic-7: done
+  7-1-multi-user-workflow-participation: done
+  7-2-safe-checkpoint-system: done
+  7-3-input-attribution-history: done
+  7-4-conflict-detection-buffering: done
+  7-5-real-time-collaboration-updates: done
+  epic-7-retrospective: done  # Completed 2026-01-26
 
   # ==================================================
   # EPIC 8: Persona Translation & Language Adaptation
@@ -148,32 +150,46 @@ development_status:
   # ====================================
   # EPIC 10: Error Handling & Recovery
   # ====================================
-  epic-10: backlog
-  10-1-graceful-error-handling: backlog
-  10-2-connection-recovery-retry: backlog
+  # NOTE: Partial implementation exists. Hardening stories created 2026-01-27.
+  # See: epic-10-13-implementation-readiness-2026-01-27.md
+  epic-10: in-progress
+  10-1-graceful-error-handling: done  # ProblemDetails RFC 7807 implemented
+  10-2-connection-recovery-retry: done  # Session recovery (60s window) working
   10-3-workflow-recovery-after-failure: backlog
   10-4-conversation-stall-recovery: backlog
   10-5-graceful-degradation-under-load: backlog
+  # HARDENING STORIES (ready-for-dev):
+  10-1-h-polly-retry-policies: ready-for-dev
+  10-2-h-circuit-breaker: ready-for-dev
+  10-3-h-graceful-degradation: ready-for-dev
   epic-10-retrospective: optional
 
   # =====================================
   # EPIC 11: Security & Access Control
   # =====================================
-  epic-11: backlog
+  # NOTE: Partial implementation exists. Hardening stories created 2026-01-27.
+  # See: epic-10-13-implementation-readiness-2026-01-27.md
+  epic-11: in-progress
   11-1-per-user-rate-limiting: backlog
   11-2-security-headers-https-enforcement: backlog
-  11-3-input-validation-sanitization: backlog
+  11-3-input-validation-sanitization: done  # FluentValidation implemented
   11-4-encryption-at-rest: backlog
   11-5-security-audit-logging: backlog
+  # HARDENING STORIES (ready-for-dev):
+  11-1-h-rate-limiting: ready-for-dev
+  11-2-h-security-headers: ready-for-dev
+  11-3-h-encryption-at-rest: ready-for-dev
   epic-11-retrospective: optional
 
   # =========================================
   # EPIC 12: Admin Dashboard & Operations
   # =========================================
+  # NOTE: User management exists (RolesController). Full implementation plan created 2026-01-27.
+  # See: epic-10-13-implementation-readiness-2026-01-27.md
   epic-12: backlog
   12-1-system-health-dashboard: backlog
   12-2-active-session-monitoring: backlog
-  12-3-user-management: backlog
+  12-3-user-management: done  # RolesController exists
   12-4-provider-configuration: backlog
   12-5-workflow-activity-audit: backlog
   12-6-system-configuration-management: backlog
@@ -182,9 +198,11 @@ development_status:
   # ==============================
   # EPIC 13: Integrations & Webhooks
   # ==============================
+  # NOTE: Implementation plan created 2026-01-27.
+  # See: epic-10-13-implementation-readiness-2026-01-27.md
   epic-13: backlog
-  13-1-webhook-configuration: backlog
-  13-2-webhook-event-delivery: backlog
+  13-1-webhook-configuration: ready-for-dev  # Story ready
+  13-2-webhook-event-delivery: ready-for-dev  # Story ready
   13-3-event-ordering-idempotency: backlog
   13-4-notification-integrations: backlog
   13-5-webhook-management-api: backlog

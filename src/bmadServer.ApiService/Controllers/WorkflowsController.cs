@@ -1,7 +1,9 @@
 using bmadServer.ApiService.DTOs;
 using bmadServer.ApiService.Hubs;
 using bmadServer.ApiService.Models.Workflows;
+using bmadServer.ApiService.Services;
 using bmadServer.ApiService.Services.Workflows;
+using bmadServer.ApiService.Services.Workflows.Agents;
 using bmadServer.ServiceDefaults.Services.Workflows;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,22 +22,31 @@ public class WorkflowsController : ControllerBase
 {
     private readonly IWorkflowInstanceService _workflowInstanceService;
     private readonly IWorkflowRegistry _workflowRegistry;
+    private readonly IAgentRegistry _agentRegistry;
     private readonly IStepExecutor _stepExecutor;
+    private readonly IApprovalService _approvalService;
     private readonly IHubContext<ChatHub> _hubContext;
     private readonly ILogger<WorkflowsController> _logger;
+    private readonly IParticipantService _participantService;
 
     public WorkflowsController(
         IWorkflowInstanceService workflowInstanceService,
         IWorkflowRegistry workflowRegistry,
+        IAgentRegistry agentRegistry,
         IStepExecutor stepExecutor,
+        IApprovalService approvalService,
         IHubContext<ChatHub> hubContext,
-        ILogger<WorkflowsController> logger)
+        ILogger<WorkflowsController> logger,
+        IParticipantService participantService)
     {
         _workflowInstanceService = workflowInstanceService;
         _workflowRegistry = workflowRegistry;
+        _agentRegistry = agentRegistry;
         _stepExecutor = stepExecutor;
+        _approvalService = approvalService;
         _hubContext = hubContext;
         _logger = logger;
+        _participantService = participantService;
     }
 
     private async Task SendWorkflowStatusChangedNotification(Guid workflowId)
@@ -653,6 +664,277 @@ public class WorkflowsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error navigating to step {StepId} for workflow {InstanceId}", stepId, id);
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Add a participant to a workflow
+    /// </summary>
+    /// <param name="id">Workflow instance ID</param>
+    /// <param name="request">Participant details</param>
+    /// <returns>Created participant</returns>
+    [HttpPost("{id}/participants")]
+    [ProducesResponseType(typeof(ParticipantResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ParticipantResponse>> AddParticipant(
+        Guid id, 
+        [FromBody] AddParticipantRequest request)
+    {
+        try
+        {
+            // Get user ID from claims
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status401Unauthorized,
+                    title: "Unauthorized",
+                    detail: "User ID not found in token");
+            }
+
+            // Check if user is workflow owner
+            var isOwner = await _participantService.IsWorkflowOwnerAsync(id, userId);
+            if (!isOwner)
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status403Forbidden,
+                    title: "Forbidden",
+                    detail: "Only workflow owner can add participants");
+            }
+
+            // Parse role
+            if (!Enum.TryParse<ParticipantRole>(request.Role, out var role))
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Invalid Role",
+                    detail: "Role must be one of: Owner, Contributor, Observer");
+            }
+
+            // Add participant
+            var participant = await _participantService.AddParticipantAsync(
+                id, 
+                request.UserId, 
+                role, 
+                userId);
+
+            // Send notification via SignalR
+            await _hubContext.Clients.Group($"workflow-{id}").SendAsync("PARTICIPANT_ADDED", new
+            {
+                eventType = "PARTICIPANT_ADDED",
+                workflowId = id,
+                participantId = participant.Id,
+                userId = participant.UserId,
+                role = participant.Role.ToString(),
+                timestamp = DateTime.UtcNow
+            });
+
+            var response = new ParticipantResponse
+            {
+                Id = participant.Id,
+                WorkflowId = participant.WorkflowId,
+                UserId = participant.UserId,
+                UserDisplayName = participant.User?.DisplayName ?? "",
+                UserEmail = participant.User?.Email ?? "",
+                Role = participant.Role.ToString(),
+                AddedAt = participant.AddedAt,
+                AddedBy = participant.AddedBy
+            };
+
+            _logger.LogInformation(
+                "Added participant {UserId} to workflow {WorkflowId} with role {Role}",
+                request.UserId, id, role);
+
+            return CreatedAtAction(
+                nameof(GetParticipants),
+                new { id },
+                response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad Request",
+                detail: ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding participant to workflow {WorkflowId}", id);
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Get all participants for a workflow
+    /// </summary>
+    /// <param name="id">Workflow instance ID</param>
+    /// <returns>List of participants</returns>
+    [HttpGet("{id}/participants")]
+    [ProducesResponseType(typeof(List<ParticipantResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<List<ParticipantResponse>>> GetParticipants(Guid id)
+    {
+        try
+        {
+            var participants = await _participantService.GetParticipantsAsync(id);
+
+            var responses = participants.Select(p => new ParticipantResponse
+            {
+                Id = p.Id,
+                WorkflowId = p.WorkflowId,
+                UserId = p.UserId,
+                UserDisplayName = p.User?.DisplayName ?? "",
+                UserEmail = p.User?.Email ?? "",
+                Role = p.Role.ToString(),
+                AddedAt = p.AddedAt,
+                AddedBy = p.AddedBy
+            }).ToList();
+
+            return Ok(responses);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving participants for workflow {WorkflowId}", id);
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Remove a participant from a workflow
+    /// </summary>
+    /// <param name="id">Workflow instance ID</param>
+    /// <param name="userId">User ID to remove</param>
+    /// <returns>No content on success</returns>
+    [HttpDelete("{id}/participants/{userId}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RemoveParticipant(Guid id, Guid userId)
+    {
+        try
+        {
+            // Get user ID from claims
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var currentUserId))
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status401Unauthorized,
+                    title: "Unauthorized",
+                    detail: "User ID not found in token");
+            }
+
+            // Check if user is workflow owner
+            var isOwner = await _participantService.IsWorkflowOwnerAsync(id, currentUserId);
+            if (!isOwner)
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status403Forbidden,
+                    title: "Forbidden",
+                    detail: "Only workflow owner can remove participants");
+            }
+
+            // Remove participant
+            var result = await _participantService.RemoveParticipantAsync(id, userId);
+            if (!result)
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Not Found",
+                    detail: $"Participant {userId} not found in workflow {id}");
+            }
+
+            // Send notification via SignalR
+            await _hubContext.Clients.Group($"workflow-{id}").SendAsync("PARTICIPANT_REMOVED", new
+            {
+                eventType = "PARTICIPANT_REMOVED",
+                workflowId = id,
+                userId,
+                timestamp = DateTime.UtcNow
+            });
+
+            _logger.LogInformation(
+                "Removed participant {UserId} from workflow {WorkflowId}",
+                userId, id);
+
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing participant from workflow {WorkflowId}", id);
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Get contribution metrics for a workflow (Story 7.3 AC#4)
+    /// </summary>
+    /// <param name="id">Workflow ID</param>
+    /// <returns>Per-user contribution metrics</returns>
+    /// <response code="200">Returns contribution metrics</response>
+    /// <response code="403">User is not a participant</response>
+    /// <response code="404">Workflow not found</response>
+    [HttpGet("{id}/contributions")]
+    [ProducesResponseType(typeof(ContributionMetricsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetContributions(Guid id, [FromServices] IContributionMetricsService contributionMetricsService)
+    {
+        try
+        {
+            // Get current user ID
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            // Verify workflow exists
+            var workflowInstance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
+            if (workflowInstance == null)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Type = "https://bmadserver.api/errors/workflow-not-found",
+                    Title = "Workflow Not Found",
+                    Status = StatusCodes.Status404NotFound,
+                    Detail = $"Workflow {id} does not exist"
+                });
+            }
+
+            // Verify user is owner or participant
+            var isParticipant = await _participantService.IsParticipantAsync(id, userId);
+            if (!isParticipant && workflowInstance.UserId != userId)
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status403Forbidden,
+                    title: "Access Denied",
+                    detail: "You must be a participant or owner to view contribution metrics",
+                    type: "https://bmadserver.api/errors/access-denied");
+            }
+
+            // Get contribution metrics
+            var metrics = await contributionMetricsService.GetContributionMetricsAsync(id);
+            
+            return Ok(metrics);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting contribution metrics for workflow {WorkflowId}", id);
             return Problem(
                 statusCode: StatusCodes.Status500InternalServerError,
                 title: "Internal Server Error",

@@ -5,9 +5,8 @@ using bmadServer.ApiService.DTOs;
 using bmadServer.ApiService.Hubs;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services;
+using bmadServer.Tests.Integration;
 using FluentAssertions;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,34 +19,14 @@ using Xunit;
 
 namespace bmadServer.Tests.Integration.Controllers;
 
-public class WorkflowsControllerTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
+public class WorkflowsControllerTests : IClassFixture<TestWebApplicationFactory>, IDisposable
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly TestWebApplicationFactory _factory;
     private readonly HttpClient _client;
-    private static readonly string _databaseName = "TestDb_Workflows_" + Guid.NewGuid();
 
-    public WorkflowsControllerTests(WebApplicationFactory<Program> factory)
+    public WorkflowsControllerTests(TestWebApplicationFactory factory)
     {
-        _factory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                var descriptor = services.SingleOrDefault(
-                    d => d.ServiceType == typeof(DbContextOptions<ApplicationDbContext>));
-                if (descriptor != null)
-                {
-                    services.Remove(descriptor);
-                }
-
-                services.AddDbContext<ApplicationDbContext>(options =>
-                {
-                    options.UseInMemoryDatabase(_databaseName);
-                });
-            });
-
-            builder.UseEnvironment("Test");
-        });
-
+        _factory = factory;
         _client = _factory.CreateClient();
     }
 

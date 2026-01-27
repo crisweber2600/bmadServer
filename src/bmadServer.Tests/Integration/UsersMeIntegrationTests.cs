@@ -9,9 +9,6 @@ using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.DTOs;
 using bmadServer.ApiService.Services;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -19,37 +16,14 @@ using Xunit;
 
 namespace bmadServer.Tests.Integration;
 
-public class UsersMeIntegrationTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
+public class UsersMeIntegrationTests : IClassFixture<TestWebApplicationFactory>, IDisposable
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly TestWebApplicationFactory _factory;
     private readonly HttpClient _client;
-    private static readonly string _databaseName = "TestDb_UsersMe_" + Guid.NewGuid();
 
-    public UsersMeIntegrationTests(WebApplicationFactory<Program> factory)
+    public UsersMeIntegrationTests(TestWebApplicationFactory factory)
     {
-        _factory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                // Remove the existing DbContext registration
-                var descriptor = services.SingleOrDefault(
-                    d => d.ServiceType == typeof(DbContextOptions<ApplicationDbContext>));
-
-                if (descriptor != null)
-                {
-                    services.Remove(descriptor);
-                }
-
-                // Add in-memory database for testing
-                services.AddDbContext<ApplicationDbContext>(options =>
-                {
-                    options.UseInMemoryDatabase(_databaseName);
-                });
-            });
-
-            builder.UseEnvironment("Test");
-        });
-
+        _factory = factory;
         _client = _factory.CreateClient();
     }
 

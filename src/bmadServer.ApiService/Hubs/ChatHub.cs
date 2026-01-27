@@ -1,9 +1,8 @@
-using bmadServer.ApiService.Data;
+using bmadServer.ApiService.Models.Events;
 using bmadServer.ApiService.Services;
 using bmadServer.ApiService.Services.Workflows;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace bmadServer.ApiService.Hubs;
@@ -18,22 +17,25 @@ public class ChatHub : Hub
 {
     private readonly ISessionService _sessionService;
     private readonly IStepExecutor _stepExecutor;
-    private readonly ITranslationService _translationService;
-    private readonly ApplicationDbContext _dbContext;
     private readonly ILogger<ChatHub> _logger;
+    private readonly IParticipantService _participantService;
+    private readonly IPresenceTrackingService _presenceService;
+    private readonly IUpdateBatchingService _batchingService;
 
     public ChatHub(
         ISessionService sessionService, 
         IStepExecutor stepExecutor,
-        ITranslationService translationService,
-        ApplicationDbContext dbContext,
-        ILogger<ChatHub> logger)
+        ILogger<ChatHub> logger,
+        IParticipantService participantService,
+        IPresenceTrackingService presenceService,
+        IUpdateBatchingService batchingService)
     {
         _sessionService = sessionService;
         _stepExecutor = stepExecutor;
-        _translationService = translationService;
-        _dbContext = dbContext;
         _logger = logger;
+        _participantService = participantService;
+        _presenceService = presenceService;
+        _batchingService = batchingService;
     }
 
     /// <summary>
@@ -179,30 +181,12 @@ public class ChatHub : Hub
         {
             var result = await _stepExecutor.ExecuteStepAsync(workflowInstanceId, userInput);
             
-            // Get effective persona (session-level if set, otherwise user default)
-            var userId = GetUserIdFromClaims();
-            var session = await _sessionService.GetActiveSessionAsync(userId, Context.ConnectionId);
-            var personaType = session != null 
-                ? await _sessionService.GetEffectivePersonaAsync(session.Id, userId)
-                : Data.Entities.PersonaType.Hybrid;
-            
             if (result.Success)
             {
-                // Translate content based on persona
-                var content = $"Step '{result.StepName}' completed successfully.";
-                var translation = await _translationService.TranslateToBusinessLanguageAsync(content, personaType);
-                
                 await Clients.Caller.SendAsync("ReceiveMessage", new
                 {
                     Role = "agent",
-                    Content = translation.Content,
-                    OriginalContent = translation.OriginalContent,
-                    ContentMetadata = new
-                    {
-                        PersonaType = translation.PersonaType.ToString(),
-                        WasTranslated = translation.WasTranslated,
-                        ContentType = personaType == Data.Entities.PersonaType.Technical ? "technical" : "business"
-                    },
+                    Content = $"Step '{result.StepName}' completed successfully.",
                     StepId = result.StepId,
                     NextStep = result.NextStep,
                     WorkflowStatus = result.NewWorkflowStatus?.ToString(),
@@ -215,21 +199,10 @@ public class ChatHub : Hub
             }
             else
             {
-                // Translate error messages for business users
-                var errorContent = $"Step execution failed: {result.ErrorMessage}";
-                var translation = await _translationService.TranslateToBusinessLanguageAsync(errorContent, personaType);
-                
                 await Clients.Caller.SendAsync("ReceiveMessage", new
                 {
                     Role = "system",
-                    Content = translation.Content,
-                    OriginalContent = translation.OriginalContent,
-                    ContentMetadata = new
-                    {
-                        PersonaType = translation.PersonaType.ToString(),
-                        WasTranslated = translation.WasTranslated,
-                        ContentType = personaType == Data.Entities.PersonaType.Technical ? "technical" : "business"
-                    },
+                    Content = $"Step execution failed: {result.ErrorMessage}",
                     StepId = result.StepId,
                     WorkflowStatus = result.NewWorkflowStatus?.ToString(),
                     Timestamp = DateTime.UtcNow
@@ -254,45 +227,187 @@ public class ChatHub : Hub
     }
 
     /// <summary>
-    /// Switches the session persona in real-time via SignalR.
+    /// Join a workflow to receive real-time updates and enable presence tracking
     /// </summary>
-    public async Task SwitchPersona(string personaType)
+    public async Task JoinWorkflow(Guid workflowId)
     {
         var userId = GetUserIdFromClaims();
-        var session = await _sessionService.GetActiveSessionAsync(userId, Context.ConnectionId);
-        
-        if (session == null)
+
+        // Verify user is a participant or owner
+        var isParticipant = await _participantService.IsParticipantAsync(workflowId, userId);
+        var isOwner = await _participantService.IsWorkflowOwnerAsync(workflowId, userId);
+
+        if (!isParticipant && !isOwner)
         {
-            throw new HubException("No active session found");
+            throw new HubException("Not authorized to join this workflow");
         }
 
-        if (!Enum.TryParse<Data.Entities.PersonaType>(personaType, true, out var newPersona))
-        {
-            throw new HubException($"Invalid persona type: {personaType}");
-        }
+        // Add to SignalR group
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"workflow-{workflowId}");
 
-        var result = await _sessionService.SwitchSessionPersonaAsync(session.Id, userId, newPersona);
+        // Track presence
+        await _presenceService.TrackUserOnlineAsync(userId, workflowId, Context.ConnectionId);
 
-        if (result.Success)
+        // Broadcast USER_ONLINE event
+        var evt = new WorkflowEvent
         {
-            await Clients.Caller.SendAsync("PERSONA_SWITCHED", new
+            EventType = "USER_ONLINE",
+            WorkflowId = workflowId,
+            UserId = userId,
+            DisplayName = Context.User?.Identity?.Name ?? "Unknown User",
+            Timestamp = DateTime.UtcNow,
+            Data = new PresenceEvent { IsOnline = true, LastSeen = DateTime.UtcNow }
+        };
+        _batchingService.QueueUpdate(workflowId, evt);
+
+        _logger.LogInformation("User {UserId} joined workflow {WorkflowId}", userId, workflowId);
+    }
+
+    /// <summary>
+    /// Leave a workflow group
+    /// </summary>
+    public async Task LeaveWorkflow(Guid workflowId)
+    {
+        var userId = GetUserIdFromClaims();
+
+        // Remove from SignalR group
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"workflow-{workflowId}");
+
+        // Track offline
+        await _presenceService.TrackUserOfflineAsync(userId, workflowId);
+
+        // Broadcast USER_OFFLINE event
+        var evt = new WorkflowEvent
+        {
+            EventType = "USER_OFFLINE",
+            WorkflowId = workflowId,
+            UserId = userId,
+            DisplayName = Context.User?.Identity?.Name ?? "Unknown User",
+            Timestamp = DateTime.UtcNow,
+            Data = new PresenceEvent { IsOnline = false, LastSeen = DateTime.UtcNow }
+        };
+        _batchingService.QueueUpdate(workflowId, evt);
+
+        _logger.LogInformation("User {UserId} left workflow {WorkflowId}", userId, workflowId);
+    }
+
+    /// <summary>
+    /// Send typing indicator to other participants
+    /// </summary>
+    public async Task SendTypingIndicator(Guid workflowId)
+    {
+        var userId = GetUserIdFromClaims();
+
+        // Broadcast typing indicator to others in the workflow group
+        await Clients.OthersInGroup($"workflow-{workflowId}").SendAsync("USER_TYPING", new
+        {
+            eventType = "USER_TYPING",
+            userId,
+            userName = Context.User?.Identity?.Name ?? "Unknown User",
+            timestamp = DateTime.UtcNow
+        });
+    }
+
+    /// <summary>
+    /// Broadcast message to workflow participants
+    /// </summary>
+    public async Task BroadcastMessageToWorkflow(Guid workflowId, string message)
+    {
+        var userId = GetUserIdFromClaims();
+        var displayName = Context.User?.Identity?.Name ?? "Unknown User";
+
+        var evt = new WorkflowEvent
+        {
+            EventType = "MESSAGE_RECEIVED",
+            WorkflowId = workflowId,
+            UserId = userId,
+            DisplayName = displayName,
+            Timestamp = DateTime.UtcNow,
+            Data = new MessageReceivedEvent 
+            { 
+                Message = message, 
+                MessageId = Guid.NewGuid() 
+            }
+        };
+
+        await Clients.Group($"workflow-{workflowId}").SendAsync("MESSAGE_RECEIVED", evt);
+    }
+
+    /// <summary>
+    /// Broadcast decision event to workflow participants
+    /// </summary>
+    public async Task BroadcastDecision(Guid workflowId, string decision, List<string>? alternatives = null, double? confidence = null)
+    {
+        var userId = GetUserIdFromClaims();
+        var displayName = Context.User?.Identity?.Name ?? "Unknown User";
+
+        var evt = new WorkflowEvent
+        {
+            EventType = "DECISION_MADE",
+            WorkflowId = workflowId,
+            UserId = userId,
+            DisplayName = displayName,
+            Timestamp = DateTime.UtcNow,
+            Data = new DecisionMadeEvent 
+            { 
+                Decision = decision,
+                Alternatives = alternatives,
+                Confidence = confidence
+            }
+        };
+
+        _batchingService.QueueUpdate(workflowId, evt);
+    }
+
+    /// <summary>
+    /// Broadcast step change event to workflow participants
+    /// </summary>
+    public async Task BroadcastStepChange(Guid workflowId, string stepId, string stepName, string status)
+    {
+        var userId = GetUserIdFromClaims();
+        var displayName = Context.User?.Identity?.Name ?? "Unknown User";
+
+        var evt = new WorkflowEvent
+        {
+            EventType = "STEP_CHANGED",
+            WorkflowId = workflowId,
+            UserId = userId,
+            DisplayName = displayName,
+            Timestamp = DateTime.UtcNow,
+            Data = new StepChangedEvent 
+            { 
+                StepId = stepId,
+                StepName = stepName,
+                Status = status
+            }
+        };
+
+        _batchingService.QueueUpdate(workflowId, evt);
+    }
+
+    /// <summary>
+    /// Broadcast conflict detected event
+    /// </summary>
+    public async Task BroadcastConflict(Guid workflowId, Guid conflictId, string fieldName, List<string> conflictingValues)
+    {
+        var userId = GetUserIdFromClaims();
+        var displayName = Context.User?.Identity?.Name ?? "Unknown User";
+
+        var evt = new WorkflowEvent
+        {
+            EventType = "CONFLICT_DETECTED",
+            WorkflowId = workflowId,
+            UserId = userId,
+            DisplayName = displayName,
+            Timestamp = DateTime.UtcNow,
+            Data = new ConflictEvent
             {
-                SessionId = session.Id,
-                NewPersona = result.NewPersona.ToString(),
-                PreviousPersona = result.PreviousPersona.ToString(),
-                SwitchCount = result.SwitchCount,
-                SuggestionMessage = result.SuggestionMessage,
-                Message = $"Switched to {result.NewPersona} mode",
-                Timestamp = DateTime.UtcNow
-            });
+                ConflictId = conflictId,
+                FieldName = fieldName,
+                ConflictingValues = conflictingValues
+            }
+        };
 
-            _logger.LogInformation(
-                "User {UserId} switched persona to {NewPersona} in session {SessionId}",
-                userId, newPersona, session.Id);
-        }
-        else
-        {
-            throw new HubException("Failed to switch persona");
-        }
+        await Clients.Group($"workflow-{workflowId}").SendAsync("CONFLICT_DETECTED", evt);
     }
 }

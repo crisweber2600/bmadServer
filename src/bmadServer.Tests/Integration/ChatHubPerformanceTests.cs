@@ -25,28 +25,31 @@ public class ChatHubPerformanceTests : IClassFixture<TestWebApplicationFactory>,
         // Register and login to get access token
         var client = _factory.CreateClient();
         
-        var registerResponse = await client.PostAsJsonAsync("/api/auth/register", new
+        var email = $"perf-test-{Guid.NewGuid()}@example.com";
+        var registerResponse = await client.PostAsJsonAsync("/api/v1/auth/register", new
         {
-            Email = $"perf-test-{Guid.NewGuid()}@example.com",
-            Password = "Test123!@#"
+            Email = email,
+            Password = "Test123!@#",
+            DisplayName = "Performance Test User"
         });
         
-        Assert.True(registerResponse.IsSuccessStatusCode, "Registration failed");
+        Assert.True(registerResponse.IsSuccessStatusCode, $"Registration failed: {await registerResponse.Content.ReadAsStringAsync()}");
         
-        var loginResponse = await client.PostAsJsonAsync("/api/auth/login", new
+        var loginResponse = await client.PostAsJsonAsync("/api/v1/auth/login", new
         {
-            Email = registerResponse.Content.ReadFromJsonAsync<dynamic>().Result!.email,
+            Email = email,
             Password = "Test123!@#"
         });
         
         Assert.True(loginResponse.IsSuccessStatusCode, "Login failed");
-        var loginResult = await loginResponse.Content.ReadFromJsonAsync<dynamic>();
-        _accessToken = loginResult!.accessToken;
+        var loginResult = await loginResponse.Content.ReadFromJsonAsync<System.Text.Json.JsonDocument>();
+        _accessToken = loginResult!.RootElement.GetProperty("accessToken").GetString();
 
-        // Create SignalR connection
+        // Create SignalR connection using test server's handler
         _connection = new HubConnectionBuilder()
             .WithUrl($"{_factory.Server.BaseAddress}hubs/chat", options =>
             {
+                options.HttpMessageHandlerFactory = _ => _factory.Server.CreateHandler();
                 options.AccessTokenProvider = () => Task.FromResult(_accessToken)!;
             })
             .Build();

@@ -1,6 +1,8 @@
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.Services;
+using bmadServer.Tests.Helpers;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -11,6 +13,7 @@ namespace bmadServer.Tests.Unit;
 public class TranslationServiceTests : IDisposable
 {
     private readonly ApplicationDbContext _dbContext;
+    private readonly SqliteConnection _connection;
     private readonly Mock<ILogger<TranslationService>> _loggerMock;
     private readonly Mock<ILogger<ContextAnalysisService>> _contextLoggerMock;
     private readonly ContextAnalysisService _contextAnalysisService;
@@ -18,11 +21,9 @@ public class TranslationServiceTests : IDisposable
 
     public TranslationServiceTests()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
-
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
         _dbContext = new ApplicationDbContext(options);
+        _dbContext.Database.EnsureCreated();
         _loggerMock = new Mock<ILogger<TranslationService>>();
         _contextLoggerMock = new Mock<ILogger<ContextAnalysisService>>();
         _contextAnalysisService = new ContextAnalysisService(_contextLoggerMock.Object);
@@ -223,7 +224,7 @@ public class TranslationServiceTests : IDisposable
 
     public void Dispose()
     {
-        _dbContext.Database.EnsureDeleted();
         _dbContext.Dispose();
+        _connection.Dispose();
     }
 }

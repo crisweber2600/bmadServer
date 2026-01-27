@@ -31,4 +31,6 @@ public class StepExecutionResult
     public string? ErrorMessage { get; init; }
     public WorkflowStatus? NewWorkflowStatus { get; init; }
     public int? NextStep { get; init; }
+    public Guid? PendingApprovalId { get; init; }
+    public bool RequiresApproval { get; init; }
 }

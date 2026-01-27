@@ -18,4 +18,17 @@ public interface IAgentRouter
     /// Register an agent handler
     /// </summary>
     void RegisterHandler(string agentId, IAgentHandler handler);
+
+    /// <summary>
+    /// Get the model preference for an agent, respecting any configured override
+    /// </summary>
+    /// <param name="agentId">The agent ID</param>
+    /// <returns>The model preference, or null if not configured</returns>
+    string? GetModelPreference(string agentId);
+
+    /// <summary>
+    /// Set a global model override for all agents (for cost/quality tradeoffs)
+    /// </summary>
+    /// <param name="modelName">The model to use for all agents, or null to disable override</param>
+    void SetModelOverride(string? modelName);
 }

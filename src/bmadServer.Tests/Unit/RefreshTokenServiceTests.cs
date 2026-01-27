@@ -1,6 +1,8 @@
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.Services;
+using bmadServer.Tests.Helpers;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -11,16 +13,14 @@ namespace bmadServer.Tests.Unit;
 public class RefreshTokenServiceTests : IDisposable
 {
     private readonly ApplicationDbContext _dbContext;
+    private readonly SqliteConnection _connection;
     private readonly RefreshTokenService _service;
 
     public RefreshTokenServiceTests()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
-
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
         _dbContext = new ApplicationDbContext(options);
+        _dbContext.Database.EnsureCreated();
         _service = new RefreshTokenService(_dbContext, NullLogger<RefreshTokenService>.Instance);
     }
 
@@ -366,5 +366,6 @@ public class RefreshTokenServiceTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
+        _connection.Dispose();
     }
 }

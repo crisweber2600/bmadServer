@@ -1,6 +1,8 @@
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.Services;
+using bmadServer.Tests.Helpers;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging;
@@ -12,18 +14,16 @@ namespace bmadServer.Tests.Unit;
 public class RoleServiceTests : IDisposable
 {
     private readonly ApplicationDbContext _dbContext;
+    private readonly SqliteConnection _connection;
     private readonly RoleService _roleService;
     private readonly User _testUser;
     private readonly Mock<ILogger<RoleService>> _mockLogger;
 
     public RoleServiceTests()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .ConfigureWarnings(x => x.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
-
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
         _dbContext = new ApplicationDbContext(options);
+        _dbContext.Database.EnsureCreated();
         _mockLogger = new Mock<ILogger<RoleService>>();
         _roleService = new RoleService(_dbContext, _mockLogger.Object);
 
@@ -41,6 +41,7 @@ public class RoleServiceTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
+        _connection.Dispose();
     }
 
     [Fact]

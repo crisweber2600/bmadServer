@@ -2,6 +2,7 @@ using bmadServer.ApiService.Controllers;
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Hubs;
 using bmadServer.ApiService.Models.Workflows;
+using bmadServer.ApiService.Services;
 using bmadServer.ApiService.Services.Workflows;
 using bmadServer.ApiService.Services.Workflows.Agents;
 using bmadServer.ServiceDefaults.Models.Workflows;
@@ -10,6 +11,7 @@ using bmadServer.Tests.Helpers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -21,8 +23,10 @@ namespace bmadServer.Tests.Integration.Workflows;
 public class StepExecutionIntegrationTests : IDisposable
 {
     private readonly ApplicationDbContext _context;
+    private readonly SqliteConnection _connection;
     private readonly TestWorkflowRegistry _workflowRegistry;
     private readonly IAgentRouter _agentRouter;
+    private readonly IAgentRegistry _agentRegistry;
     private readonly IWorkflowInstanceService _workflowInstanceService;
     private readonly IStepExecutor _stepExecutor;
     private readonly WorkflowsController _controller;
@@ -30,34 +34,60 @@ public class StepExecutionIntegrationTests : IDisposable
 
     public StepExecutionIntegrationTests()
     {
-        // Setup in-memory database
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
+        // Setup SQLite in-memory database
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
         _context = new ApplicationDbContext(options);
+        _context.Database.EnsureCreated();
 
         // Create real services
         _workflowRegistry = new TestWorkflowRegistry();
-        _agentRouter = new AgentRouter(new Mock<ILogger<AgentRouter>>().Object);
+        var registryMock = new Mock<IAgentRegistry>();
+        _agentRegistry = registryMock.Object;
+        _agentRouter = new AgentRouter(registryMock.Object, new Mock<ILogger<AgentRouter>>().Object);
         
+        var agentHandoffServiceMock = new Mock<IAgentHandoffService>();
         _workflowInstanceService = new WorkflowInstanceService(
             _context,
             _workflowRegistry,
+            registryMock.Object,
+            agentHandoffServiceMock.Object,
             new Mock<ILogger<WorkflowInstanceService>>().Object);
 
+        var sharedContextServiceMock = new Mock<ISharedContextService>();
+        sharedContextServiceMock
+            .Setup(x => x.GetContextAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((SharedContext?)null);
+
+        var hubContextMock = new Mock<IHubContext<ChatHub>>();
+        var approvalServiceMock = new Mock<IApprovalService>();
+        
+        // Setup hub context mock
+        var mockClients = new Mock<IHubClients>();
+        var mockClientProxy = new Mock<IClientProxy>();
+        mockClients.Setup(clients => clients.All).Returns(mockClientProxy.Object);
+        mockClients.Setup(clients => clients.Group(It.IsAny<string>())).Returns(mockClientProxy.Object);
+        hubContextMock.Setup(hub => hub.Clients).Returns(mockClients.Object);
+        
         _stepExecutor = new StepExecutor(
             _context,
             _agentRouter,
             _workflowRegistry,
             _workflowInstanceService,
+            sharedContextServiceMock.Object,
+            agentHandoffServiceMock.Object,
+            approvalServiceMock.Object,
+            hubContextMock.Object,
             new Mock<ILogger<StepExecutor>>().Object);
 
         _controller = new WorkflowsController(
             _workflowInstanceService,
             _workflowRegistry,
+            new Mock<IAgentRegistry>().Object,
             _stepExecutor,
-            new Mock<IHubContext<ChatHub>>().Object,
-            new Mock<ILogger<WorkflowsController>>().Object);
+            approvalServiceMock.Object,
+            hubContextMock.Object,
+            new Mock<ILogger<WorkflowsController>>().Object,
+            new Mock<IParticipantService>().Object);
 
         // Setup test user
         _testUserId = Guid.NewGuid();
@@ -333,7 +363,7 @@ public class StepExecutionIntegrationTests : IDisposable
 
     public void Dispose()
     {
-        _context.Database.EnsureDeleted();
         _context.Dispose();
+        _connection.Dispose();
     }
 }

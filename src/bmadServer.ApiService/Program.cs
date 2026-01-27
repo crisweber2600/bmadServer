@@ -78,8 +78,52 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IWorkflowIns
 // Register agent router as singleton (shared agent handler registry)
 builder.Services.AddSingleton<bmadServer.ApiService.Services.Workflows.IAgentRouter, bmadServer.ApiService.Services.Workflows.AgentRouter>();
 
+// Register agent registry as singleton (shared agent metadata registry)
+builder.Services.AddSingleton<bmadServer.ApiService.Services.Workflows.Agents.IAgentRegistry, bmadServer.ApiService.Services.Workflows.Agents.AgentRegistry>();
+
+// Register agent messaging service for agent-to-agent communication
+builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.Agents.IAgentMessaging, bmadServer.ApiService.Services.Workflows.Agents.AgentMessaging>();
+
 // Register step executor
 builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IStepExecutor, bmadServer.ApiService.Services.Workflows.StepExecutor>();
+
+// Register approval service (Epic 5 - Multi-Agent Collaboration)
+builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IApprovalService, bmadServer.ApiService.Services.Workflows.ApprovalService>();
+
+// Register shared context service (Story 5-3)
+builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.ISharedContextService, bmadServer.ApiService.Services.Workflows.SharedContextService>();
+
+// Register agent handoff service (Story 5-4)
+builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IAgentHandoffService, bmadServer.ApiService.Services.Workflows.AgentHandoffService>();
+
+// Register participant service
+builder.Services.AddScoped<bmadServer.ApiService.Services.IParticipantService, bmadServer.ApiService.Services.ParticipantService>();
+
+// Register checkpoint services
+builder.Services.AddScoped<bmadServer.ApiService.Services.Checkpoints.ICheckpointService, bmadServer.ApiService.Services.Checkpoints.CheckpointService>();
+builder.Services.AddScoped<bmadServer.ApiService.Services.Checkpoints.IInputQueueService, bmadServer.ApiService.Services.Checkpoints.InputQueueService>();
+
+// Register memory cache for user profile caching (Story 7.3)
+builder.Services.AddMemoryCache();
+
+// Register distributed cache for contribution metrics (Story 7.3)
+// Using in-memory distributed cache for MVP (replace with Redis in production)
+builder.Services.AddDistributedMemoryCache();
+
+// Register contribution metrics service (Story 7.3)
+builder.Services.AddScoped<bmadServer.ApiService.Services.IContributionMetricsService, bmadServer.ApiService.Services.ContributionMetricsService>();
+
+// Register decision services (Epic 6 - Decision Management)
+builder.Services.AddScoped<bmadServer.ApiService.Services.Decisions.IDecisionService, bmadServer.ApiService.Services.Decisions.DecisionService>();
+
+// Register conflict detection services (Story 7.4)
+builder.Services.AddScoped<bmadServer.ApiService.Services.IConflictDetectionService, bmadServer.ApiService.Services.ConflictDetectionService>();
+builder.Services.AddScoped<bmadServer.ApiService.Services.IConflictResolutionService, bmadServer.ApiService.Services.ConflictResolutionService>();
+builder.Services.AddHostedService<bmadServer.ApiService.BackgroundServices.ConflictEscalationJob>();
+
+// Register real-time collaboration services (Story 7.5)
+builder.Services.AddSingleton<bmadServer.ApiService.Services.IPresenceTrackingService, bmadServer.ApiService.Services.PresenceTrackingService>();
+builder.Services.AddSingleton<bmadServer.ApiService.Services.IUpdateBatchingService, bmadServer.ApiService.Services.UpdateBatchingService>();
 
 // Register FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<bmadServer.ApiService.Validators.RegisterRequestValidator>();
@@ -204,5 +248,8 @@ app.MapHub<bmadServer.ApiService.Hubs.ChatHub>("/hubs/chat");
 // Start the application
 app.Run();
 
-// Make Program class accessible to tests
-public partial class Program { }
+// Make Program class accessible to tests in bmadServer.ApiService namespace
+namespace bmadServer.ApiService
+{
+    public partial class Program { }
+}

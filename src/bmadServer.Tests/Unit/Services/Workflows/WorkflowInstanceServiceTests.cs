@@ -1,8 +1,11 @@
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services.Workflows;
+using bmadServer.ApiService.Services.Workflows.Agents;
 using bmadServer.ServiceDefaults.Services.Workflows;
+using bmadServer.Tests.Helpers;
 using FluentAssertions;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -13,20 +16,30 @@ namespace bmadServer.Tests.Unit.Services.Workflows;
 public class WorkflowInstanceServiceTests : IDisposable
 {
     private readonly ApplicationDbContext _context;
+    private readonly SqliteConnection _connection;
     private readonly Mock<IWorkflowRegistry> _registryMock;
+    private readonly Mock<IAgentRegistry> _agentRegistryMock;
+    private readonly Mock<IAgentHandoffService> _agentHandoffServiceMock;
     private readonly Mock<ILogger<WorkflowInstanceService>> _loggerMock;
     private readonly IWorkflowInstanceService _service;
 
     public WorkflowInstanceServiceTests()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
         _context = new ApplicationDbContext(options);
+        _context.Database.EnsureCreated();
 
         _registryMock = new Mock<IWorkflowRegistry>();
+        _agentRegistryMock = new Mock<IAgentRegistry>();
+        _agentHandoffServiceMock = new Mock<IAgentHandoffService>();
         _loggerMock = new Mock<ILogger<WorkflowInstanceService>>();
-        _service = new WorkflowInstanceService(_context, _registryMock.Object, _loggerMock.Object);
+        _service = new WorkflowInstanceService(_context, _registryMock.Object, _agentRegistryMock.Object, _agentHandoffServiceMock.Object, _loggerMock.Object);
+    }
+
+    public void Dispose()
+    {
+        _context.Dispose();
+        _connection.Dispose();
     }
 
     [Fact]
@@ -980,10 +993,5 @@ public class WorkflowInstanceServiceTests : IDisposable
         preservedHistory.Should().NotBeNull();
         preservedHistory!.Output.Should().NotBeNull();
         preservedHistory.Output!.RootElement.GetProperty("userStories").GetArrayLength().Should().Be(2);
-    }
-
-    public void Dispose()
-    {
-        _context.Dispose();
     }
 }

@@ -1,6 +1,8 @@
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.Services;
+using bmadServer.Tests.Helpers;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -11,6 +13,7 @@ namespace bmadServer.Tests.Unit;
 public class InSessionPersonaSwitchingTests : IDisposable
 {
     private readonly ApplicationDbContext _dbContext;
+    private readonly SqliteConnection _connection;
     private readonly Mock<ILogger<SessionService>> _loggerMock;
     private readonly SessionService _sessionService;
     private readonly User _testUser;
@@ -18,11 +21,9 @@ public class InSessionPersonaSwitchingTests : IDisposable
 
     public InSessionPersonaSwitchingTests()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
-
+        var options = TestDatabaseHelper.CreateSqliteOptions(out _connection);
         _dbContext = new ApplicationDbContext(options);
+        _dbContext.Database.EnsureCreated();
         _loggerMock = new Mock<ILogger<SessionService>>();
         _sessionService = new SessionService(_dbContext, _loggerMock.Object);
 
@@ -214,7 +215,7 @@ public class InSessionPersonaSwitchingTests : IDisposable
 
     public void Dispose()
     {
-        _dbContext.Database.EnsureDeleted();
         _dbContext.Dispose();
+        _connection.Dispose();
     }
 }
