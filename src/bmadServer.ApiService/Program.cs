@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Text;
 using bmadServer.ApiService.Configuration;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -213,6 +214,28 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
+
+// Apply EF Core migrations automatically on startup (for development/Aspire orchestration)
+// This ensures the database schema is up-to-date when the application starts
+if (!app.Environment.IsEnvironment("Test"))
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<bmadServer.ApiService.Data.ApplicationDbContext>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        try
+        {
+            logger.LogInformation("Applying database migrations...");
+            dbContext.Database.Migrate();
+            logger.LogInformation("Database migrations applied successfully.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while applying database migrations.");
+            throw;
+        }
+    }
+}
 
 // Configure the HTTP request pipeline with middleware
 

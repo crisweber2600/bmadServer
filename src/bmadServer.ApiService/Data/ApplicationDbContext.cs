@@ -431,6 +431,52 @@ public class ApplicationDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
+        // Configure Decision entity with DecisionVersion relationship
+        modelBuilder.Entity<Decision>(entity =>
+        {
+            entity.ToTable("decisions");
+            entity.HasKey(e => e.Id);
+            
+            // Configure the relationship with DecisionVersion
+            entity.HasMany(e => e.Versions)
+                .WithOne(v => v.Decision)
+                .HasForeignKey(v => v.DecisionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure DecisionVersion entity
+        modelBuilder.Entity<DecisionVersion>(entity =>
+        {
+            entity.ToTable("decision_versions");
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.Value)
+                .HasColumnType("jsonb");
+            entity.Property(e => e.Options)
+                .HasColumnType("jsonb");
+            entity.Property(e => e.Context)
+                .HasColumnType("jsonb");
+        });
+
+        // Configure DecisionReview entity with Responses relationship
+        modelBuilder.Entity<DecisionReview>(entity =>
+        {
+            entity.ToTable("decision_reviews");
+            entity.HasKey(e => e.Id);
+            
+            entity.HasMany(e => e.Responses)
+                .WithOne(r => r.Review)
+                .HasForeignKey(r => r.ReviewId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure DecisionReviewResponse entity
+        modelBuilder.Entity<DecisionReviewResponse>(entity =>
+        {
+            entity.ToTable("decision_review_responses");
+            entity.HasKey(e => e.Id);
+        });
+
         modelBuilder.Entity<Conflict>(entity =>
         {
             entity.ToTable("conflicts");
