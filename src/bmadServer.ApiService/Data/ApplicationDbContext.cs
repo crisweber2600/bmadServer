@@ -52,18 +52,18 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<Session>(entity =>
         {
-            entity.ToTable("sessions", t => 
+            entity.ToTable("sessions", t =>
             {
                 // Check constraint: ExpiresAt must be after CreatedAt
-                t.HasCheckConstraint("CK_Session_Expiry", 
+                t.HasCheckConstraint("CK_Session_Expiry",
                     "\"ExpiresAt\" > \"CreatedAt\"");
             });
-            
+
             entity.HasKey(e => e.Id);
-            
+
             // ConnectionId is nullable (cleared when session expires)
             entity.Property(e => e.ConnectionId).IsRequired(false);
-            
+
             // Configure JSONB column for WorkflowState with JSON value converter
             // This supports both PostgreSQL JSONB and InMemory database for testing
             entity.Property(e => e.WorkflowState)
@@ -71,21 +71,21 @@ public class ApplicationDbContext : DbContext
                 .HasConversion(
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
                     v => JsonSerializer.Deserialize<WorkflowState>(v, (JsonSerializerOptions?)null));
-            
+
             // GIN index for fast JSONB queries (PostgreSQL only)
             entity.HasIndex(e => e.WorkflowState)
                 .HasMethod("gin");
-            
+
             // Indexes for lookup performance
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => e.ConnectionId);
             entity.HasIndex(e => e.ExpiresAt);
             entity.HasIndex(e => e.IsActive);
-            
+
             // PostgreSQL row version for optimistic concurrency
             entity.Property<uint>("xmin")
                 .IsRowVersion();
-            
+
             // Foreign key to Users table
             entity.HasOne(e => e.User)
                 .WithMany(u => u.Sessions)
@@ -109,7 +109,7 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.TokenHash).IsUnique();
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => e.ExpiresAt);
-            
+
             entity.HasOne(e => e.User)
                 .WithMany(u => u.RefreshTokens)
                 .HasForeignKey(e => e.UserId)
@@ -124,7 +124,7 @@ public class ApplicationDbContext : DbContext
                 .IsRequired()
                 .HasConversion<string>();
             entity.HasIndex(e => e.UserId);
-            
+
             entity.HasOne(e => e.User)
                 .WithMany()
                 .HasForeignKey(e => e.UserId)
@@ -139,7 +139,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Status)
                 .IsRequired()
                 .HasConversion<string>();
-            
+
             // JSONB columns for PostgreSQL with JSON value converters for compatibility
             entity.Property(e => e.StepData)
                 .HasColumnType("jsonb")
@@ -157,14 +157,14 @@ public class ApplicationDbContext : DbContext
                 .HasConversion(
                     v => v == null ? null : v.RootElement.GetRawText(),
                     v => v == null ? null : JsonDocument.Parse(v));
-            
+
             // Indexes
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => e.CreatedAt);
             entity.HasIndex(e => e.PausedAt);
             entity.HasIndex(e => e.CancelledAt);
-            
+
             // GIN indexes for JSONB columns (PostgreSQL only)
             entity.HasIndex(e => e.StepData)
                 .HasMethod("gin");
@@ -183,37 +183,37 @@ public class ApplicationDbContext : DbContext
                 .HasConversion<string?>();
             entity.Property(e => e.NewStatus)
                 .HasConversion<string?>();
-            
+
             // Attribution fields (Story 7.3)
             entity.Property(e => e.DisplayName).HasMaxLength(255);
             entity.Property(e => e.InputType).HasMaxLength(50);
-            
+
             // JSONB columns for PostgreSQL with JSON value converters for compatibility
             entity.Property(e => e.Payload)
                 .HasColumnType("jsonb")
                 .HasConversion(
                     v => v == null ? null : v.RootElement.GetRawText(),
                     v => v == null ? null : JsonDocument.Parse(v));
-            
+
             entity.Property(e => e.AlternativesConsidered)
                 .HasColumnType("jsonb")
                 .HasConversion(
                     v => v == null ? null : v.RootElement.GetRawText(),
                     v => v == null ? null : JsonDocument.Parse(v));
-            
+
             // Indexes
             entity.HasIndex(e => e.WorkflowInstanceId);
             entity.HasIndex(e => e.Timestamp);
             // Index for attribution queries (Story 7.3)
             entity.HasIndex(e => new { e.UserId, e.Timestamp })
                 .HasDatabaseName("idx_workflow_events_user_time");
-            
+
             // GIN indexes for JSONB columns (PostgreSQL only)
             entity.HasIndex(e => e.Payload)
                 .HasMethod("gin");
             entity.HasIndex(e => e.AlternativesConsidered)
                 .HasMethod("gin");
-            
+
             // Foreign key to WorkflowInstance
             entity.HasOne(e => e.WorkflowInstance)
                 .WithMany()
@@ -231,7 +231,7 @@ public class ApplicationDbContext : DbContext
                 .IsRequired()
                 .HasConversion<string>();
             entity.Property(e => e.ErrorMessage).HasMaxLength(2000);
-            
+
             entity.Property(e => e.Input)
                 .HasColumnType("jsonb")
                 .HasConversion(
@@ -242,17 +242,17 @@ public class ApplicationDbContext : DbContext
                 .HasConversion(
                     v => v == null ? null : v.RootElement.GetRawText(),
                     v => v == null ? null : JsonDocument.Parse(v));
-            
+
             entity.HasIndex(e => e.WorkflowInstanceId);
             entity.HasIndex(e => e.StepId);
             entity.HasIndex(e => e.StartedAt);
             entity.HasIndex(e => e.Status);
-            
+
             entity.HasIndex(e => e.Input)
                 .HasMethod("gin");
             entity.HasIndex(e => e.Output)
                 .HasMethod("gin");
-            
+
             entity.HasOne(e => e.WorkflowInstance)
                 .WithMany()
                 .HasForeignKey(e => e.WorkflowInstanceId)
@@ -263,7 +263,7 @@ public class ApplicationDbContext : DbContext
         {
             entity.ToTable("agent_message_logs");
             entity.HasKey(e => e.Id);
-            
+
             entity.Property(e => e.SourceAgent).IsRequired().HasMaxLength(100);
             entity.Property(e => e.TargetAgent).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Content)
@@ -271,14 +271,14 @@ public class ApplicationDbContext : DbContext
                 .HasConversion(
                     v => v.RootElement.GetRawText(),
                     v => JsonDocument.Parse(v));
-            
+
             entity.HasIndex(e => e.WorkflowInstanceId);
             entity.HasIndex(e => e.Timestamp);
             entity.HasIndex(e => e.CorrelationId);
-            
+
             entity.HasIndex(e => e.Content)
                 .HasMethod("gin");
-            
+
             entity.HasOne(e => e.WorkflowInstance)
                 .WithMany()
                 .HasForeignKey(e => e.WorkflowInstanceId)
@@ -289,18 +289,18 @@ public class ApplicationDbContext : DbContext
         {
             entity.ToTable("agent_handoffs");
             entity.HasKey(e => e.Id);
-            
+
             entity.Property(e => e.FromAgentId).IsRequired().HasMaxLength(100);
             entity.Property(e => e.ToAgentId).IsRequired().HasMaxLength(100);
             entity.Property(e => e.WorkflowStepId).IsRequired().HasMaxLength(255);
             entity.Property(e => e.Reason).HasMaxLength(1000);
             entity.Property(e => e.Timestamp).IsRequired();
-            
+
             // Indexes for common queries
             entity.HasIndex(e => e.WorkflowInstanceId);
             entity.HasIndex(e => e.Timestamp);
             entity.HasIndex(e => new { e.WorkflowInstanceId, e.Timestamp });
-            
+
             // Foreign key to WorkflowInstance
             entity.HasOne(e => e.WorkflowInstance)
                 .WithMany()
@@ -316,21 +316,21 @@ public class ApplicationDbContext : DbContext
                 .IsRequired()
                 .HasConversion<string>()
                 .HasMaxLength(20);
-            
+
             // Unique constraint: one user per workflow
             entity.HasIndex(e => new { e.WorkflowId, e.UserId })
                 .IsUnique();
-            
+
             // Indexes for lookup performance
             entity.HasIndex(e => e.WorkflowId);
             entity.HasIndex(e => e.UserId);
-            
+
             // Foreign keys
             entity.HasOne(e => e.Workflow)
                 .WithMany()
                 .HasForeignKey(e => e.WorkflowId)
                 .OnDelete(DeleteBehavior.Cascade);
-            
+
             entity.HasOne(e => e.User)
                 .WithMany()
                 .HasForeignKey(e => e.UserId)
@@ -346,7 +346,7 @@ public class ApplicationDbContext : DbContext
                 .IsRequired()
                 .HasConversion<string>()
                 .HasMaxLength(50);
-            
+
             // JSONB columns for PostgreSQL with JSON value converters for compatibility
             entity.Property(e => e.StateSnapshot)
                 .HasColumnType("jsonb")
@@ -354,31 +354,31 @@ public class ApplicationDbContext : DbContext
                 .HasConversion(
                     v => v.RootElement.GetRawText(),
                     v => JsonDocument.Parse(v));
-            
+
             entity.Property(e => e.Metadata)
                 .HasColumnType("jsonb")
                 .HasConversion(
                     v => v == null ? null : v.RootElement.GetRawText(),
                     v => v == null ? null : JsonDocument.Parse(v));
-            
+
             // Indexes
             entity.HasIndex(e => new { e.WorkflowId, e.CreatedAt })
                 .HasDatabaseName("idx_checkpoints_workflow_time");
             entity.HasIndex(e => new { e.WorkflowId, e.Version })
                 .HasDatabaseName("idx_checkpoints_version");
-            
+
             // GIN indexes for JSONB columns (PostgreSQL only)
             entity.HasIndex(e => e.StateSnapshot)
                 .HasMethod("gin");
             entity.HasIndex(e => e.Metadata)
                 .HasMethod("gin");
-            
+
             // Foreign keys
             entity.HasOne(e => e.Workflow)
                 .WithMany()
                 .HasForeignKey(e => e.WorkflowId)
                 .OnDelete(DeleteBehavior.Cascade);
-            
+
             entity.HasOne(e => e.TriggeredByUser)
                 .WithMany()
                 .HasForeignKey(e => e.TriggeredBy)
@@ -396,11 +396,11 @@ public class ApplicationDbContext : DbContext
                 .HasMaxLength(20)
                 .HasDefaultValue(InputStatus.Queued);
             entity.Property(e => e.RejectionReason).HasMaxLength(2000);
-            
+
             // Auto-increment sequence number for FIFO ordering
             entity.Property(e => e.SequenceNumber)
                 .UseIdentityAlwaysColumn();
-            
+
             // JSONB column for PostgreSQL with JSON value converter for compatibility
             entity.Property(e => e.Content)
                 .HasColumnType("jsonb")
@@ -408,23 +408,23 @@ public class ApplicationDbContext : DbContext
                 .HasConversion(
                     v => v.RootElement.GetRawText(),
                     v => JsonDocument.Parse(v));
-            
+
             // Indexes
             entity.HasIndex(e => new { e.WorkflowId, e.Status, e.SequenceNumber })
                 .HasDatabaseName("idx_queued_inputs_workflow_status");
             entity.HasIndex(e => e.UserId)
                 .HasDatabaseName("idx_queued_inputs_user");
-            
+
             // GIN index for JSONB column (PostgreSQL only)
             entity.HasIndex(e => e.Content)
                 .HasMethod("gin");
-            
+
             // Foreign keys
             entity.HasOne(e => e.Workflow)
                 .WithMany()
                 .HasForeignKey(e => e.WorkflowId)
                 .OnDelete(DeleteBehavior.Cascade);
-            
+
             entity.HasOne(e => e.User)
                 .WithMany()
                 .HasForeignKey(e => e.UserId)
@@ -436,7 +436,7 @@ public class ApplicationDbContext : DbContext
         {
             entity.ToTable("decisions");
             entity.HasKey(e => e.Id);
-            
+
             // Configure the relationship with DecisionVersion
             entity.HasMany(e => e.Versions)
                 .WithOne(v => v.Decision)
@@ -449,7 +449,7 @@ public class ApplicationDbContext : DbContext
         {
             entity.ToTable("decision_versions");
             entity.HasKey(e => e.Id);
-            
+
             entity.Property(e => e.Value)
                 .HasColumnType("jsonb");
             entity.Property(e => e.Options)
@@ -463,7 +463,7 @@ public class ApplicationDbContext : DbContext
         {
             entity.ToTable("decision_reviews");
             entity.HasKey(e => e.Id);
-            
+
             entity.HasMany(e => e.Responses)
                 .WithOne(r => r.Review)
                 .HasForeignKey(r => r.ReviewId)
@@ -497,12 +497,12 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ResolutionJson)
                 .HasColumnName("resolution")
                 .HasColumnType("jsonb");
-            
+
             entity.HasIndex(e => e.WorkflowInstanceId);
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.ExpiresAt)
                 .HasFilter("\"Status\" = 'Pending'");
-            
+
             entity.HasOne(e => e.WorkflowInstance)
                 .WithMany()
                 .HasForeignKey(e => e.WorkflowInstanceId)
@@ -516,15 +516,15 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.DisplayName).IsRequired().HasMaxLength(255);
             entity.Property(e => e.FieldName).IsRequired().HasMaxLength(255);
             entity.Property(e => e.Value).IsRequired();
-            
+
             entity.HasIndex(e => new { e.WorkflowInstanceId, e.FieldName, e.IsApplied });
             entity.HasIndex(e => e.ConflictId);
-            
+
             entity.HasOne(e => e.WorkflowInstance)
                 .WithMany()
                 .HasForeignKey(e => e.WorkflowInstanceId)
                 .OnDelete(DeleteBehavior.Cascade);
-            
+
             entity.HasOne(e => e.Conflict)
                 .WithMany()
                 .HasForeignKey(e => e.ConflictId)
@@ -535,31 +535,31 @@ public class ApplicationDbContext : DbContext
         {
             entity.ToTable("translation_mappings");
             entity.HasKey(e => e.Id);
-            
+
             entity.Property(e => e.TechnicalTerm)
                 .IsRequired()
                 .HasMaxLength(200);
-            
+
             entity.Property(e => e.BusinessTerm)
                 .IsRequired()
                 .HasMaxLength(500);
-            
+
             entity.Property(e => e.Context)
                 .HasMaxLength(500);
-            
+
             entity.Property(e => e.IsActive)
                 .IsRequired();
-            
+
             entity.Property(e => e.CreatedAt)
                 .IsRequired();
-            
+
             entity.Property(e => e.UpdatedAt)
                 .IsRequired();
-            
+
             // Unique index on TechnicalTerm (case-insensitive for PostgreSQL)
             entity.HasIndex(e => e.TechnicalTerm)
                 .IsUnique();
-            
+
             entity.HasIndex(e => e.IsActive);
         });
     }
