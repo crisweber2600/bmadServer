@@ -12,7 +12,9 @@
     "test:mobile": "playwright test --project=mobile-chrome --project=mobile-safari",
     "test:epic3": "playwright test tests/epic3/",
     "test:epic8": "playwright test tests/epic8/",
-    "report": "playwright show-report"
+    "report": "playwright show-report",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit"
   },
   "keywords": ["playwright", "e2e", "testing", "bmadserver"],
   "author": "bmadServer Team",

@@ -19,7 +19,11 @@ public class Epic8PersonaTranslationSteps : IDisposable
     private Guid? _currentUserId;
     private Dictionary<string, string> _userPreferences = new();
     private List<string>? _availablePersonas;
-    private int _lastStatusCode;  // Used for API response simulation
+    
+    // Suppress unused warning - field reserved for future API response simulation
+    #pragma warning disable CS0414
+    private int _lastStatusCode;
+    #pragma warning restore CS0414
 
     public Epic8PersonaTranslationSteps()
     {

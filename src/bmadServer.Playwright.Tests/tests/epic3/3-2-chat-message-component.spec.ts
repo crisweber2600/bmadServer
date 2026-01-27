@@ -93,7 +93,10 @@ test.describe('Story 3.2: Chat Message Component with Ant Design', () => {
       html.includes('<code>') ||
       html.includes('<pre>');
 
-    expect(hasFormattedText || html.length > 0).toBe(true);
+    // Must have some HTML content - agent should respond with formatted text
+    expect(html.length).toBeGreaterThan(10);
+    // Note: hasFormattedText may be false if agent responds with plain text
+    // The important thing is the agent responded with content
   });
 
   test('Code blocks syntax highlighted @P2', async ({ page }) => {
@@ -163,11 +166,14 @@ test.describe('Story 3.2: Chat Message Component with Ant Design', () => {
   test('ARIA labels for accessibility @P1', async ({ page }) => {
     // Given messages exist
     await chatPage.sendMessage('Accessibility test');
-    await page.waitForTimeout(500);
+    
+    // Wait for message to appear
+    const messages = page.locator('[data-testid="message"]');
+    await expect(messages.first()).toBeVisible({ timeout: 5000 });
 
     // When I check accessibility attributes
-    const messages = page.locator('[data-testid="message"]');
     const count = await messages.count();
+    expect(count).toBeGreaterThan(0);
 
     // Then messages should have aria-labels
     for (let i = 0; i < count; i++) {
@@ -185,13 +191,11 @@ test.describe('Story 3.2: Chat Message Component with Ant Design', () => {
     const liveRegion = await chatPage.getLiveRegion();
 
     // Then live region should exist for screen readers
-    const exists = (await liveRegion.count()) > 0;
-    expect(exists).toBe(true);
+    const count = await liveRegion.count();
+    expect(count).toBeGreaterThan(0);
 
     // And should have correct aria-live attribute
-    if (exists) {
-      const ariaLive = await liveRegion.first().getAttribute('aria-live');
-      expect(['polite', 'assertive']).toContain(ariaLive);
-    }
+    const ariaLive = await liveRegion.first().getAttribute('aria-live');
+    expect(['polite', 'assertive']).toContain(ariaLive);
   });
 });

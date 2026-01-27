@@ -22,7 +22,11 @@ public class Epic7CollaborationSteps : IDisposable
     private Guid? _participantUserId;
     private WorkflowParticipant? _addedParticipant;
     private List<WorkflowParticipant> _participants = new();
-    private int _lastStatusCode;  // Used for API response simulation
+    
+    // Suppress unused warning - field reserved for future API response simulation
+    #pragma warning disable CS0414
+    private int _lastStatusCode;
+    #pragma warning restore CS0414
 
     public Epic7CollaborationSteps()
     {

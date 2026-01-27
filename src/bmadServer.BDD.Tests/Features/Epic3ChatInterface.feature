@@ -80,7 +80,7 @@ Feature: Real-Time Chat Interface
   @story-3-3 @ui @input @keyboard
   Scenario: Ctrl+Enter sends message
     Given I have typed a message
-    When I press Ctrl+Enter
+    When I press the keyboard shortcut to send
     Then the message should be sent
     And the input should be cleared
 
@@ -95,7 +95,7 @@ Feature: Real-Time Chat Interface
     Given I am in the chat input
     When I type "/"
     Then a command palette should appear
-    And it should show /help, /status, /pause, /resume options
+    And it should show help, status, pause, resume command options
 
   # Story 3.4: Real-Time Message Streaming
   @story-3-4 @streaming @performance

@@ -22,7 +22,11 @@ public class Epic6DecisionManagementSteps : IDisposable
     private Guid? _currentWorkflowId;
     private MockDecision? _capturedDecision;
     private List<MockDecision> _workflowDecisions = new();
-    private int _lastStatusCode;  // Used for API response simulation
+    
+    // Suppress unused warning - field reserved for future API response simulation
+    #pragma warning disable CS0414
+    private int _lastStatusCode;
+    #pragma warning restore CS0414
 
     // Mock class to avoid complex required property initialization
     private class MockDecision

@@ -560,7 +560,7 @@ namespace bmadServer.BDD.Tests.Features
     await testRunner.GivenAsync("I have typed a message", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 83
-    await testRunner.WhenAsync("I press Ctrl+Enter", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.WhenAsync("I press the keyboard shortcut to send", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 84
     await testRunner.ThenAsync("the message should be sent", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
@@ -651,7 +651,7 @@ namespace bmadServer.BDD.Tests.Features
     await testRunner.ThenAsync("a command palette should appear", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 98
-    await testRunner.AndAsync("it should show /help, /status, /pause, /resume options", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("it should show help, status, pause, resume command options", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();

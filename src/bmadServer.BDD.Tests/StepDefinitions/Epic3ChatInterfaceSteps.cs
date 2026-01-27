@@ -287,7 +287,7 @@ public class Epic3ChatInterfaceSteps
         _characterCount = _lastMessage.Length;
     }
 
-    [When(@"I press Ctrl\+Enter")]
+    [When(@"I press the keyboard shortcut to send")]
     public void WhenIPressCtrlEnter()
     {
         if (!string.IsNullOrEmpty(_lastMessage))
@@ -350,7 +350,7 @@ public class Epic3ChatInterfaceSteps
         Assert.Equal("/", _lastMessage);
     }
 
-    [Then(@"it should show /help, /status, /pause, /resume options")]
+    [Then(@"it should show help, status, pause, resume command options")]
     public void ThenItShouldShowCommandOptions()
     {
         var expectedCommands = new[] { "/help", "/status", "/pause", "/resume" };
