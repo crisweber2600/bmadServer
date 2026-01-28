@@ -1,6 +1,8 @@
 using System.Text.Json;
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Models.Decisions;
+using bmadServer.BDD.Tests.TestSupport;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Reqnroll;
@@ -17,6 +19,7 @@ public class Epic6DecisionManagementSteps : IDisposable
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ApplicationDbContext _dbContext;
+    private readonly SqliteConnection _connection;
 
     private Guid? _currentUserId;
     private Guid? _currentWorkflowId;
@@ -47,12 +50,10 @@ public class Epic6DecisionManagementSteps : IDisposable
 
     public Epic6DecisionManagementSteps()
     {
-        var services = new ServiceCollection();
-
-        services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseInMemoryDatabase($"Decision_Test_{Guid.NewGuid()}"));
-
-        _serviceProvider = services.BuildServiceProvider();
+        // Use SQLite instead of InMemory to support JsonDocument properties
+        var (provider, connection) = SqliteTestDbContext.Create($"Decision_Test_{Guid.NewGuid()}");
+        _serviceProvider = provider;
+        _connection = connection;
         _dbContext = _serviceProvider.GetRequiredService<ApplicationDbContext>();
     }
 
@@ -297,5 +298,6 @@ public class Epic6DecisionManagementSteps : IDisposable
         {
             disposable.Dispose();
         }
+        _connection?.Dispose();
     }
 }

@@ -1,4 +1,6 @@
 using bmadServer.ApiService.Data;
+using bmadServer.BDD.Tests.TestSupport;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Reqnroll;
@@ -15,6 +17,7 @@ public class Epic8PersonaTranslationSteps : IDisposable
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ApplicationDbContext _dbContext;
+    private readonly SqliteConnection _connection;
 
     private Guid? _currentUserId;
     private Dictionary<string, string> _userPreferences = new();
@@ -27,12 +30,10 @@ public class Epic8PersonaTranslationSteps : IDisposable
 
     public Epic8PersonaTranslationSteps()
     {
-        var services = new ServiceCollection();
-
-        services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseInMemoryDatabase($"Persona_Test_{Guid.NewGuid()}"));
-
-        _serviceProvider = services.BuildServiceProvider();
+        // Use SQLite instead of InMemory to support JsonDocument properties
+        var (provider, connection) = SqliteTestDbContext.Create($"Persona_Test_{Guid.NewGuid()}");
+        _serviceProvider = provider;
+        _connection = connection;
         _dbContext = _serviceProvider.GetRequiredService<ApplicationDbContext>();
     }
 
@@ -154,5 +155,6 @@ public class Epic8PersonaTranslationSteps : IDisposable
         {
             disposable.Dispose();
         }
+        _connection?.Dispose();
     }
 }

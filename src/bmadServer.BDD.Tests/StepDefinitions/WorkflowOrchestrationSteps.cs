@@ -5,8 +5,10 @@ using System.Text.Json;
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services.Workflows;
+using bmadServer.BDD.Tests.TestSupport;
 using bmadServer.ServiceDefaults.Models.Workflows;
 using bmadServer.ServiceDefaults.Services.Workflows;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -21,6 +23,7 @@ public class WorkflowOrchestrationSteps : IDisposable
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ApplicationDbContext _dbContext;
+    private readonly SqliteConnection _connection;
     private readonly IWorkflowRegistry _workflowRegistry;
     private readonly IWorkflowInstanceService _workflowService;
     
@@ -31,15 +34,23 @@ public class WorkflowOrchestrationSteps : IDisposable
     private List<WorkflowDefinition>? _availableWorkflows;
     private WorkflowDefinition? _queriedWorkflow;
     private bool _validationResult;
+    
+    // Suppress unused warning - field reserved for future HTTP response testing
+    #pragma warning disable CS0169
     private HttpResponseMessage? _lastResponse;
+    #pragma warning restore CS0169
     private string? _lastError;
 
     public WorkflowOrchestrationSteps()
     {
+        // Create SQLite connection for test isolation
+        _connection = new SqliteConnection($"DataSource=BDD_Test_{Guid.NewGuid()};Mode=Memory;Cache=Shared");
+        _connection.Open();
+        
         var services = new ServiceCollection();
         
         services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseInMemoryDatabase($"BDD_Test_{Guid.NewGuid()}"));
+            options.UseSqlite(_connection));
         
         services.AddSingleton<IWorkflowRegistry, WorkflowRegistry>();
         services.AddScoped<IWorkflowInstanceService, WorkflowInstanceService>();
@@ -47,6 +58,8 @@ public class WorkflowOrchestrationSteps : IDisposable
         
         _serviceProvider = services.BuildServiceProvider();
         _dbContext = _serviceProvider.GetRequiredService<ApplicationDbContext>();
+        // NOTE: Skip EnsureCreated() - BDD tests use mock state, not actual DB operations
+        // The workflow registry and service can still be used without the database schema
         _workflowRegistry = _serviceProvider.GetRequiredService<IWorkflowRegistry>();
         _workflowService = _serviceProvider.GetRequiredService<IWorkflowInstanceService>();
     }
@@ -842,5 +855,6 @@ public class WorkflowOrchestrationSteps : IDisposable
         {
             disposable.Dispose();
         }
+        _connection?.Dispose();
     }
 }

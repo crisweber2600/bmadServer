@@ -4,6 +4,8 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using bmadServer.ApiService.Data;
+using bmadServer.BDD.Tests.TestSupport;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,13 +18,14 @@ namespace bmadServer.BDD.Tests.StepDefinitions;
 
 /// <summary>
 /// BDD step definitions for Epic 2: Authentication and Authorization.
-/// These steps verify auth flows at the specification level using in-memory mocks.
+/// These steps verify auth flows at the specification level using SQLite test database.
 /// </summary>
 [Binding]
 public class Epic2AuthenticationSteps : IDisposable
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ApplicationDbContext _dbContext;
+    private readonly SqliteConnection _connection;
     
     // JWT secret loaded from environment or generated for test isolation
     // NEVER hardcode secrets - even in tests, establish the correct pattern
@@ -46,12 +49,10 @@ public class Epic2AuthenticationSteps : IDisposable
         _jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") 
             ?? $"TestOnlyKey_{Guid.NewGuid():N}_MustBe256BitsMinimum!";
         
-        var services = new ServiceCollection();
-
-        services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseInMemoryDatabase($"Auth_Test_{Guid.NewGuid()}"));
-
-        _serviceProvider = services.BuildServiceProvider();
+        // Use SQLite instead of InMemory to support JsonDocument properties
+        var (provider, connection) = SqliteTestDbContext.Create($"Auth_Test_{Guid.NewGuid()}");
+        _serviceProvider = provider;
+        _connection = connection;
         _dbContext = _serviceProvider.GetRequiredService<ApplicationDbContext>();
     }
 
@@ -704,5 +705,6 @@ public class Epic2AuthenticationSteps : IDisposable
         {
             disposable.Dispose();
         }
+        _connection?.Dispose();
     }
 }

@@ -1,4 +1,6 @@
 using bmadServer.ApiService.Data;
+using bmadServer.BDD.Tests.TestSupport;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Reqnroll;
@@ -16,6 +18,7 @@ public class Epic5MultiAgentCollaborationSteps : IDisposable
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ApplicationDbContext _dbContext;
+    private readonly SqliteConnection _connection;
 
     private List<string>? _allAgents;
     private string? _queriedAgent;
@@ -27,12 +30,10 @@ public class Epic5MultiAgentCollaborationSteps : IDisposable
 
     public Epic5MultiAgentCollaborationSteps()
     {
-        var services = new ServiceCollection();
-
-        services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseInMemoryDatabase($"Agent_Test_{Guid.NewGuid()}"));
-
-        _serviceProvider = services.BuildServiceProvider();
+        // Use SQLite instead of InMemory to support JsonDocument properties
+        var (provider, connection) = SqliteTestDbContext.Create($"Agent_Test_{Guid.NewGuid()}");
+        _serviceProvider = provider;
+        _connection = connection;
         _dbContext = _serviceProvider.GetRequiredService<ApplicationDbContext>();
     }
 
@@ -459,5 +460,6 @@ public class Epic5MultiAgentCollaborationSteps : IDisposable
         {
             disposable.Dispose();
         }
+        _connection?.Dispose();
     }
 }

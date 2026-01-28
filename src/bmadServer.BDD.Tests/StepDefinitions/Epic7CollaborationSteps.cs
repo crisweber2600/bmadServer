@@ -1,5 +1,7 @@
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Models.Workflows;
+using bmadServer.BDD.Tests.TestSupport;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Reqnroll;
@@ -16,6 +18,7 @@ public class Epic7CollaborationSteps : IDisposable
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ApplicationDbContext _dbContext;
+    private readonly SqliteConnection _connection;
 
     private Guid? _ownerId;
     private Guid? _workflowId;
@@ -30,12 +33,10 @@ public class Epic7CollaborationSteps : IDisposable
 
     public Epic7CollaborationSteps()
     {
-        var services = new ServiceCollection();
-
-        services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseInMemoryDatabase($"Collab_Test_{Guid.NewGuid()}"));
-
-        _serviceProvider = services.BuildServiceProvider();
+        // Use SQLite instead of InMemory to support JsonDocument properties
+        var (provider, connection) = SqliteTestDbContext.Create($"Collab_Test_{Guid.NewGuid()}");
+        _serviceProvider = provider;
+        _connection = connection;
         _dbContext = _serviceProvider.GetRequiredService<ApplicationDbContext>();
     }
 
@@ -272,5 +273,6 @@ public class Epic7CollaborationSteps : IDisposable
         {
             disposable.Dispose();
         }
+        _connection?.Dispose();
     }
 }
