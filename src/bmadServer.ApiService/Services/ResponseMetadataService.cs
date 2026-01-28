@@ -1,3 +1,4 @@
+using bmadServer.ApiService.Constants;
 using bmadServer.ApiService.Data.Entities;
 using Microsoft.Extensions.Logging;
 
@@ -7,20 +8,6 @@ public class ResponseMetadataService : IResponseMetadataService
 {
     private readonly ILogger<ResponseMetadataService> _logger;
 
-    // Technical indicators
-    private static readonly string[] TechnicalKeywords = new[]
-    {
-        "API", "endpoint", "REST", "HTTP", "HTTPS", "JSON", "XML",
-        "database", "SQL", "query", "cache", "Redis", "PostgreSQL",
-        "authentication", "authorization", "JWT", "OAuth", "token",
-        "microservices", "service", "container", "Docker", "Kubernetes",
-        "architecture", "infrastructure", "deployment", "CI/CD",
-        "algorithm", "data structure", "complexity", "performance",
-        "latency", "throughput", "bandwidth", "scalability",
-        "code", "function", "class", "method", "interface",
-        "version", "dependency", "library", "framework", "SDK"
-    };
-
     public ResponseMetadataService(ILogger<ResponseMetadataService> logger)
     {
         _logger = logger;
@@ -28,7 +15,7 @@ public class ResponseMetadataService : IResponseMetadataService
 
     public ResponseMetadata CreateMetadata(string content, PersonaType personaType, bool wasTranslated)
     {
-        var technicalTermsFound = TechnicalKeywords
+        var technicalTermsFound = PersonaKeywords.TechnicalKeywords
             .Where(keyword => content.Contains(keyword, StringComparison.OrdinalIgnoreCase))
             .Distinct()
             .ToList();

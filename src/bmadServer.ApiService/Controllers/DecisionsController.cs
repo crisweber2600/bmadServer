@@ -572,6 +572,17 @@ public class DecisionsController : ControllerBase
                 Status = StatusCodes.Status400BadRequest
             });
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Unauthorized unlock attempt for decision {DecisionId}", id);
+            return StatusCode(StatusCodes.Status403Forbidden,
+                new ProblemDetails
+                {
+                    Title = "Forbidden",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status403Forbidden
+                });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error unlocking decision {DecisionId}", id);

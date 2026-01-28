@@ -2,14 +2,19 @@ using System.Collections.Concurrent;
 
 namespace bmadServer.ApiService.Services;
 
-public class PresenceTrackingService : IPresenceTrackingService
+public class PresenceTrackingService : IPresenceTrackingService, IDisposable
 {
     private readonly ConcurrentDictionary<Guid, ConcurrentDictionary<Guid, DateTime>> _presenceMap = new();
     private readonly ILogger<PresenceTrackingService> _logger;
+    private readonly Timer _cleanupTimer;
+    private readonly TimeSpan _staleThreshold = TimeSpan.FromMinutes(30);
+    private bool _disposed;
 
     public PresenceTrackingService(ILogger<PresenceTrackingService> logger)
     {
         _logger = logger;
+        // Run cleanup every 5 minutes
+        _cleanupTimer = new Timer(CleanupStaleEntries, null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
     }
 
     public Task TrackUserOnlineAsync(
@@ -40,6 +45,12 @@ public class PresenceTrackingService : IPresenceTrackingService
             _logger.LogInformation(
                 "User {UserId} is now offline for workflow {WorkflowId}",
                 userId, workflowId);
+
+            // Clean up empty workflow entries
+            if (workflowUsers.IsEmpty)
+            {
+                _presenceMap.TryRemove(workflowId, out _);
+            }
         }
 
         return Task.CompletedTask;
@@ -51,9 +62,60 @@ public class PresenceTrackingService : IPresenceTrackingService
     {
         if (_presenceMap.TryGetValue(workflowId, out var workflowUsers))
         {
-            return Task.FromResult(workflowUsers.Keys.ToList());
+            // Filter out stale entries when querying
+            var now = DateTime.UtcNow;
+            var activeUsers = workflowUsers
+                .Where(kvp => now - kvp.Value < _staleThreshold)
+                .Select(kvp => kvp.Key)
+                .ToList();
+            return Task.FromResult(activeUsers);
         }
 
         return Task.FromResult(new List<Guid>());
+    }
+
+    private void CleanupStaleEntries(object? state)
+    {
+        var now = DateTime.UtcNow;
+        var removedCount = 0;
+
+        foreach (var workflowEntry in _presenceMap)
+        {
+            var workflowUsers = workflowEntry.Value;
+            var staleUsers = workflowUsers
+                .Where(kvp => now - kvp.Value >= _staleThreshold)
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            foreach (var userId in staleUsers)
+            {
+                if (workflowUsers.TryRemove(userId, out _))
+                {
+                    removedCount++;
+                }
+            }
+
+            // Remove empty workflow entries
+            if (workflowUsers.IsEmpty)
+            {
+                _presenceMap.TryRemove(workflowEntry.Key, out _);
+            }
+        }
+
+        if (removedCount > 0)
+        {
+            _logger.LogInformation(
+                "Presence cleanup: removed {Count} stale user entries", 
+                removedCount);
+        }
+    }
+
+    public void Dispose()
+    {
+        if (!_disposed)
+        {
+            _cleanupTimer.Dispose();
+            _disposed = true;
+        }
     }
 }

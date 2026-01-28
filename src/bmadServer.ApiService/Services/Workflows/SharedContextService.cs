@@ -99,34 +99,62 @@ public class SharedContextService : ISharedContextService
         if (output == null)
             throw new ArgumentNullException(nameof(output));
 
-        var workflow = await _dbContext.WorkflowInstances
-            .FirstOrDefaultAsync(w => w.Id == workflowInstanceId, cancellationToken);
+        const int maxRetries = 3;
+        int attempt = 0;
 
-        if (workflow == null)
+        while (attempt < maxRetries)
         {
-            throw new InvalidOperationException($"Workflow instance {workflowInstanceId} not found");
-        }
+            attempt++;
+            
+            var workflow = await _dbContext.WorkflowInstances
+                .FirstOrDefaultAsync(w => w.Id == workflowInstanceId, cancellationToken);
 
-        var context = await GetContextAsync(workflowInstanceId, cancellationToken) ?? new SharedContext();
+            if (workflow == null)
+            {
+                throw new InvalidOperationException($"Workflow instance {workflowInstanceId} not found");
+            }
 
-        context.StepOutputs[stepId] = output;
-        context.Version++;
-        context.LastModifiedAt = DateTime.UtcNow;
-        context.LastModifiedBy = "system";
+            var context = await GetContextAsync(workflowInstanceId, cancellationToken) ?? new SharedContext();
+            var originalVersion = context.Version;
 
-        try
-        {
-            workflow.SharedContextJson = JsonDocument.Parse(JsonSerializer.Serialize(context));
-            await _dbContext.SaveChangesAsync(cancellationToken);
+            context.StepOutputs[stepId] = output;
+            context.Version++;
+            context.LastModifiedAt = DateTime.UtcNow;
+            context.LastModifiedBy = "system";
 
-            _logger.LogInformation(
-                "Added step output for step {StepId} to workflow {WorkflowInstanceId} (version {Version})",
-                stepId, workflowInstanceId, context.Version);
-        }
-        catch (DbUpdateException ex)
-        {
-            _logger.LogError(ex, "Database error while adding step output for workflow {WorkflowInstanceId}", workflowInstanceId);
-            throw;
+            try
+            {
+                workflow.SharedContextJson = JsonDocument.Parse(JsonSerializer.Serialize(context));
+                await _dbContext.SaveChangesAsync(cancellationToken);
+
+                _logger.LogInformation(
+                    "Added step output for step {StepId} to workflow {WorkflowInstanceId} (version {Version})",
+                    stepId, workflowInstanceId, context.Version);
+                return;
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                _logger.LogWarning(
+                    "Concurrency conflict on attempt {Attempt} for workflow {WorkflowInstanceId}, retrying...",
+                    attempt, workflowInstanceId);
+
+                if (attempt >= maxRetries)
+                {
+                    _logger.LogError(ex, 
+                        "Max retries exceeded for AddStepOutputAsync on workflow {WorkflowInstanceId}", 
+                        workflowInstanceId);
+                    throw;
+                }
+
+                // Detach the entity and retry
+                _dbContext.Entry(workflow).State = EntityState.Detached;
+                await Task.Delay(100 * attempt, cancellationToken); // Exponential backoff
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, "Database error while adding step output for workflow {WorkflowInstanceId}", workflowInstanceId);
+                throw;
+            }
         }
     }
 

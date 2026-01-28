@@ -1,6 +1,7 @@
 using FluentValidation;
 using System.Reflection;
 using System.Text;
+using AspNetCoreRateLimit;
 using bmadServer.ApiService.Configuration;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -126,6 +127,13 @@ builder.Services.AddHostedService<bmadServer.ApiService.BackgroundServices.Confl
 builder.Services.AddSingleton<bmadServer.ApiService.Services.IPresenceTrackingService, bmadServer.ApiService.Services.PresenceTrackingService>();
 builder.Services.AddSingleton<bmadServer.ApiService.Services.IUpdateBatchingService, bmadServer.ApiService.Services.UpdateBatchingService>();
 
+// Configure IP rate limiting to prevent brute-force attacks on auth endpoints
+builder.Services.AddMemoryCache();
+builder.Services.Configure<IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
+builder.Services.Configure<IpRateLimitPolicies>(builder.Configuration.GetSection("IpRateLimitPolicies"));
+builder.Services.AddInMemoryRateLimiting();
+builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
+
 // Register FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<bmadServer.ApiService.Validators.RegisterRequestValidator>();
 
@@ -241,6 +249,9 @@ if (!app.Environment.IsEnvironment("Test"))
 
 // Use exception handler middleware to catch unhandled exceptions and return problem details
 app.UseExceptionHandler();
+
+// Apply rate limiting before authentication to protect auth endpoints
+app.UseIpRateLimiting();
 
 // Add authentication and authorization middleware (order matters!)
 app.UseAuthentication();
