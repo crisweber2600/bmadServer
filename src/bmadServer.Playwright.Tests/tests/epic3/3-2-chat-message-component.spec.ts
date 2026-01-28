@@ -44,7 +44,7 @@ test.describe('Story 3.2: Chat Message Component with Ant Design', () => {
     const rgbMatch = styles.backgroundColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
     expect(rgbMatch).toBeTruthy();
     if (rgbMatch) {
-      const [, r, g, b] = rgbMatch.map(Number);
+      const [, , , b] = rgbMatch.map(Number);
       expect(b).toBeGreaterThan(100); // Blue component should be significant
     }
   });
@@ -85,8 +85,8 @@ test.describe('Story 3.2: Chat Message Component with Ant Design', () => {
     const html = await agentMessage.innerHTML();
 
     // Check for markdown conversion (bold, italic, etc.)
-    const hasFormattedText =
-      html.includes('<strong>') ||
+    // Future: Add assertion when markdown rendering is implemented
+    html.includes('<strong>') ||
       html.includes('<b>') ||
       html.includes('<em>') ||
       html.includes('<i>') ||

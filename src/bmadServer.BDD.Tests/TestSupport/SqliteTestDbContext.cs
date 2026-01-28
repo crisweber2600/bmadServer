@@ -23,7 +23,10 @@ public static class SqliteTestDbContext
     public static (IServiceProvider Provider, SqliteConnection Connection) Create(string testName)
     {
         // Create unique in-memory database with shared cache
+        // CA2000: Connection is intentionally returned to caller for disposal
+#pragma warning disable CA2000
         var connection = new SqliteConnection($"DataSource={testName};Mode=Memory;Cache=Shared");
+#pragma warning restore CA2000
         connection.Open();
         
         // Disable foreign key constraints for simpler test setup
@@ -60,7 +63,10 @@ public static class SqliteTestDbContext
     /// <returns>Tuple of DbContext and the open SqliteConnection (must be kept alive)</returns>
     public static (ApplicationDbContext DbContext, SqliteConnection Connection) CreateDbContext(string testName)
     {
+        // CA2000: Connection is intentionally returned to caller for disposal
+#pragma warning disable CA2000
         var connection = new SqliteConnection($"DataSource={testName};Mode=Memory;Cache=Shared");
+#pragma warning restore CA2000
         connection.Open();
         
         using (var command = connection.CreateCommand())

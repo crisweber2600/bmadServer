@@ -20,7 +20,7 @@ public class Epic8PersonaTranslationSteps : IDisposable
     private readonly SqliteConnection _connection;
 
     private Guid? _currentUserId;
-    private Dictionary<string, string> _userPreferences = new();
+    private readonly Dictionary<string, string> _userPreferences = new();
     private List<string>? _availablePersonas;
     
     // Suppress unused warning - field reserved for future API response simulation
@@ -78,8 +78,8 @@ public class Epic8PersonaTranslationSteps : IDisposable
     public void ThenMyUserProfileShouldIncludePersonaType(string personaType)
     {
         Assert.NotNull(_currentUserId);
-        Assert.True(_userPreferences.ContainsKey("PersonaType"));
-        Assert.Equal(personaType.ToLowerInvariant(), _userPreferences["PersonaType"]);
+        Assert.True(_userPreferences.TryGetValue("PersonaType", out var actualPersonaType));
+        Assert.Equal(personaType.ToLowerInvariant(), actualPersonaType);
     }
 
     [Then(@"the setting should persist across sessions")]
@@ -110,8 +110,8 @@ public class Epic8PersonaTranslationSteps : IDisposable
     [Then(@"my default persona should be Hybrid")]
     public void ThenMyDefaultPersonaShouldBeHybrid()
     {
-        Assert.True(_userPreferences.ContainsKey("PersonaType"));
-        Assert.Equal("hybrid", _userPreferences["PersonaType"]);
+        Assert.True(_userPreferences.TryGetValue("PersonaType", out var personaType));
+        Assert.Equal("hybrid", personaType);
     }
 
     [Then(@"responses should adapt based on context")]

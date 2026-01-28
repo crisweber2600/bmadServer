@@ -24,7 +24,7 @@ public class Epic7CollaborationSteps : IDisposable
     private Guid? _workflowId;
     private Guid? _participantUserId;
     private WorkflowParticipant? _addedParticipant;
-    private List<WorkflowParticipant> _participants = new();
+    private readonly List<WorkflowParticipant> _participants = new();
     
     // Suppress unused warning - field reserved for future API response simulation
     #pragma warning disable CS0414

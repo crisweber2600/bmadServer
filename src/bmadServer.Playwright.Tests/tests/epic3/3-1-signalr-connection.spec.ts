@@ -104,7 +104,8 @@ test.describe('Story 3.1: SignalR Hub Setup & WebSocket Connection', () => {
     // Then session recovery flow should execute
     // Verify SESSION_RESTORED message or equivalent
     const messages = await signalRHelper.getMessages();
-    const hasSessionMessage = messages.some(
+    // Check if session recovery messages exist (future implementation)
+    messages.some(
       (m) =>
         m.type.toLowerCase().includes('session') ||
         m.type.toLowerCase().includes('restored') ||
