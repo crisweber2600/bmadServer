@@ -44,8 +44,10 @@ test.describe('Story 3.2: Chat Message Component with Ant Design', () => {
     const rgbMatch = styles.backgroundColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
     expect(rgbMatch).toBeTruthy();
     if (rgbMatch) {
-      const [, , , b] = rgbMatch.map(Number);
+      const [, r, g, b] = rgbMatch.map(Number);
       expect(b).toBeGreaterThan(100); // Blue component should be significant
+      expect(b).toBeGreaterThan(r); // Blue should be greater than red
+      expect(b).toBeGreaterThan(g); // Blue should be greater than green
     }
   });
 
