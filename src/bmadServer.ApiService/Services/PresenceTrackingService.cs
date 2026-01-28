@@ -2,13 +2,13 @@ using System.Collections.Concurrent;
 
 namespace bmadServer.ApiService.Services;
 
-public class PresenceTrackingService : IPresenceTrackingService, IDisposable
+public class PresenceTrackingService : IPresenceTrackingService, IAsyncDisposable, IDisposable
 {
     private readonly ConcurrentDictionary<Guid, ConcurrentDictionary<Guid, DateTime>> _presenceMap = new();
     private readonly ILogger<PresenceTrackingService> _logger;
     private readonly Timer _cleanupTimer;
     private readonly TimeSpan _staleThreshold = TimeSpan.FromMinutes(30);
-    private bool _disposed;
+    private int _disposed; // 0 = not disposed, 1 = disposed (using int for Interlocked)
 
     public PresenceTrackingService(ILogger<PresenceTrackingService> logger)
     {
@@ -76,6 +76,12 @@ public class PresenceTrackingService : IPresenceTrackingService, IDisposable
 
     private void CleanupStaleEntries(object? state)
     {
+        // Prevent cleanup after disposal (thread-safe read)
+        if (Interlocked.CompareExchange(ref _disposed, 0, 0) == 1)
+        {
+            return;
+        }
+
         var now = DateTime.UtcNow;
         var removedCount = 0;
 
@@ -110,12 +116,22 @@ public class PresenceTrackingService : IPresenceTrackingService, IDisposable
         }
     }
 
+    public async ValueTask DisposeAsync()
+    {
+        // Thread-safe check-and-set using Interlocked
+        if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0)
+        {
+            await _cleanupTimer.DisposeAsync();
+        }
+    }
+
     public void Dispose()
     {
-        if (!_disposed)
+        // Thread-safe check-and-set using Interlocked
+        if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0)
         {
+            // Synchronous disposal - safe for server applications
             _cleanupTimer.Dispose();
-            _disposed = true;
         }
     }
 }

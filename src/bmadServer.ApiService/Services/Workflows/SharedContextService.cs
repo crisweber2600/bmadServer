@@ -115,7 +115,6 @@ public class SharedContextService : ISharedContextService
             }
 
             var context = await GetContextAsync(workflowInstanceId, cancellationToken) ?? new SharedContext();
-            var originalVersion = context.Version;
 
             context.StepOutputs[stepId] = output;
             context.Version++;
@@ -146,7 +145,8 @@ public class SharedContextService : ISharedContextService
                     throw;
                 }
 
-                // Detach the entity and retry
+                // Detach the entity to allow retry with fresh data
+                // Next iteration will reload workflow and context from database
                 _dbContext.Entry(workflow).State = EntityState.Detached;
                 await Task.Delay(100 * attempt, cancellationToken); // Exponential backoff
             }

@@ -17,9 +17,12 @@ public static class SqliteTestDbContext
     /// Creates a ServiceProvider with SQLite-backed ApplicationDbContext.
     /// NOTE: Database schema is NOT created - BDD tests should use mock state.
     /// For actual integration testing, use TestWebApplicationFactory instead.
+    /// 
+    /// IMPORTANT: The returned SqliteConnection MUST be disposed by the caller.
+    /// The connection is kept open to maintain the in-memory database.
     /// </summary>
     /// <param name="testName">Unique test name for database isolation</param>
-    /// <returns>Tuple of ServiceProvider and the open SqliteConnection (must be kept alive)</returns>
+    /// <returns>Tuple of ServiceProvider and the open SqliteConnection. Caller MUST dispose the connection.</returns>
     public static (IServiceProvider Provider, SqliteConnection Connection) Create(string testName)
     {
         // Create unique in-memory database with shared cache
@@ -58,9 +61,12 @@ public static class SqliteTestDbContext
     /// <summary>
     /// Creates a standalone ApplicationDbContext with SQLite for simple tests.
     /// NOTE: Database schema is NOT created - use mock state for BDD tests.
+    /// 
+    /// IMPORTANT: The returned SqliteConnection MUST be disposed by the caller.
+    /// The connection is kept open to maintain the in-memory database.
     /// </summary>
     /// <param name="testName">Unique test name for database isolation</param>
-    /// <returns>Tuple of DbContext and the open SqliteConnection (must be kept alive)</returns>
+    /// <returns>Tuple of DbContext and the open SqliteConnection. Caller MUST dispose the connection.</returns>
     public static (ApplicationDbContext DbContext, SqliteConnection Connection) CreateDbContext(string testName)
     {
         // CA2000: Connection is intentionally returned to caller for disposal
