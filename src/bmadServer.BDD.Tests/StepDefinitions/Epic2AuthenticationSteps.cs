@@ -34,8 +34,8 @@ public class Epic2AuthenticationSteps : IDisposable
     // JWT secret loaded from environment or generated for test isolation
     // NEVER hardcode secrets - even in tests, establish the correct pattern
     private readonly string _jwtSecretKey;
-    private Dictionary<Guid, string> _refreshTokens = new();
-    private HashSet<string> _usedRefreshTokens = new();
+    private readonly Dictionary<Guid, string> _refreshTokens = new();
+    private readonly HashSet<string> _usedRefreshTokens = new();
 
     private string? _lastError;
     private int _lastStatusCode;

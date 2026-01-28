@@ -20,7 +20,7 @@ public class Epic3ChatInterfaceSteps
     private bool _isOnChatPage;
     private bool _isConnected;
     private string? _lastMessage;
-    private List<string> _chatMessages = new();
+    private readonly List<string> _chatMessages = new();
     private bool _isStreaming;
     private int _characterCount;
 
