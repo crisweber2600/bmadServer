@@ -130,7 +130,6 @@ test.describe('Story 3.6: Mobile-Responsive Chat Interface', () => {
   test('VoiceOver announcements @P1', async ({ page }) => {
     // Given accessibility features are enabled
     // When I check chat elements
-    page.locator('[data-testid="message"]');
     const inputs = page.locator('input, textarea, button');
 
     // Then elements should be announced

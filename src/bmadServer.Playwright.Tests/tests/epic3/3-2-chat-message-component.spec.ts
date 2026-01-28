@@ -84,14 +84,9 @@ test.describe('Story 3.2: Chat Message Component with Ant Design', () => {
     const agentMessage = chatPage.agentMessages.last();
     const html = await agentMessage.innerHTML();
 
-    // Check for markdown conversion (bold, italic, etc.)
-    // Future: Add assertion when markdown rendering is implemented
-    html.includes('<strong>') ||
-      html.includes('<b>') ||
-      html.includes('<em>') ||
-      html.includes('<i>') ||
-      html.includes('<code>') ||
-      html.includes('<pre>');
+    // Future: Verify markdown rendering when implemented
+    // Expected formats: <strong>, <b>, <em>, <i>, <code>, <pre>
+    expect(html).toBeTruthy();
 
     // Must have some HTML content - agent should respond with formatted text
     expect(html.length).toBeGreaterThan(10);

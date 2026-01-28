@@ -118,7 +118,8 @@ public class Epic8PersonaTranslationSteps : IDisposable
     public void ThenResponsesShouldAdaptBasedOnContext()
     {
         // Adaptive behavior tested in integration/E2E tests
-        Assert.Equal("hybrid", _userPreferences["PersonaType"]);
+        Assert.True(_userPreferences.TryGetValue("PersonaType", out var personaType));
+        Assert.Equal("hybrid", personaType);
     }
 
     [Given(@"I have configured my persona")]
@@ -132,7 +133,7 @@ public class Epic8PersonaTranslationSteps : IDisposable
     [Then(@"the response should include personaType")]
     public void ThenTheResponseShouldIncludePersonaType()
     {
-        Assert.True(_userPreferences.ContainsKey("PersonaType"));
+        Assert.True(_userPreferences.TryGetValue("PersonaType", out _));
     }
 
     [Then(@"the response should include language preferences")]
