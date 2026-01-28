@@ -8,7 +8,7 @@ public class PresenceTrackingService : IPresenceTrackingService, IAsyncDisposabl
     private readonly ILogger<PresenceTrackingService> _logger;
     private readonly Timer _cleanupTimer;
     private readonly TimeSpan _staleThreshold = TimeSpan.FromMinutes(30);
-    private bool _disposed;
+    private int _disposed; // 0 = not disposed, 1 = disposed (using int for Interlocked)
 
     public PresenceTrackingService(ILogger<PresenceTrackingService> logger)
     {
@@ -76,8 +76,8 @@ public class PresenceTrackingService : IPresenceTrackingService, IAsyncDisposabl
 
     private void CleanupStaleEntries(object? state)
     {
-        // Prevent cleanup after disposal
-        if (_disposed)
+        // Prevent cleanup after disposal (thread-safe read)
+        if (Interlocked.CompareExchange(ref _disposed, 0, 0) == 1)
         {
             return;
         }
@@ -118,19 +118,20 @@ public class PresenceTrackingService : IPresenceTrackingService, IAsyncDisposabl
 
     public async ValueTask DisposeAsync()
     {
-        if (!_disposed)
+        // Thread-safe check-and-set using Interlocked
+        if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0)
         {
             await _cleanupTimer.DisposeAsync();
-            _disposed = true;
         }
     }
 
     public void Dispose()
     {
-        if (!_disposed)
+        // Thread-safe check-and-set using Interlocked
+        if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0)
         {
-            // Synchronous disposal delegates to async disposal
-            DisposeAsync().AsTask().GetAwaiter().GetResult();
+            // Synchronous disposal - safe for server applications
+            _cleanupTimer.Dispose();
         }
     }
 }
