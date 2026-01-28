@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 
 namespace bmadServer.ApiService.Services;
 
-public class PresenceTrackingService : IPresenceTrackingService, IDisposable
+public class PresenceTrackingService : IPresenceTrackingService, IAsyncDisposable
 {
     private readonly ConcurrentDictionary<Guid, ConcurrentDictionary<Guid, DateTime>> _presenceMap = new();
     private readonly ILogger<PresenceTrackingService> _logger;
@@ -76,6 +76,12 @@ public class PresenceTrackingService : IPresenceTrackingService, IDisposable
 
     private void CleanupStaleEntries(object? state)
     {
+        // Prevent cleanup after disposal
+        if (_disposed)
+        {
+            return;
+        }
+
         var now = DateTime.UtcNow;
         var removedCount = 0;
 
@@ -87,12 +93,9 @@ public class PresenceTrackingService : IPresenceTrackingService, IDisposable
                 .Select(kvp => kvp.Key)
                 .ToList();
 
-            foreach (var userId in staleUsers)
+            foreach (var userId in staleUsers.Where(userId => workflowUsers.TryRemove(userId, out _)))
             {
-                if (workflowUsers.TryRemove(userId, out _))
-                {
-                    removedCount++;
-                }
+                removedCount++;
             }
 
             // Remove empty workflow entries
@@ -110,11 +113,11 @@ public class PresenceTrackingService : IPresenceTrackingService, IDisposable
         }
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         if (!_disposed)
         {
-            _cleanupTimer.Dispose();
+            await _cleanupTimer.DisposeAsync();
             _disposed = true;
         }
     }
