@@ -56,7 +56,7 @@ Feature: Workflow Orchestration Engine
     Given I have a completed workflow instance
     When I try to start the workflow instance
     Then the request should fail with 400 Bad Request
-    And the error should indicate invalid state transition
+    And the error should indicate state transition invalid state transition
 
   @workflow @story-4-2
   Scenario: Workflow state machine follows valid transitions
@@ -103,7 +103,7 @@ Feature: Workflow Orchestration Engine
     Given I have a cancelled workflow instance
     When I try to resume the workflow
     Then the request should fail with 400 Bad Request
-    And the error should indicate Cannot resume a cancelled
+    And the error should indicate state transition Cannot resume a cancelled
 
   # Story 4-5: Workflow Exit & Cancellation
   @workflow @story-4-5
@@ -126,7 +126,7 @@ Feature: Workflow Orchestration Engine
     Given I have a completed workflow instance
     When I try to cancel the workflow
     Then the request should fail with 400 Bad Request
-    And the error should indicate Cannot cancel a completed
+    And the error should indicate state transition Cannot cancel a completed
 
   @workflow @story-4-5
   Scenario: Filter cancelled workflows
@@ -155,7 +155,7 @@ Feature: Workflow Orchestration Engine
     And the current step is required
     When I try to skip the current step
     Then the request should fail with 400 Bad Request
-    And the error should indicate This step is required
+    And the error should indicate state transition This step is required
 
   @workflow @story-4-6
   Scenario: Cannot skip when CanSkip is false
@@ -164,7 +164,7 @@ Feature: Workflow Orchestration Engine
     But the current step has CanSkip set to false
     When I try to skip the current step
     Then the request should fail with 400 Bad Request
-    And the error should indicate This step is required
+    And the error should indicate state transition This step is required
 
   @workflow @story-4-6 @skip
   Scenario: Navigate to a previous step
@@ -181,7 +181,7 @@ Feature: Workflow Orchestration Engine
     Given I have a running workflow instance
     When I try to navigate to step "invalid-step"
     Then the request should fail with 400 Bad Request
-    And the error should indicate not found in workflow
+    And the error should indicate state transition not found in workflow
 
   @workflow @story-4-6
   Scenario: Cannot navigate to unvisited step
@@ -189,7 +189,7 @@ Feature: Workflow Orchestration Engine
     And I am on step 2
     When I try to navigate to step 5
     Then the request should fail with 400 Bad Request
-    And the error should indicate not found in workflow
+    And the error should indicate state transition not found in workflow
 
   # Integration Tests
   @workflow @integration @skip

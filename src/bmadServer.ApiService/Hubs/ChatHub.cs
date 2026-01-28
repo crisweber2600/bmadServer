@@ -11,6 +11,7 @@ namespace bmadServer.ApiService.Hubs;
 /// SignalR hub for real-time chat communication.
 /// Manages session lifecycle: connection, disconnection, and recovery.
 /// Routes chat messages to workflow engine when an active workflow exists.
+/// Applies persona-based translation to responses (Epic 8).
 /// </summary>
 [Authorize]
 public class ChatHub : Hub
@@ -21,6 +22,7 @@ public class ChatHub : Hub
     private readonly IParticipantService _participantService;
     private readonly IPresenceTrackingService _presenceService;
     private readonly IUpdateBatchingService _batchingService;
+    private readonly ITranslationService _translationService;
 
     public ChatHub(
         ISessionService sessionService, 
@@ -28,7 +30,8 @@ public class ChatHub : Hub
         ILogger<ChatHub> logger,
         IParticipantService participantService,
         IPresenceTrackingService presenceService,
-        IUpdateBatchingService batchingService)
+        IUpdateBatchingService batchingService,
+        ITranslationService translationService)
     {
         _sessionService = sessionService;
         _stepExecutor = stepExecutor;
@@ -36,6 +39,7 @@ public class ChatHub : Hub
         _participantService = participantService;
         _presenceService = presenceService;
         _batchingService = batchingService;
+        _translationService = translationService;
     }
 
     /// <summary>
@@ -123,6 +127,16 @@ public class ChatHub : Hub
     /// </summary>
     public async Task SendMessage(string message)
     {
+        // Input validation
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            throw new HubException("Message cannot be empty");
+        }
+        if (message.Length > 10000)
+        {
+            throw new HubException("Message exceeds maximum length of 10000 characters");
+        }
+
         var userId = GetUserIdFromClaims();
         
         // Get active session
@@ -179,14 +193,31 @@ public class ChatHub : Hub
     {
         try
         {
+            var userId = GetUserIdFromClaims();
+            var session = await _sessionService.GetActiveSessionAsync(userId, Context.ConnectionId);
+            
+            // Get effective persona for translation (Story 8.4 - session override or user default)
+            var effectivePersona = session != null 
+                ? await _sessionService.GetEffectivePersonaAsync(session.Id, userId)
+                : Data.Entities.PersonaType.Hybrid;
+            
             var result = await _stepExecutor.ExecuteStepAsync(workflowInstanceId, userInput);
             
             if (result.Success)
             {
+                var content = $"Step '{result.StepName}' completed successfully.";
+                
+                // Apply persona-based translation (Story 8.2, 8.3, 8.5)
+                var translationResult = await _translationService.TranslateToBusinessLanguageAsync(
+                    content, effectivePersona, result.StepName);
+                
                 await Clients.Caller.SendAsync("ReceiveMessage", new
                 {
                     Role = "agent",
-                    Content = $"Step '{result.StepName}' completed successfully.",
+                    Content = translationResult.Content,
+                    OriginalContent = translationResult.WasTranslated ? translationResult.OriginalContent : null,
+                    WasTranslated = translationResult.WasTranslated,
+                    PersonaType = effectivePersona.ToString(),
                     StepId = result.StepId,
                     NextStep = result.NextStep,
                     WorkflowStatus = result.NewWorkflowStatus?.ToString(),
@@ -194,15 +225,23 @@ public class ChatHub : Hub
                 });
                 
                 _logger.LogInformation(
-                    "Workflow step {StepId} executed successfully for instance {InstanceId}", 
-                    result.StepId, workflowInstanceId);
+                    "Workflow step {StepId} executed successfully for instance {InstanceId} (Persona: {Persona}, Translated: {Translated})", 
+                    result.StepId, workflowInstanceId, effectivePersona, translationResult.WasTranslated);
             }
             else
             {
+                var errorContent = $"Step execution failed: {result.ErrorMessage}";
+                
+                // Apply translation to error messages too
+                var translationResult = await _translationService.TranslateToBusinessLanguageAsync(
+                    errorContent, effectivePersona, result.StepName);
+                
                 await Clients.Caller.SendAsync("ReceiveMessage", new
                 {
                     Role = "system",
-                    Content = $"Step execution failed: {result.ErrorMessage}",
+                    Content = translationResult.Content,
+                    WasTranslated = translationResult.WasTranslated,
+                    PersonaType = effectivePersona.ToString(),
                     StepId = result.StepId,
                     WorkflowStatus = result.NewWorkflowStatus?.ToString(),
                     Timestamp = DateTime.UtcNow
@@ -298,6 +337,14 @@ public class ChatHub : Hub
     {
         var userId = GetUserIdFromClaims();
 
+        // Authorization check: verify user is participant or owner
+        var isParticipant = await _participantService.IsParticipantAsync(workflowId, userId);
+        var isOwner = await _participantService.IsWorkflowOwnerAsync(workflowId, userId);
+        if (!isParticipant && !isOwner)
+        {
+            throw new HubException("Not authorized to send typing indicator for this workflow");
+        }
+
         // Broadcast typing indicator to others in the workflow group
         await Clients.OthersInGroup($"workflow-{workflowId}").SendAsync("USER_TYPING", new
         {
@@ -314,6 +361,25 @@ public class ChatHub : Hub
     public async Task BroadcastMessageToWorkflow(Guid workflowId, string message)
     {
         var userId = GetUserIdFromClaims();
+        
+        // Authorization check: verify user is participant or owner
+        var isParticipant = await _participantService.IsParticipantAsync(workflowId, userId);
+        var isOwner = await _participantService.IsWorkflowOwnerAsync(workflowId, userId);
+        if (!isParticipant && !isOwner)
+        {
+            throw new HubException("Not authorized to broadcast to this workflow");
+        }
+
+        // Input validation
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            throw new HubException("Message cannot be empty");
+        }
+        if (message.Length > 10000)
+        {
+            throw new HubException("Message exceeds maximum length of 10000 characters");
+        }
+
         var displayName = Context.User?.Identity?.Name ?? "Unknown User";
 
         var evt = new WorkflowEvent
@@ -339,6 +405,25 @@ public class ChatHub : Hub
     public async Task BroadcastDecision(Guid workflowId, string decision, List<string>? alternatives = null, double? confidence = null)
     {
         var userId = GetUserIdFromClaims();
+        
+        // Authorization check
+        var isParticipant = await _participantService.IsParticipantAsync(workflowId, userId);
+        var isOwner = await _participantService.IsWorkflowOwnerAsync(workflowId, userId);
+        if (!isParticipant && !isOwner)
+        {
+            throw new HubException("Not authorized to broadcast decisions to this workflow");
+        }
+
+        // Input validation
+        if (string.IsNullOrWhiteSpace(decision))
+        {
+            throw new HubException("Decision cannot be empty");
+        }
+        if (confidence.HasValue && (confidence < 0 || confidence > 1))
+        {
+            throw new HubException("Confidence must be between 0 and 1");
+        }
+
         var displayName = Context.User?.Identity?.Name ?? "Unknown User";
 
         var evt = new WorkflowEvent
@@ -365,6 +450,21 @@ public class ChatHub : Hub
     public async Task BroadcastStepChange(Guid workflowId, string stepId, string stepName, string status)
     {
         var userId = GetUserIdFromClaims();
+        
+        // Authorization check
+        var isParticipant = await _participantService.IsParticipantAsync(workflowId, userId);
+        var isOwner = await _participantService.IsWorkflowOwnerAsync(workflowId, userId);
+        if (!isParticipant && !isOwner)
+        {
+            throw new HubException("Not authorized to broadcast step changes to this workflow");
+        }
+
+        // Input validation
+        if (string.IsNullOrWhiteSpace(stepId) || string.IsNullOrWhiteSpace(stepName))
+        {
+            throw new HubException("StepId and StepName are required");
+        }
+
         var displayName = Context.User?.Identity?.Name ?? "Unknown User";
 
         var evt = new WorkflowEvent
@@ -391,6 +491,25 @@ public class ChatHub : Hub
     public async Task BroadcastConflict(Guid workflowId, Guid conflictId, string fieldName, List<string> conflictingValues)
     {
         var userId = GetUserIdFromClaims();
+        
+        // Authorization check
+        var isParticipant = await _participantService.IsParticipantAsync(workflowId, userId);
+        var isOwner = await _participantService.IsWorkflowOwnerAsync(workflowId, userId);
+        if (!isParticipant && !isOwner)
+        {
+            throw new HubException("Not authorized to broadcast conflicts to this workflow");
+        }
+
+        // Input validation
+        if (string.IsNullOrWhiteSpace(fieldName))
+        {
+            throw new HubException("FieldName is required");
+        }
+        if (conflictingValues == null || conflictingValues.Count < 2)
+        {
+            throw new HubException("At least 2 conflicting values are required");
+        }
+
         var displayName = Context.User?.Identity?.Name ?? "Unknown User";
 
         var evt = new WorkflowEvent

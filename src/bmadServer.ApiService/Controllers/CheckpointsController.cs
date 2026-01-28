@@ -1,5 +1,6 @@
 using bmadServer.ApiService.DTOs.Checkpoints;
 using bmadServer.ApiService.Models.Workflows;
+using bmadServer.ApiService.Services;
 using bmadServer.ApiService.Services.Checkpoints;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,16 +15,35 @@ public class CheckpointsController : ControllerBase
 {
     private readonly ICheckpointService _checkpointService;
     private readonly IInputQueueService _inputQueueService;
+    private readonly IParticipantService _participantService;
     private readonly ILogger<CheckpointsController> _logger;
 
     public CheckpointsController(
         ICheckpointService checkpointService,
         IInputQueueService inputQueueService,
+        IParticipantService participantService,
         ILogger<CheckpointsController> logger)
     {
         _checkpointService = checkpointService;
         _inputQueueService = inputQueueService;
+        _participantService = participantService;
         _logger = logger;
+    }
+
+    private Guid GetCurrentUserId()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+            ?? User.FindFirst("sub")?.Value;
+        return Guid.TryParse(userIdClaim, out var userId) ? userId : Guid.Empty;
+    }
+
+    private async Task<bool> CanAccessWorkflowAsync(Guid workflowId)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == Guid.Empty) return false;
+        
+        return await _participantService.IsParticipantAsync(workflowId, userId) 
+            || await _participantService.IsWorkflowOwnerAsync(workflowId, userId);
     }
 
     /// <summary>
@@ -31,6 +51,7 @@ public class CheckpointsController : ControllerBase
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(PagedResult<CheckpointResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PagedResult<CheckpointResponse>>> GetCheckpoints(
         [FromRoute] Guid workflowId,
@@ -38,6 +59,16 @@ public class CheckpointsController : ControllerBase
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
+        // Authorization check: user must be participant or owner
+        if (!await CanAccessWorkflowAsync(workflowId))
+        {
+            return Problem(
+                statusCode: StatusCodes.Status403Forbidden,
+                title: "Access Denied",
+                detail: "You do not have permission to access this workflow's checkpoints"
+            );
+        }
+
         try
         {
             var result = await _checkpointService.GetCheckpointsAsync(workflowId, page, pageSize, cancellationToken);
@@ -60,12 +91,23 @@ public class CheckpointsController : ControllerBase
     /// </summary>
     [HttpGet("{checkpointId:guid}")]
     [ProducesResponseType(typeof(WorkflowCheckpoint), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<WorkflowCheckpoint>> GetCheckpoint(
         [FromRoute] Guid workflowId,
         [FromRoute] Guid checkpointId,
         CancellationToken cancellationToken = default)
     {
+        // Authorization check
+        if (!await CanAccessWorkflowAsync(workflowId))
+        {
+            return Problem(
+                statusCode: StatusCodes.Status403Forbidden,
+                title: "Access Denied",
+                detail: "You do not have permission to access this workflow's checkpoints"
+            );
+        }
+
         var checkpoint = await _checkpointService.GetCheckpointByIdAsync(checkpointId, cancellationToken);
         
         if (checkpoint == null || checkpoint.WorkflowId != workflowId)
@@ -86,13 +128,24 @@ public class CheckpointsController : ControllerBase
     /// </summary>
     [HttpPost]
     [ProducesResponseType(typeof(WorkflowCheckpoint), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<WorkflowCheckpoint>> CreateCheckpoint(
         [FromRoute] Guid workflowId,
         [FromBody] CreateCheckpointRequest? request,
         CancellationToken cancellationToken = default)
     {
-        var userId = GetUserId();
+        // Authorization check
+        if (!await CanAccessWorkflowAsync(workflowId))
+        {
+            return Problem(
+                statusCode: StatusCodes.Status403Forbidden,
+                title: "Access Denied",
+                detail: "You do not have permission to create checkpoints for this workflow"
+            );
+        }
+
+        var userId = GetCurrentUserId();
         if (userId == Guid.Empty)
         {
             return Problem(
@@ -144,12 +197,24 @@ public class CheckpointsController : ControllerBase
     /// </summary>
     [HttpPost("{checkpointId:guid}/restore")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RestoreCheckpoint(
         [FromRoute] Guid workflowId,
         [FromRoute] Guid checkpointId,
         CancellationToken cancellationToken = default)
     {
+        // Authorization check: only owner can restore
+        var userId = GetCurrentUserId();
+        if (!await _participantService.IsWorkflowOwnerAsync(workflowId, userId))
+        {
+            return Problem(
+                statusCode: StatusCodes.Status403Forbidden,
+                title: "Access Denied",
+                detail: "Only the workflow owner can restore checkpoints"
+            );
+        }
+
         try
         {
             await _checkpointService.RestoreCheckpointAsync(workflowId, checkpointId, cancellationToken);
@@ -182,13 +247,24 @@ public class CheckpointsController : ControllerBase
     /// </summary>
     [HttpPost("~/api/v1/workflows/{workflowId:guid}/inputs/queue")]
     [ProducesResponseType(typeof(QueuedInput), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<QueuedInput>> QueueInput(
         [FromRoute] Guid workflowId,
         [FromBody] QueueInputRequest request,
         CancellationToken cancellationToken = default)
     {
-        var userId = GetUserId();
+        // Authorization check
+        if (!await CanAccessWorkflowAsync(workflowId))
+        {
+            return Problem(
+                statusCode: StatusCodes.Status403Forbidden,
+                title: "Access Denied",
+                detail: "You do not have permission to queue inputs for this workflow"
+            );
+        }
+
+        var userId = GetCurrentUserId();
         if (userId == Guid.Empty)
         {
             return Problem(
@@ -229,12 +305,6 @@ public class CheckpointsController : ControllerBase
                 type: "https://bmadserver.api/errors/input-queue-failed"
             );
         }
-    }
-
-    private Guid GetUserId()
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        return Guid.TryParse(userIdClaim, out var userId) ? userId : Guid.Empty;
     }
 }
 

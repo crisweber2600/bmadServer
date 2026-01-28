@@ -20,7 +20,10 @@ public class RefreshTokenService : IRefreshTokenService
 
     public string GenerateRefreshToken()
     {
-        return Guid.NewGuid().ToString("N"); // UUID v4 without dashes
+        // Use cryptographically secure random bytes instead of predictable UUID
+        var buffer = new byte[32];
+        RandomNumberGenerator.Fill(buffer);
+        return Convert.ToBase64String(buffer);
     }
 
     public string HashToken(string token)

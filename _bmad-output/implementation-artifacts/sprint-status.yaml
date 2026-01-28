@@ -128,11 +128,11 @@ development_status:
   # EPIC 8: Persona Translation & Language Adaptation
   # ==================================================
   epic-8: done
-  8-1-persona-profile-configuration: review
-  8-2-business-language-translation: review
-  8-3-technical-language-mode: review
-  8-4-in-session-persona-switching: review
-  8-5-context-aware-response-adaptation: review
+  8-1-persona-profile-configuration: done  # Code exists: UsersController.cs persona endpoints, PersonaType enum
+  8-2-business-language-translation: done
+  8-3-technical-language-mode: done
+  8-4-in-session-persona-switching: done
+  8-5-context-aware-response-adaptation: done
   epic-8-retrospective: optional
 
   # ===============================================

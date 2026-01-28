@@ -479,6 +479,16 @@ public class DecisionService : IDecisionService
                 throw new InvalidOperationException($"Decision {id} is not locked");
             }
 
+            // Security: Only the user who locked the decision can unlock it
+            if (decision.LockedBy != userId)
+            {
+                _logger.LogWarning(
+                    "User {UserId} attempted to unlock decision {DecisionId} locked by {LockedBy}",
+                    userId, id, decision.LockedBy);
+                throw new UnauthorizedAccessException(
+                    $"Decision {id} can only be unlocked by the user who locked it");
+            }
+
             // Create an audit record of the unlock action
             _logger.LogInformation(
                 "Decision {DecisionId} unlocked by user {UserId}. Reason: {Reason}. Previously locked by {LockedBy}",
@@ -496,6 +506,10 @@ public class DecisionService : IDecisionService
             await _context.SaveChangesAsync(cancellationToken);
 
             return decision;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            throw; // Re-throw authorization errors without wrapping
         }
         catch (Exception ex)
         {

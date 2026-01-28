@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using bmadServer.ApiService.Data;
+using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -168,18 +169,51 @@ public class UsersController : ControllerBase
     /// <summary>
     /// Get user profile by ID (Story 7.3 - for attribution display)
     /// </summary>
+    /// <remarks>
+    /// Users can only view their own profile. Admins can view any profile.
+    /// </remarks>
     /// <param name="id">User ID</param>
     /// <returns>User profile information</returns>
     /// <response code="200">Returns the user's profile</response>
     /// <response code="401">User is not authenticated</response>
+    /// <response code="403">User not authorized to view this profile</response>
     /// <response code="404">User not found</response>
     [HttpGet("{id}/profile")]
     [Authorize]
     [ProducesResponseType(typeof(UserProfileResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetUserProfile(Guid id)
     {
+        // Authorization: Users can only view their own profile (or admins can view any)
+        var currentUserIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(currentUserIdClaim) || !Guid.TryParse(currentUserIdClaim, out var currentUserId))
+        {
+            return Unauthorized(new ProblemDetails
+            {
+                Type = "https://bmadserver.api/errors/unauthorized",
+                Title = "Unauthorized",
+                Status = StatusCodes.Status401Unauthorized,
+                Detail = "User ID not found in claims"
+            });
+        }
+
+        // Check if requesting own profile or is admin
+        if (currentUserId != id)
+        {
+            var isAdmin = await _dbContext.UserRoles
+                .AnyAsync(ur => ur.UserId == currentUserId && ur.Role == Role.Admin);
+            
+            if (!isAdmin)
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status403Forbidden,
+                    title: "Forbidden",
+                    detail: "You can only view your own profile");
+            }
+        }
+
         // Try to get from cache first (5-minute TTL)
         var cacheKey = $"UserProfile_{id}";
         if (_memoryCache.TryGetValue<UserProfileResponse>(cacheKey, out var cachedProfile))
