@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCircleOutlined, ChevronDownOutlined, ChevronUpOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, DownOutlined, UpOutlined } from '@ant-design/icons';
 import './DecisionAttributionBanner.css';
 
 export interface DecisionAttributionBannerProps {
@@ -101,9 +101,9 @@ export const DecisionAttributionBanner: React.FC<DecisionAttributionBannerProps>
             aria-label={isExpanded ? 'Hide reasoning' : 'Show reasoning'}
           >
             {isExpanded ? (
-              <ChevronUpOutlined />
+              <UpOutlined />
             ) : (
-              <ChevronDownOutlined />
+              <DownOutlined />
             )}
           </button>
         )}
