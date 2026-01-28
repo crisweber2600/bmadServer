@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { ResponsiveChat } from './ResponsiveChat';
 import { AgentHandoffIndicator } from './AgentHandoffIndicator';
-import { useSignalRHandoffs, AgentHandoffEvent } from '../hooks/useSignalRHandoffs';
+import { useSignalRHandoffs } from '../hooks/useSignalRHandoffs';
+import type { AgentHandoffEvent } from '../hooks/useSignalRHandoffs';
 
 interface HandoffMessage {
   type: 'handoff';
