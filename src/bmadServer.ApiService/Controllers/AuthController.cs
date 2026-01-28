@@ -4,6 +4,7 @@ using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.DTOs;
 using bmadServer.ApiService.Services;
 using FluentValidation;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -291,8 +292,11 @@ public class AuthController : ControllerBase
     /// </summary>
     /// <returns>No content on successful logout</returns>
     /// <response code="204">Logout successful</response>
+    /// <response code="401">User is not authenticated</response>
     [HttpPost("logout")]
+    [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Logout()
     {
         // Extract refresh token from cookie

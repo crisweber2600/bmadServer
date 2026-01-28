@@ -127,6 +127,16 @@ public class ChatHub : Hub
     /// </summary>
     public async Task SendMessage(string message)
     {
+        // Input validation
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            throw new HubException("Message cannot be empty");
+        }
+        if (message.Length > 10000)
+        {
+            throw new HubException("Message exceeds maximum length of 10000 characters");
+        }
+
         var userId = GetUserIdFromClaims();
         
         // Get active session
@@ -326,6 +336,14 @@ public class ChatHub : Hub
     public async Task SendTypingIndicator(Guid workflowId)
     {
         var userId = GetUserIdFromClaims();
+
+        // Authorization check: verify user is participant or owner
+        var isParticipant = await _participantService.IsParticipantAsync(workflowId, userId);
+        var isOwner = await _participantService.IsWorkflowOwnerAsync(workflowId, userId);
+        if (!isParticipant && !isOwner)
+        {
+            throw new HubException("Not authorized to send typing indicator for this workflow");
+        }
 
         // Broadcast typing indicator to others in the workflow group
         await Clients.OthersInGroup($"workflow-{workflowId}").SendAsync("USER_TYPING", new

@@ -49,12 +49,30 @@ public class WorkflowsController : ControllerBase
         _participantService = participantService;
     }
 
+    private Guid GetCurrentUserId()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        {
+            throw new UnauthorizedAccessException("User ID not found in claims");
+        }
+        return userId;
+    }
+
+    private async Task<bool> CanAccessWorkflowAsync(Guid workflowId, Guid userId)
+    {
+        var isParticipant = await _participantService.IsParticipantAsync(workflowId, userId);
+        var isOwner = await _participantService.IsWorkflowOwnerAsync(workflowId, userId);
+        return isParticipant || isOwner;
+    }
+
     private async Task SendWorkflowStatusChangedNotification(Guid workflowId)
     {
         var status = await _workflowInstanceService.GetWorkflowStatusAsync(workflowId);
         if (status != null)
         {
-            await _hubContext.Clients.All.SendAsync("WORKFLOW_STATUS_CHANGED", new
+            // Send to workflow group only, not all clients
+            await _hubContext.Clients.Group($"workflow-{workflowId}").SendAsync("WORKFLOW_STATUS_CHANGED", new
             {
                 eventType = "WORKFLOW_STATUS_CHANGED",
                 workflowId = workflowId,
@@ -246,9 +264,26 @@ public class WorkflowsController : ControllerBase
     /// <returns>Workflow status with step progress</returns>
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(WorkflowStatusResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<WorkflowStatusResponse>> GetWorkflow(Guid id)
     {
+        try
+        {
+            var userId = GetCurrentUserId();
+            if (!await CanAccessWorkflowAsync(id, userId))
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status403Forbidden,
+                    title: "Forbidden",
+                    detail: "You don't have access to this workflow");
+            }
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized();
+        }
+
         var status = await _workflowInstanceService.GetWorkflowStatusAsync(id);
         if (status == null)
         {
@@ -269,9 +304,27 @@ public class WorkflowsController : ControllerBase
     [HttpPost("{id}/start")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> StartWorkflow(Guid id)
     {
+        try
+        {
+            var userId = GetCurrentUserId();
+            // Only owner can start workflows
+            if (!await _participantService.IsWorkflowOwnerAsync(id, userId))
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status403Forbidden,
+                    title: "Forbidden",
+                    detail: "Only the workflow owner can start it");
+            }
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized();
+        }
+
         var success = await _workflowInstanceService.StartWorkflowAsync(id);
         if (!success)
         {
@@ -296,6 +349,7 @@ public class WorkflowsController : ControllerBase
     [HttpPost("{id}/steps/execute")]
     [ProducesResponseType(typeof(StepExecutionResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<StepExecutionResult>> ExecuteStep(
         Guid id, 
@@ -303,6 +357,15 @@ public class WorkflowsController : ControllerBase
     {
         try
         {
+            var userId = GetCurrentUserId();
+            if (!await CanAccessWorkflowAsync(id, userId))
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status403Forbidden,
+                    title: "Forbidden",
+                    detail: "You don't have access to this workflow");
+            }
+
             var result = await _stepExecutor.ExecuteStepAsync(
                 id, 
                 request?.UserInput);
@@ -316,6 +379,10 @@ public class WorkflowsController : ControllerBase
             }
 
             return Ok(result);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized();
         }
         catch (Exception ex)
         {
@@ -780,11 +847,23 @@ public class WorkflowsController : ControllerBase
     /// <returns>List of participants</returns>
     [HttpGet("{id}/participants")]
     [ProducesResponseType(typeof(List<ParticipantResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<List<ParticipantResponse>>> GetParticipants(Guid id)
     {
         try
         {
+            var userId = GetCurrentUserId();
+            
+            // Authorization check: only participants or owners can see participant list
+            if (!await CanAccessWorkflowAsync(id, userId))
+            {
+                _logger.LogWarning("User {UserId} attempted to access participants for workflow {WorkflowId} without access",
+                    userId, id);
+                return Forbid();
+            }
+
             var participants = await _participantService.GetParticipantsAsync(id);
 
             var responses = participants.Select(p => new ParticipantResponse
@@ -800,6 +879,10 @@ public class WorkflowsController : ControllerBase
             }).ToList();
 
             return Ok(responses);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized();
         }
         catch (Exception ex)
         {

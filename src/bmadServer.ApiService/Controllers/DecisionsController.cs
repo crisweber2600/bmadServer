@@ -1,5 +1,6 @@
 using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.Models.Decisions;
+using bmadServer.ApiService.Services;
 using bmadServer.ApiService.Services.Decisions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,14 +18,34 @@ namespace bmadServer.ApiService.Controllers;
 public class DecisionsController : ControllerBase
 {
     private readonly IDecisionService _decisionService;
+    private readonly IParticipantService _participantService;
     private readonly ILogger<DecisionsController> _logger;
 
     public DecisionsController(
         IDecisionService decisionService,
+        IParticipantService participantService,
         ILogger<DecisionsController> logger)
     {
         _decisionService = decisionService;
+        _participantService = participantService;
         _logger = logger;
+    }
+
+    private Guid GetCurrentUserId()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        {
+            throw new UnauthorizedAccessException("User ID not found in claims");
+        }
+        return userId;
+    }
+
+    private async Task<bool> CanAccessWorkflowAsync(Guid workflowId, Guid userId)
+    {
+        var isParticipant = await _participantService.IsParticipantAsync(workflowId, userId);
+        var isOwner = await _participantService.IsWorkflowOwnerAsync(workflowId, userId);
+        return isParticipant || isOwner;
     }
 
     /// <summary>
@@ -36,6 +57,7 @@ public class DecisionsController : ControllerBase
     [HttpGet("workflows/{id:guid}/decisions")]
     [ProducesResponseType(typeof(List<DecisionResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<List<DecisionResponse>>> GetDecisionsByWorkflowInstance(
         Guid id,
@@ -43,11 +65,24 @@ public class DecisionsController : ControllerBase
     {
         try
         {
+            var userId = GetCurrentUserId();
+            if (!await CanAccessWorkflowAsync(id, userId))
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status403Forbidden,
+                    title: "Forbidden",
+                    detail: "You don't have access to this workflow's decisions");
+            }
+
             var decisions = await _decisionService.GetDecisionsByWorkflowInstanceAsync(id, cancellationToken);
 
             var responses = decisions.Select(d => MapToDecisionResponse(d)).ToList();
 
             return Ok(responses);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized();
         }
         catch (Exception ex)
         {
@@ -72,22 +107,21 @@ public class DecisionsController : ControllerBase
     [ProducesResponseType(typeof(DecisionResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<DecisionResponse>> CreateDecision(
         [FromBody] CreateDecisionRequest request,
         CancellationToken cancellationToken)
     {
         try
         {
-            // Get the authenticated user ID
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            var userId = GetCurrentUserId();
+            
+            // Authorization check: verify user can access this workflow
+            if (!await CanAccessWorkflowAsync(request.WorkflowInstanceId, userId))
             {
-                return Unauthorized(new ProblemDetails
-                {
-                    Title = "Unauthorized",
-                    Detail = "User ID not found in claims",
-                    Status = StatusCodes.Status401Unauthorized
-                });
+                _logger.LogWarning("User {UserId} attempted to create decision in workflow {WorkflowId} without access",
+                    userId, request.WorkflowInstanceId);
+                return Forbid();
             }
 
             // Create the decision entity
@@ -117,6 +151,10 @@ public class DecisionsController : ControllerBase
                 nameof(GetDecisionById),
                 new { id = createdDecision.Id },
                 response);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized();
         }
         catch (InvalidOperationException ex)
         {
@@ -150,6 +188,7 @@ public class DecisionsController : ControllerBase
     [HttpGet("decisions/{id:guid}")]
     [ProducesResponseType(typeof(DecisionResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<DecisionResponse>> GetDecisionById(
         Guid id,
@@ -169,9 +208,23 @@ public class DecisionsController : ControllerBase
                 });
             }
 
+            // Authorization: verify user has access to the workflow
+            var userId = GetCurrentUserId();
+            if (!await CanAccessWorkflowAsync(decision.WorkflowInstanceId, userId))
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status403Forbidden,
+                    title: "Forbidden",
+                    detail: "You don't have access to this decision");
+            }
+
             var response = MapToDecisionResponse(decision);
 
             return Ok(response);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized();
         }
         catch (Exception ex)
         {
@@ -206,19 +259,9 @@ public class DecisionsController : ControllerBase
     {
         try
         {
-            // Get the authenticated user ID
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-            {
-                return Unauthorized(new ProblemDetails
-                {
-                    Title = "Unauthorized",
-                    Detail = "User ID not found in claims",
-                    Status = StatusCodes.Status401Unauthorized
-                });
-            }
+            var userId = GetCurrentUserId();
 
-            // Check if decision is locked
+            // Check if decision exists first
             var decision = await _decisionService.GetDecisionByIdAsync(id, cancellationToken);
             if (decision == null)
             {
@@ -228,6 +271,14 @@ public class DecisionsController : ControllerBase
                     Detail = $"Decision with ID {id} was not found",
                     Status = StatusCodes.Status404NotFound
                 });
+            }
+
+            // Authorization check: verify user can access this workflow
+            if (!await CanAccessWorkflowAsync(decision.WorkflowInstanceId, userId))
+            {
+                _logger.LogWarning("User {UserId} attempted to update decision {DecisionId} without access",
+                    userId, id);
+                return Forbid();
             }
 
             if (decision.IsLocked)
@@ -253,6 +304,10 @@ public class DecisionsController : ControllerBase
 
             var response = MapToDecisionResponse(updatedDecision);
             return Ok(response);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized();
         }
         catch (InvalidOperationException ex)
         {
@@ -286,6 +341,7 @@ public class DecisionsController : ControllerBase
     [HttpGet("decisions/{id:guid}/history")]
     [ProducesResponseType(typeof(List<DecisionVersionResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<List<DecisionVersionResponse>>> GetDecisionHistory(
         Guid id,
@@ -293,6 +349,27 @@ public class DecisionsController : ControllerBase
     {
         try
         {
+            // Authorization: verify user has access to the decision's workflow
+            var decision = await _decisionService.GetDecisionByIdAsync(id, cancellationToken);
+            if (decision == null)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Decision not found",
+                    Detail = $"Decision {id} not found",
+                    Status = StatusCodes.Status404NotFound
+                });
+            }
+
+            var userId = GetCurrentUserId();
+            if (!await CanAccessWorkflowAsync(decision.WorkflowInstanceId, userId))
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status403Forbidden,
+                    title: "Forbidden",
+                    detail: "You don't have access to this decision's history");
+            }
+
             var versions = await _decisionService.GetDecisionHistoryAsync(id, cancellationToken);
 
             var responses = versions.Select(v => new DecisionVersionResponse
@@ -310,6 +387,10 @@ public class DecisionsController : ControllerBase
             }).ToList();
 
             return Ok(responses);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized();
         }
         catch (Exception ex)
         {
@@ -336,6 +417,7 @@ public class DecisionsController : ControllerBase
     [ProducesResponseType(typeof(DecisionResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<DecisionResponse>> RevertDecision(
         Guid id,
@@ -345,16 +427,26 @@ public class DecisionsController : ControllerBase
     {
         try
         {
-            // Get the authenticated user ID
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            var userId = GetCurrentUserId();
+
+            // Check if decision exists first
+            var decision = await _decisionService.GetDecisionByIdAsync(id, cancellationToken);
+            if (decision == null)
             {
-                return Unauthorized(new ProblemDetails
+                return NotFound(new ProblemDetails
                 {
-                    Title = "Unauthorized",
-                    Detail = "User ID not found in claims",
-                    Status = StatusCodes.Status401Unauthorized
+                    Title = "Decision not found",
+                    Detail = $"Decision with ID {id} was not found",
+                    Status = StatusCodes.Status404NotFound
                 });
+            }
+
+            // Authorization check: verify user can access this workflow
+            if (!await CanAccessWorkflowAsync(decision.WorkflowInstanceId, userId))
+            {
+                _logger.LogWarning("User {UserId} attempted to revert decision {DecisionId} without access",
+                    userId, id);
+                return Forbid();
             }
 
             var revertedDecision = await _decisionService.RevertDecisionAsync(
@@ -366,6 +458,10 @@ public class DecisionsController : ControllerBase
 
             var response = MapToDecisionResponse(revertedDecision);
             return Ok(response);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized();
         }
         catch (InvalidOperationException ex)
         {
@@ -402,6 +498,7 @@ public class DecisionsController : ControllerBase
     [ProducesResponseType(typeof(DecisionVersionDiffResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<DecisionVersionDiffResponse>> GetVersionDiff(
         Guid id,
@@ -411,8 +508,34 @@ public class DecisionsController : ControllerBase
     {
         try
         {
+            var userId = GetCurrentUserId();
+
+            // Check if decision exists first
+            var decision = await _decisionService.GetDecisionByIdAsync(id, cancellationToken);
+            if (decision == null)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Decision not found",
+                    Detail = $"Decision with ID {id} was not found",
+                    Status = StatusCodes.Status404NotFound
+                });
+            }
+
+            // Authorization check: verify user can access this workflow
+            if (!await CanAccessWorkflowAsync(decision.WorkflowInstanceId, userId))
+            {
+                _logger.LogWarning("User {UserId} attempted to access version diff for decision {DecisionId} without access",
+                    userId, id);
+                return Forbid();
+            }
+
             var diff = await _decisionService.GetVersionDiffAsync(id, from, to, cancellationToken);
             return Ok(diff);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized();
         }
         catch (InvalidOperationException ex)
         {
@@ -448,6 +571,7 @@ public class DecisionsController : ControllerBase
     [ProducesResponseType(typeof(DecisionResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<DecisionResponse>> LockDecision(
         Guid id,
@@ -466,6 +590,26 @@ public class DecisionsController : ControllerBase
                     Detail = "User ID not found in claims",
                     Status = StatusCodes.Status401Unauthorized
                 });
+            }
+
+            // Verify user has access to the workflow this decision belongs to
+            var decision = await _decisionService.GetDecisionByIdAsync(id, cancellationToken);
+            if (decision == null)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Decision not found",
+                    Detail = $"Decision {id} not found",
+                    Status = StatusCodes.Status404NotFound
+                });
+            }
+
+            if (!await CanAccessWorkflowAsync(decision.WorkflowInstanceId, userId))
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status403Forbidden,
+                    title: "Forbidden",
+                    detail: "You don't have access to lock decisions in this workflow");
             }
 
             var lockedDecision = await _decisionService.LockDecisionAsync(

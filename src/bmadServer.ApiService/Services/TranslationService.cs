@@ -78,10 +78,12 @@ public class TranslationService : ITranslationService
             foreach (var (technicalTerm, businessTerm) in translationCache.OrderByDescending(kvp => kvp.Key.Length))
             {
                 var pattern = $@"\b{Regex.Escape(technicalTerm)}\b";
+                // Escape the replacement string to prevent regex backreference injection
+                var safeReplacement = businessTerm.Replace("$", "$$");
                 translatedContent = Regex.Replace(
                     translatedContent,
                     pattern,
-                    businessTerm,
+                    safeReplacement,
                     RegexOptions.IgnoreCase
                 );
             }
