@@ -140,7 +140,7 @@ namespace bmadServer.BDD.Tests.Features
                             "role",
                             "Contributor"});
 #line 14
-    await testRunner.WhenAsync("I send POST to \"/api/v1/workflows/{id}/participants\" with:", ((string)(null)), table7, "When ");
+    await testRunner.WhenAsync("I send POST to \"/api/v1/workflows/:id/participants\" with:", ((string)(null)), table7, "When ");
 #line hidden
 #line 17
     await testRunner.ThenAsync("the response status should be 201 Created", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
@@ -319,7 +319,7 @@ namespace bmadServer.BDD.Tests.Features
     await testRunner.GivenAsync("a user is a participant in my workflow", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 49
-    await testRunner.WhenAsync("I send DELETE to \"/api/v1/workflows/{id}/participants/{userId}\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.WhenAsync("I send DELETE to \"/api/v1/workflows/:id/participants/:userId\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 50
     await testRunner.ThenAsync("the response status should be 204 No Content", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");

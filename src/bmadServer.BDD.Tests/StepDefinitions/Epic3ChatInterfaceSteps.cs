@@ -7,33 +7,40 @@ namespace bmadServer.BDD.Tests.StepDefinitions;
 /// BDD step definitions for Epic 3: Real-Time Chat Interface.
 /// These steps verify chat UI behavior at the specification level.
 /// UI interactions are tested via Playwright E2E tests in bmadServer.Playwright.Tests.
+/// 
+/// NOTE: Shared steps like "I am authenticated" and "I have a valid JWT token" 
+/// are defined in SharedSteps.cs to avoid ambiguous binding errors.
 /// </summary>
 [Binding]
 public class Epic3ChatInterfaceSteps
 {
+    private readonly ScenarioContext _scenarioContext;
+    
     // Mock state for specification testing
-    private bool _isAuthenticated;
     private bool _isOnChatPage;
-    private bool _hasValidToken;
     private bool _isConnected;
     private string? _lastMessage;
     private List<string> _chatMessages = new();
     private bool _isStreaming;
     private int _characterCount;
 
+    public Epic3ChatInterfaceSteps(ScenarioContext scenarioContext)
+    {
+        _scenarioContext = scenarioContext;
+    }
+
+    // Helper to check authentication state from SharedSteps
+    private bool IsAuthenticated => SharedSteps.IsAuthenticated(_scenarioContext);
+    private bool HasValidToken => SharedSteps.GetAccessToken(_scenarioContext) != null;
+
     #region Background
 
-    [Given(@"I am authenticated")]
-    public void GivenIAmAuthenticated()
-    {
-        _isAuthenticated = true;
-        _hasValidToken = true;
-    }
+    // NOTE: "Given I am authenticated" is now in SharedSteps.cs
 
     [Given(@"I am on the chat page")]
     public void GivenIAmOnTheChatPage()
     {
-        Assert.True(_isAuthenticated, "Must be authenticated to access chat page");
+        Assert.True(IsAuthenticated, "Must be authenticated to access chat page");
         _isOnChatPage = true;
     }
 
@@ -41,16 +48,12 @@ public class Epic3ChatInterfaceSteps
 
     #region Story 3.1: SignalR Hub Setup
 
-    [Given(@"I have a valid JWT token")]
-    public void GivenIHaveAValidJwtToken()
-    {
-        _hasValidToken = true;
-    }
+    // NOTE: "Given I have a valid JWT token" is now in SharedSteps.cs
 
     [When(@"I connect to the SignalR hub with accessTokenFactory")]
     public void WhenIConnectToSignalRHubWithAccessTokenFactory()
     {
-        Assert.True(_hasValidToken, "Must have valid token to connect");
+        Assert.True(HasValidToken, "Must have valid token to connect");
         _isConnected = true;
     }
 
@@ -419,7 +422,7 @@ public class Epic3ChatInterfaceSteps
         Assert.False(_isStreaming);
     }
 
-    [Then(@"""(.*)""indicator should appear")]
+    [Then(@"""(.*)"" indicator should appear")]
     public void ThenIndicatorShouldAppear(string indicator)
     {
         // UI indicator verified in Playwright tests

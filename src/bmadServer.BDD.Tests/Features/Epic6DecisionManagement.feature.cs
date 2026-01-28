@@ -193,7 +193,7 @@ namespace bmadServer.BDD.Tests.Features
     await testRunner.GivenAsync("a workflow has multiple decisions recorded", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 27
-    await testRunner.WhenAsync("I send GET to \"/api/v1/workflows/{id}/decisions\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.WhenAsync("I send GET to \"/api/v1/workflows/:id/decisions\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 28
     await testRunner.ThenAsync("the response status should be 200 OK", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");

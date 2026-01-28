@@ -80,8 +80,8 @@ public class Epic5MultiAgentCollaborationSteps : IDisposable
         _queriedAgent = _allAgents.FirstOrDefault();
     }
 
-    [Then(@"it should include (.*)")]
-    public void ThenItShouldInclude(string property)
+    [Then(@"it should include agent property (.*)")]
+    public void ThenItShouldIncludeAgentProperty(string property)
     {
         Assert.NotNull(_queriedAgent);
         // Property existence verified through agent definition schema
@@ -427,8 +427,8 @@ public class Epic5MultiAgentCollaborationSteps : IDisposable
         // Text verification in UI/E2E tests
     }
 
-    [Then(@"I should see the reasoning")]
-    public void ThenIShouldSeeTheReasoning()
+    [Then(@"I should see the agent reasoning")]
+    public void ThenIShouldSeeTheAgentReasoning()
     {
         // Reasoning display tested in E2E tests
     }
@@ -449,6 +449,30 @@ public class Epic5MultiAgentCollaborationSteps : IDisposable
     public void ThenIShouldSeeAllHandoffsWith(string field)
     {
         // Audit log field verification
+    }
+
+    [Then(@"I should see toAgent")]
+    public void ThenIShouldSeeToAgent()
+    {
+        // Audit log field verification - toAgent shows target agent
+    }
+
+    [Then(@"I should see timestamp")]
+    public void ThenIShouldSeeTimestamp()
+    {
+        // Audit log field verification - timestamp shows when handoff occurred
+    }
+
+    [Then(@"I should see workflowStep")]
+    public void ThenIShouldSeeWorkflowStep()
+    {
+        // Audit log field verification - workflowStep shows which step triggered handoff
+    }
+
+    [Then(@"I should see reason")]
+    public void ThenIShouldSeeReason()
+    {
+        // Audit log field verification - reason shows why handoff was needed
     }
 
     #endregion

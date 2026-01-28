@@ -366,7 +366,7 @@ namespace bmadServer.BDD.Tests.Features
     await testRunner.ThenAsync("the request should fail with 400 Bad Request", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 59
-    await testRunner.AndAsync("the error should indicate invalid state transition", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the error should indicate state transition invalid state transition", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -622,7 +622,7 @@ namespace bmadServer.BDD.Tests.Features
     await testRunner.ThenAsync("the request should fail with 400 Bad Request", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 106
-    await testRunner.AndAsync("the error should indicate Cannot resume a cancelled", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the error should indicate state transition Cannot resume a cancelled", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -748,7 +748,7 @@ namespace bmadServer.BDD.Tests.Features
     await testRunner.ThenAsync("the request should fail with 400 Bad Request", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 129
-    await testRunner.AndAsync("the error should indicate Cannot cancel a completed", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the error should indicate state transition Cannot cancel a completed", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -888,7 +888,7 @@ namespace bmadServer.BDD.Tests.Features
     await testRunner.ThenAsync("the request should fail with 400 Bad Request", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 158
-    await testRunner.AndAsync("the error should indicate This step is required", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the error should indicate state transition This step is required", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -935,7 +935,7 @@ namespace bmadServer.BDD.Tests.Features
     await testRunner.ThenAsync("the request should fail with 400 Bad Request", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 167
-    await testRunner.AndAsync("the error should indicate This step is required", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the error should indicate state transition This step is required", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -1028,7 +1028,7 @@ namespace bmadServer.BDD.Tests.Features
     await testRunner.ThenAsync("the request should fail with 400 Bad Request", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 184
-    await testRunner.AndAsync("the error should indicate not found in workflow", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the error should indicate state transition not found in workflow", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -1072,7 +1072,7 @@ namespace bmadServer.BDD.Tests.Features
     await testRunner.ThenAsync("the request should fail with 400 Bad Request", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 192
-    await testRunner.AndAsync("the error should indicate not found in workflow", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the error should indicate state transition not found in workflow", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();

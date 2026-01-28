@@ -22,12 +22,12 @@ Feature: Multi-Agent Collaboration
   @epic-5 @story-5-1
   Scenario: Agent has required properties
     When I examine any agent in the registry
-    Then it should include AgentId
-    And it should include Name
-    And it should include Description
-    And it should include Capabilities
-    And it should include SystemPrompt
-    And it should include ModelPreference
+    Then it should include agent property AgentId
+    And it should include agent property Name
+    And it should include agent property Description
+    And it should include agent property Capabilities
+    And it should include agent property SystemPrompt
+    And it should include agent property ModelPreference
 
   @epic-5 @story-5-1
   Scenario: Query agents by capability
@@ -126,7 +126,7 @@ Feature: Multi-Agent Collaboration
     Given a decision was made by an agent
     When I review the decision
     Then I should see "Decided by [AgentName] at [timestamp]"
-    And I should see the reasoning
+    And I should see the agent reasoning
 
   @epic-5 @story-5-4
   Scenario: Handoffs are logged for audit

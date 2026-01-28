@@ -24,7 +24,7 @@ Feature: Decision Management & Locking
   @epic-6 @story-6-1
   Scenario: Query all workflow decisions
     Given a workflow has multiple decisions recorded
-    When I send GET to "/api/v1/workflows/{id}/decisions"
+    When I send GET to "/api/v1/workflows/:id/decisions"
     Then the response status should be 200 OK
     And I should receive all decisions in chronological order
 

@@ -19,10 +19,14 @@ namespace bmadServer.BDD.Tests.StepDefinitions;
 /// <summary>
 /// BDD step definitions for Epic 2: Authentication and Authorization.
 /// These steps verify auth flows at the specification level using SQLite test database.
+/// 
+/// NOTE: Shared steps like "I am authenticated" and "I have a valid JWT token"
+/// are now defined in SharedSteps.cs to avoid duplicate binding errors.
 /// </summary>
 [Binding]
 public class Epic2AuthenticationSteps : IDisposable
 {
+    private readonly ScenarioContext _scenarioContext;
     private readonly IServiceProvider _serviceProvider;
     private readonly ApplicationDbContext _dbContext;
     private readonly SqliteConnection _connection;
@@ -43,8 +47,10 @@ public class Epic2AuthenticationSteps : IDisposable
     private string? _currentPasswordHash;
     private string? _currentDisplayName;
 
-    public Epic2AuthenticationSteps()
+    public Epic2AuthenticationSteps(ScenarioContext scenarioContext)
     {
+        _scenarioContext = scenarioContext;
+        
         // Load JWT secret from environment, or generate a unique one for test isolation
         _jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") 
             ?? $"TestOnlyKey_{Guid.NewGuid():N}_MustBe256BitsMinimum!";
@@ -74,8 +80,11 @@ public class Epic2AuthenticationSteps : IDisposable
         _testEmail = email;
     }
 
-    [Given(@"a user exists with email ""(.*)""")]
-    public void GivenAUserExistsWithEmail(string email)
+    // NOTE: This step regex uses $ anchor to match ONLY when there's no password part
+    // It matches: Given a user exists with email "xxx"
+    // NOT: Given a user exists with email "xxx" and password "yyy"
+    [Given(@"^a user exists with email ""([^""]+)""$")]
+    public void GivenAUserExistsWithEmailOnly(string email)
     {
         _testEmail = email;
         _currentUserId = Guid.NewGuid();
@@ -83,24 +92,24 @@ public class Epic2AuthenticationSteps : IDisposable
         _currentDisplayName = "Test User";
     }
 
-    [When(@"I send POST to ""(.*)"" with:")]
-    public void WhenISendPostToWith(string endpoint, Table table)
+    [When(@"I send POST to ""/api/v1/auth/(.*)"" with:")]
+    public void WhenISendPostToAuthWith(string authEndpoint, Table table)
     {
         var data = table.Rows.ToDictionary(r => r["Field"], r => r["Value"]);
 
-        if (endpoint.Contains("/register"))
+        if (authEndpoint.Contains("register"))
         {
             HandleRegistration(data);
         }
-        else if (endpoint.Contains("/login"))
+        else if (authEndpoint.Contains("login"))
         {
             HandleLogin(data);
         }
-        else if (endpoint.Contains("/refresh"))
+        else if (authEndpoint.Contains("refresh"))
         {
             HandleRefresh();
         }
-        else if (endpoint.Contains("/logout"))
+        else if (authEndpoint.Contains("logout"))
         {
             HandleLogout();
         }
@@ -210,8 +219,26 @@ public class Epic2AuthenticationSteps : IDisposable
         _lastStatusCode = 204;
     }
 
-    [Then(@"the response status should be (\d+) (.*)")]
-    public void ThenTheResponseStatusShouldBe(int statusCode, string statusText)
+    [Then(@"^the response status should be (\d+) OK$")]
+    public void ThenTheResponseStatusShouldBeOK(int statusCode)
+    {
+        Assert.Equal(statusCode, _lastStatusCode);
+    }
+
+    [Then(@"^the response status should be (\d+) Unauthorized$")]
+    public void ThenTheResponseStatusShouldBeUnauthorized(int statusCode)
+    {
+        Assert.Equal(statusCode, _lastStatusCode);
+    }
+
+    [Then(@"^the response status should be (\d+) Conflict$")]
+    public void ThenTheResponseStatusShouldBeConflict(int statusCode)
+    {
+        Assert.Equal(statusCode, _lastStatusCode);
+    }
+
+    [Then(@"^the response status should be (\d+) Bad Request$")]
+    public void ThenTheResponseStatusShouldBeBadRequest(int statusCode)
     {
         Assert.Equal(statusCode, _lastStatusCode);
     }
@@ -296,8 +323,10 @@ public class Epic2AuthenticationSteps : IDisposable
         Assert.Equal(expectedMessage, _lastError);
     }
 
-    [Given(@"I have a valid JWT token")]
-    public void GivenIHaveAValidJwtToken()
+    // NOTE: "Given I have a valid JWT token" is now defined in SharedSteps.cs
+    // Epic2 specific scenarios that need internal token state use SetupValidJwtTokenInternal()
+    
+    private void SetupValidJwtTokenInternal()
     {
         if (_currentUserId == null)
         {
@@ -305,12 +334,17 @@ public class Epic2AuthenticationSteps : IDisposable
             _testEmail = "test@example.com";
         }
         _accessToken = GenerateAccessToken(_currentUserId.Value, _testEmail ?? "test@example.com");
-        Assert.NotNull(_accessToken);
     }
 
     [When(@"I send GET to ""(.*)"" with the Authorization header")]
     public void WhenISendGetToWithTheAuthorizationHeader(string endpoint)
     {
+        // If no token set up via SharedSteps, set up internally
+        if (string.IsNullOrEmpty(_accessToken))
+        {
+            SetupValidJwtTokenInternal();
+        }
+        
         if (string.IsNullOrEmpty(_accessToken))
         {
             _lastStatusCode = 401;
@@ -511,12 +545,9 @@ public class Epic2AuthenticationSteps : IDisposable
 
     #region Story 2.4: Session Persistence
 
-    [Given(@"I am authenticated")]
-    public void GivenIAmAuthenticated()
-    {
-        GivenAUserExistsWithEmailAndPassword("auth@example.com", "SecurePass123!");
-        GivenIHaveAValidJwtToken();
-    }
+    // NOTE: "Given I am authenticated" is now defined in SharedSteps.cs
+    // This step was moved to avoid Reqnroll AmbiguousBindingException.
+    // Epic2 specific auth scenarios use "Given a user exists with email..." instead.
 
     [When(@"my SignalR connection establishes")]
     public void WhenMySignalRConnectionEstablishes()
@@ -545,7 +576,19 @@ public class Epic2AuthenticationSteps : IDisposable
     [Given(@"I have an active session")]
     public void GivenIHaveAnActiveSession()
     {
-        GivenIAmAuthenticated();
+        // Set up internal state for session-related steps
+        // SharedSteps.GivenIAmAuthenticated sets up _scenarioContext state
+        // We need internal state too for Epic2-specific assertions
+        SetupAuthenticatedUserInternal();
+    }
+    
+    private void SetupAuthenticatedUserInternal()
+    {
+        if (_currentUserId == null)
+        {
+            GivenAUserExistsWithEmailAndPassword("session@example.com", "SecurePass123!");
+            SetupValidJwtTokenInternal();
+        }
     }
 
     [Given(@"my network connection drops")]

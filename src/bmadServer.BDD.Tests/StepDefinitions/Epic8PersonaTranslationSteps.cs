@@ -127,12 +127,7 @@ public class Epic8PersonaTranslationSteps : IDisposable
         WhenISelectPersona("Technical");
     }
 
-    [When(@"I send GET to ""/api/v1/users/me""")]
-    public void WhenISendGetToApiV1UsersMe()
-    {
-        Assert.NotNull(_currentUserId);
-        _lastStatusCode = 200;
-    }
+    // GET step moved to SharedSteps to avoid ambiguity with generic pattern
 
     [Then(@"the response should include personaType")]
     public void ThenTheResponseShouldIncludePersonaType()

@@ -11,7 +11,7 @@ Feature: Collaboration & Multi-User Support
   @epic-7 @story-7-1
   Scenario: Invite user as Contributor
     Given another user exists with userId "contributor-user-id"
-    When I send POST to "/api/v1/workflows/{id}/participants" with:
+    When I send POST to "/api/v1/workflows/:id/participants" with:
       | userId | contributor-user-id |
       | role   | Contributor         |
     Then the response status should be 201 Created
@@ -46,7 +46,7 @@ Feature: Collaboration & Multi-User Support
   @epic-7 @story-7-1
   Scenario: Remove participant revokes access
     Given a user is a participant in my workflow
-    When I send DELETE to "/api/v1/workflows/{id}/participants/{userId}"
+    When I send DELETE to "/api/v1/workflows/:id/participants/:userId"
     Then the response status should be 204 No Content
     And the user should lose access immediately
     And they should receive a notification

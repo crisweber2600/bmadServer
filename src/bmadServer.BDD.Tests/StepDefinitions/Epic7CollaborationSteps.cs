@@ -59,10 +59,11 @@ public class Epic7CollaborationSteps : IDisposable
         _participantUserId = Guid.NewGuid();
     }
 
-    [When(@"I send POST to ""/api/v1/workflows/\{id\}/participants"" with:")]
-    public void WhenISendPostToApiV1WorkflowsIdParticipantsWith(Table table)
+    [When(@"^I send POST to ""/api/v1/workflows/:id/participants"" with:$")]
+    public void WhenISendPostToApiParticipants(Table table)
     {
-        var data = table.Rows.ToDictionary(r => r["Field"], r => r["Value"]);
+        // Table format: | field | value | where first column is the field name
+        var data = table.Rows.ToDictionary(r => r[0], r => r[1]);
         var roleStr = data.GetValueOrDefault("role", "Contributor");
         var role = Enum.Parse<ParticipantRole>(roleStr);
 
@@ -228,19 +229,23 @@ public class Epic7CollaborationSteps : IDisposable
         GivenAUserIsAddedAsContributorToMyWorkflow();
     }
 
-    [When(@"I send DELETE to ""/api/v1/workflows/\{id\}/participants/\{userId\}""")]
-    public void WhenISendDeleteToApiV1WorkflowsIdParticipantsUserId()
+    [When(@"^I send DELETE to ""(.+)""$")]
+    public void WhenISendDeleteTo(string url)
     {
-        var toRemove = _participants.FirstOrDefault(p => p.UserId == _participantUserId);
-        if (toRemove != null)
+        // URL pattern: /api/v1/workflows/:id/participants/:userId
+        if (url.Contains("/participants/"))
         {
-            _participants.Remove(toRemove);
-            _addedParticipant = null;
-            _lastStatusCode = 204;
-        }
-        else
-        {
-            _lastStatusCode = 404;
+            var toRemove = _participants.FirstOrDefault(p => p.UserId == _participantUserId);
+            if (toRemove != null)
+            {
+                _participants.Remove(toRemove);
+                _addedParticipant = null;
+                _lastStatusCode = 204;
+            }
+            else
+            {
+                _lastStatusCode = 404;
+            }
         }
     }
 
@@ -262,6 +267,22 @@ public class Epic7CollaborationSteps : IDisposable
     {
         var hasAccess = _participants.Any(p => p.UserId == _participantUserId);
         Assert.False(hasAccess);
+    }
+
+    #endregion
+
+    #region Response Validation
+
+    [Then(@"^the response status should be (\d+) No Content$")]
+    public void ThenTheResponseStatusShouldBe204(int statusCode)
+    {
+        Assert.Equal(statusCode, _lastStatusCode);
+    }
+
+    [Then(@"^the response status should be (\d+) Created$")]
+    public void ThenTheResponseStatusShouldBeCreated(int statusCode)
+    {
+        Assert.Equal(statusCode, _lastStatusCode);
     }
 
     #endregion

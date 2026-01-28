@@ -5,6 +5,7 @@ using System.Text.Json;
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services.Workflows;
+using bmadServer.ApiService.Services.Workflows.Agents;
 using bmadServer.BDD.Tests.TestSupport;
 using bmadServer.ServiceDefaults.Models.Workflows;
 using bmadServer.ServiceDefaults.Services.Workflows;
@@ -53,8 +54,12 @@ public class WorkflowOrchestrationSteps : IDisposable
             options.UseSqlite(_connection));
         
         services.AddSingleton<IWorkflowRegistry, WorkflowRegistry>();
+        services.AddSingleton<IAgentRegistry, AgentRegistry>();
+        services.AddSingleton<IAgentHandoffService, AgentHandoffService>();
         services.AddScoped<IWorkflowInstanceService, WorkflowInstanceService>();
         services.AddSingleton<ILogger<WorkflowInstanceService>>(NullLogger<WorkflowInstanceService>.Instance);
+        services.AddSingleton<ILogger<AgentHandoffService>>(NullLogger<AgentHandoffService>.Instance);
+        services.AddSingleton<ILogger<AgentRegistry>>(NullLogger<AgentRegistry>.Instance);
         
         _serviceProvider = services.BuildServiceProvider();
         _dbContext = _serviceProvider.GetRequiredService<ApplicationDbContext>();
@@ -293,8 +298,8 @@ public class WorkflowOrchestrationSteps : IDisposable
         Assert.False(string.IsNullOrEmpty(_lastError));
     }
 
-    [Then(@"the error should indicate (.*)")]
-    public void ThenTheErrorShouldIndicate(string expectedMessage)
+    [Then(@"the error should indicate state transition (.*)")]
+    public void ThenTheErrorShouldIndicateStateTransition(string expectedMessage)
     {
         Assert.NotNull(_lastError);
         Assert.Contains(expectedMessage.Replace("_", " "), _lastError, StringComparison.OrdinalIgnoreCase);
