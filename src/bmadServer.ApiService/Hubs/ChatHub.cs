@@ -342,16 +342,6 @@ public class ChatHub : Hub
     /// </summary>
     public async Task BroadcastMessageToWorkflow(Guid workflowId, string message)
     {
-        // Input validation - fail fast on invalid input
-        if (string.IsNullOrWhiteSpace(message))
-        {
-            throw new HubException("Message cannot be empty");
-        }
-        if (message.Length > 10000)
-        {
-            throw new HubException("Message exceeds maximum length of 10000 characters");
-        }
-
         var userId = GetUserIdFromClaims();
         
         // Authorization check: verify user is participant or owner
@@ -360,6 +350,16 @@ public class ChatHub : Hub
         if (!isParticipant && !isOwner)
         {
             throw new HubException("Not authorized to broadcast to this workflow");
+        }
+
+        // Input validation
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            throw new HubException("Message cannot be empty");
+        }
+        if (message.Length > 10000)
+        {
+            throw new HubException("Message exceeds maximum length of 10000 characters");
         }
 
         var displayName = Context.User?.Identity?.Name ?? "Unknown User";
@@ -386,16 +386,6 @@ public class ChatHub : Hub
     /// </summary>
     public async Task BroadcastDecision(Guid workflowId, string decision, List<string>? alternatives = null, double? confidence = null)
     {
-        // Input validation - fail fast on invalid input
-        if (string.IsNullOrWhiteSpace(decision))
-        {
-            throw new HubException("Decision cannot be empty");
-        }
-        if (confidence.HasValue && (confidence < 0 || confidence > 1))
-        {
-            throw new HubException("Confidence must be between 0 and 1");
-        }
-
         var userId = GetUserIdFromClaims();
         
         // Authorization check
@@ -404,6 +394,16 @@ public class ChatHub : Hub
         if (!isParticipant && !isOwner)
         {
             throw new HubException("Not authorized to broadcast decisions to this workflow");
+        }
+
+        // Input validation
+        if (string.IsNullOrWhiteSpace(decision))
+        {
+            throw new HubException("Decision cannot be empty");
+        }
+        if (confidence.HasValue && (confidence < 0 || confidence > 1))
+        {
+            throw new HubException("Confidence must be between 0 and 1");
         }
 
         var displayName = Context.User?.Identity?.Name ?? "Unknown User";
