@@ -357,9 +357,16 @@ public class CopilotAgentHandler : IAgentHandler
                 : null;
 
             // Extract the output property or use the whole response
-            JsonDocument? outputDoc = root.TryGetProperty("output", out var outputProp)
-                ? JsonDocument.Parse(outputProp.GetRawText())
-                : jsonDoc;
+            JsonDocument? outputDoc;
+            if (root.TryGetProperty("output", out var outputProp))
+            {
+                outputDoc = JsonDocument.Parse(outputProp.GetRawText());
+                jsonDoc.Dispose(); // Dispose the original document since we're using a new one
+            }
+            else
+            {
+                outputDoc = jsonDoc;
+            }
 
             return new AgentResult
             {
