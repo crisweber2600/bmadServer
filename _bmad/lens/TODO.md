@@ -48,8 +48,10 @@
 - [ ] **Test on monorepo** — Validate multi-service detection
 - [ ] **Test trunk-based** — Validate directory fallback
 - [ ] **Test session restore** — Validate .lens-state persistence
-- [ ] **User documentation** — Usage guides and examples
+- [x] **User documentation** — Created docs/usage-guide.md with full usage guide
 - [x] **Update README** — Added workflow documentation links and BMM integration docs
+- [x] **Navigator customization** — Created lens-navigator.customize.yaml
+- [x] **Files manifest** — All 24 LENS files registered in files-manifest.csv
 
 ---
 
