@@ -132,25 +132,48 @@ LENS integrates deeply with BMM workflows:
 
 ### Core Workflows
 
-- `lens-detect` — Automatic lens detection from git/directory state
-- `lens-switch` — Switch lens with appropriate notification
-- `context-load` — Load relevant context for current lens
+| Workflow | Description | Path |
+|----------|-------------|------|
+| `lens-detect` | Automatic lens detection from git/directory state | [`workflows/lens-detect/workflow.md`](workflows/lens-detect/workflow.md) |
+| `lens-switch` | Switch lens with appropriate notification | [`workflows/lens-switch/workflow.md`](workflows/lens-switch/workflow.md) |
+| `context-load` | Load relevant context for current lens | [`workflows/context-load/workflow.md`](workflows/context-load/workflow.md) |
 
 ### Feature Workflows
 
-- `new-service` — Create new bounded context/service
-- `new-microservice` — Scaffold microservice within service
-- `new-feature` — Create feature branch and load context
-- `domain-map` — Generate/update domain overview
-- `onboarding` — First-time domain walkthrough
+| Workflow | Description | Path |
+|----------|-------------|------|
+| `new-service` | Create new bounded context/service | [`workflows/new-service/workflow.md`](workflows/new-service/workflow.md) |
+| `new-microservice` | Scaffold microservice within service | [`workflows/new-microservice/workflow.md`](workflows/new-microservice/workflow.md) |
+| `new-feature` | Create feature branch and load context | [`workflows/new-feature/workflow.md`](workflows/new-feature/workflow.md) |
+| `domain-map` | Generate/update domain overview | [`workflows/domain-map/workflow.md`](workflows/domain-map/workflow.md) |
+| `onboarding` | First-time domain walkthrough | [`workflows/onboarding/workflow.md`](workflows/onboarding/workflow.md) |
 
 ### Utility Workflows
 
-- `lens-configure` — Configure detection rules
-- `service-registry` — Manage service → microservice mappings
-- `impact-analysis` — Analyze cross-boundary impacts
-- `lens-sync` — Sync auto-discovered structure with explicit config
-- `lens-restore` — Restore previous session's lens context
+| Workflow | Description | Path |
+|----------|-------------|------|
+| `lens-configure` | Configure detection rules | [`workflows/lens-configure/workflow.md`](workflows/lens-configure/workflow.md) |
+| `service-registry` | Manage service → microservice mappings | [`workflows/service-registry/workflow.md`](workflows/service-registry/workflow.md) |
+| `impact-analysis` | Analyze cross-boundary impacts | [`workflows/impact-analysis/workflow.md`](workflows/impact-analysis/workflow.md) |
+| `lens-sync` | Sync auto-discovered structure with explicit config | [`workflows/lens-sync/workflow.md`](workflows/lens-sync/workflow.md) |
+| `lens-restore` | Restore previous session's lens context | [`workflows/lens-restore/workflow.md`](workflows/lens-restore/workflow.md) |
+
+## 🔌 BMM Integration
+
+LENS integrates with BMM story creation workflows to provide architectural context:
+
+- **Story creation** (`create-story`) auto-populates service/microservice context from current lens
+- LENS variables (`{lens_active_service}`, `{lens_active_microservice}`, `{lens_active_feature}`) are available in story workflows
+- Domain-map context provides cross-service dependency awareness during story scoping
+
+### Integration Variables
+
+| Variable | Source | Used By |
+|----------|--------|---------|
+| `{lens_current_lens}` | LENS config | create-story, dev-story |
+| `{lens_active_service}` | LENS config | create-story (service scoping) |
+| `{lens_active_microservice}` | LENS config | create-story (microservice scoping) |
+| `{lens_active_feature}` | LENS config | create-story (feature context) |
 
 ## ⚠️ Known Limitations
 

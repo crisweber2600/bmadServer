@@ -6,16 +6,51 @@ default_selected: false
 global: true
 
 # Activation Conditions (Conditionally Global)
-# LENS only activates when multi-service indicators are detected:
-# - Multiple service directories (services/, apps/, multiple src/ folders)
-# - Explicit _lens/ configuration folder
-# - Branch patterns matching service/feature conventions
+# LENS only activates when multi-service indicators are detected
+activation:
+  mode: conditional
+  conditions:
+    - has_directory: services/
+    - has_directory: apps/
+    - has_file: _lens/lens-config.yaml
+    - has_file: _lens/domain-map.yaml
+    - branch_matches: "service/*"
+    - branch_matches: "feature/*"
+  match: any  # Activates if ANY condition is true
 
 # Variables from Core Config inserted:
 ## user_name
 ## communication_language
 ## document_output_language
 ## output_folder
+
+# LENS-Provided Variables (available to all modules when LENS is active)
+# These are populated by the lens-detect workflow at session start
+exports:
+  current_lens:
+    description: "Active lens level (domain|service|microservice|feature)"
+    source: "runtime"
+    default: ""
+  active_domain:
+    description: "Current domain context name"
+    source: "runtime"
+    default: ""
+  active_service:
+    description: "Current service name"
+    source: "runtime"
+    default: ""
+  active_microservice:
+    description: "Current microservice name"
+    source: "runtime"
+    default: ""
+  active_feature:
+    description: "Current feature name"
+    source: "runtime"
+    default: ""
+  lens_summary:
+    description: "Brief context summary (e.g., '3 files, 2 commits')"
+    source: "runtime"
+    default: ""
 
 # LENS Configuration Variables
 
