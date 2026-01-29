@@ -30,6 +30,14 @@ variables:
 # Project context
 project_context: "**/project-context.md"
 
+# LENS Integration (optional - populated when LENS module is active)
+# Provides architectural context from current lens for service/feature scoping
+lens_config_source: "{project-root}/_bmad/lens/config.yaml"
+lens_current_lens: "{lens_config_source}:current_lens"
+lens_active_service: "{lens_config_source}:active_service"
+lens_active_microservice: "{lens_config_source}:active_microservice"
+lens_active_feature: "{lens_config_source}:active_feature"
+
 default_output_file: "{story_dir}/{{story_key}}.md"
 
 # Smart input file references - Simplified for enhanced approach

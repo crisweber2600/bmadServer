@@ -23,23 +23,25 @@
 - [x] **lens-sync workflow** — Auto-discovery ↔ explicit config sync
 - [x] **lens-restore workflow** — Session state restoration
 
-## Phase 4: Data & Templates
+## Phase 4: Data & Templates ✅
 
 - [x] **lens-config.yaml schema** — Branch pattern configuration (in schemas.md)
 - [x] **domain-map.yaml schema** — Service/microservice mapping (in schemas.md)
 - [x] **service.yaml schema** — Individual service definition (in schemas.md)
 - [x] **.lens-state schema** — Session state persistence (in schemas.md)
 - [x] **Config templates** — Starter configs for common setups (in templates/)
-- [ ] **service.yaml template** — Add to templates/config-templates/
-- [ ] **feature-context.yaml template** — For feature tracking
+- [x] **service.yaml template** — Added to templates/config-templates/service-template.yaml
+- [x] **feature-context.yaml template** — Added to templates/config-templates/feature-context-template.yaml
 
-## Phase 5: Integration
+## Phase 5: Integration ✅
 
-- [ ] **BMM integration** — Story creation context population
-- [ ] **Agent manifest entry** — Add Navigator to manifest
-- [ ] **Variable injection** — Ensure LENS variables available globally
-- [ ] **Activation conditions** — Implement conditional global behavior
-- [ ] **Core workflow.xml integration** — Ensure workflows execute via core task runner
+- [x] **BMM integration** — Story creation context population (create-story workflow.yaml + instructions.xml)
+- [x] **Agent manifest entry** — Navigator added to agent-manifest.csv
+- [x] **Variable injection** — LENS exports declared in module.yaml, config.yaml created
+- [x] **Activation conditions** — Conditional activation implemented in module.yaml
+- [x] **Core workflow.xml integration** — Workflows use standard .md format executed via core task runner
+- [x] **Module registration** — LENS added to manifest.yaml modules list
+- [x] **Workflow registration** — All 13 workflows added to workflow-manifest.csv
 
 ## Phase 6: Testing & Documentation
 
@@ -47,7 +49,7 @@
 - [ ] **Test trunk-based** — Validate directory fallback
 - [ ] **Test session restore** — Validate .lens-state persistence
 - [ ] **User documentation** — Usage guides and examples
-- [ ] **Update README** — Add workflow documentation links
+- [x] **Update README** — Added workflow documentation links and BMM integration docs
 
 ---
 
@@ -91,10 +93,21 @@
 | lens-sync | Config synchronization | ✅ Full spec |
 | lens-restore | Session restoration | ✅ Full spec |
 
+### Integration Points
+
+| Integration | Target | Status |
+|-------------|--------|--------|
+| Agent manifest | `_config/agent-manifest.csv` | ✅ Navigator registered |
+| Module manifest | `_config/manifest.yaml` | ✅ lens module added |
+| Workflow manifest | `_config/workflow-manifest.csv` | ✅ 13 workflows registered |
+| BMM create-story | `bmm/workflows/4-implementation/create-story/` | ✅ LENS variables + instructions |
+| Module config | `lens/config.yaml` | ✅ Runtime variables defined |
+| Variable exports | `lens/module.yaml` | ✅ 6 exports declared |
+| Activation conditions | `lens/module.yaml` | ✅ Conditional global behavior |
+
 ### Next Steps
 
-1. Add remaining templates (service.yaml, feature-context.yaml)
-2. Complete BMM integration for story→feature workflow
-3. Add Navigator to agent manifest
-4. Create integration tests
-5. Write user documentation
+1. Test LENS on a real monorepo project
+2. Test trunk-based development (directory fallback) scenario
+3. Test session restore via .lens-state persistence
+4. Write user documentation and usage guides

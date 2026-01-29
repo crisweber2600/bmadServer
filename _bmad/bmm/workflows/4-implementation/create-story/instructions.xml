@@ -183,6 +183,23 @@
     <note>Available content: {epics_content}, {prd_content}, {architecture_content}, {ux_content},
     {project_context}</note>
 
+    <!-- LENS Integration: Load architectural context if LENS module is active -->
+    <check if="lens_current_lens is not empty AND LENS module config exists">
+      <action>Load LENS architectural context for story scoping:
+        - Current lens: {lens_current_lens}
+        - Active service: {lens_active_service}
+        - Active microservice: {lens_active_microservice}
+        - Active feature: {lens_active_feature}
+      </action>
+      <action>Use LENS context to auto-populate story service/microservice scope:
+        - Pre-fill service context from {lens_active_service} if available
+        - Pre-fill microservice context from {lens_active_microservice} if available
+        - Link feature context from {lens_active_feature} if on a feature branch
+        - Include LENS domain-map context for cross-service dependency awareness
+      </action>
+      <note>LENS context provides architectural scoping - use it to ensure story targets the correct service boundary</note>
+    </check>
+
     <!-- Analyze epics file for story foundation -->
     <action>From {epics_content}, extract Epic {{epic_num}} complete context:</action> **EPIC ANALYSIS:** - Epic
     objectives and business value - ALL stories in this epic for cross-story context - Our specific story's requirements, user story
