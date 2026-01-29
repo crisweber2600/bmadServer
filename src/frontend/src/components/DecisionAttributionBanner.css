@@ -229,3 +229,85 @@
     min-width: 40px;
   }
 }
+
+/* Lock Controls Styles */
+.decision-attribution-banner.is-locked {
+  border-left-color: #faad14;
+  background: linear-gradient(135deg, #fffbe6 0%, #fff9e6 100%);
+}
+
+.decision-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.lock-status-tag {
+  margin-right: 4px;
+}
+
+.lock-reason {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background-color: rgba(250, 173, 20, 0.1);
+  border-radius: 4px;
+  font-size: 13px;
+  color: #666;
+}
+
+.lock-reason strong {
+  color: #333;
+}
+
+.lock-time {
+  font-size: 12px;
+  color: #999;
+}
+
+.lock-modal-content label {
+  display: block;
+  margin: 12px 0 8px;
+  font-weight: 500;
+}
+
+/* Agent Name Color from CSS Variable */
+.decision-icon {
+  color: var(--agent-color, #52c41a);
+}
+
+.agent-name {
+  color: var(--agent-color, #333);
+}
+
+.confidence-fill {
+  background-color: var(--agent-color, #52c41a);
+}
+
+/* Responsive adjustments for lock controls */
+@media (max-width: 576px) {
+  .decision-actions {
+    width: 100%;
+    margin-top: 8px;
+    justify-content: flex-end;
+  }
+  
+  .lock-status-tag {
+    font-size: 11px;
+  }
+}
+
+/* Dark mode support for lock controls */
+@media (prefers-color-scheme: dark) {
+  .decision-attribution-banner.is-locked {
+    background: linear-gradient(135deg, rgba(250, 173, 20, 0.1) 0%, rgba(250, 173, 20, 0.05) 100%);
+  }
+  
+  .lock-reason {
+    background-color: rgba(250, 173, 20, 0.15);
+    color: #ccc;
+  }
+  
+  .lock-reason strong {
+    color: #fff;
+  }
+}

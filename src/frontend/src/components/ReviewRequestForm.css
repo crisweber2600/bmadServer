@@ -1,0 +1,78 @@
+.review-request-modal .ant-modal-body {
+  padding: 20px 24px;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  gap: 16px;
+}
+
+.error-container {
+  padding: 16px 0;
+}
+
+.reviewer-option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reviewer-name {
+  font-weight: 500;
+}
+
+.reviewer-email {
+  font-size: 12px;
+  color: #8c8c8c;
+}
+
+.form-actions {
+  margin-bottom: 0;
+  margin-top: 16px;
+}
+
+/* Select dropdown styling */
+.review-request-modal .ant-select-selector {
+  min-height: 40px;
+}
+
+.review-request-modal .ant-select-selection-item {
+  height: 28px;
+  line-height: 28px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+  .review-request-modal .ant-modal {
+    max-width: 95vw;
+    margin: 10px;
+  }
+
+  .form-actions .ant-space {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .form-actions .ant-space > * {
+    width: 100%;
+  }
+
+  .form-actions .ant-btn {
+    width: 100%;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .reviewer-email {
+    color: #8c8c8c;
+  }
+
+  .loading-container {
+    color: rgba(255, 255, 255, 0.85);
+  }
+}

@@ -1,0 +1,108 @@
+.presence-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.presence-dot {
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Size variants */
+.size-small .presence-dot {
+  width: 6px;
+  height: 6px;
+}
+
+.size-medium .presence-dot {
+  width: 8px;
+  height: 8px;
+}
+
+.size-large .presence-dot {
+  width: 12px;
+  height: 12px;
+}
+
+/* Online state - Green with pulse */
+.presence-dot.online {
+  background: #52c41a;
+  box-shadow: 0 0 0 2px rgba(82, 196, 26, 0.2);
+}
+
+.presence-dot.online.pulse {
+  animation: presencePulse 2s ease-in-out infinite;
+}
+
+@keyframes presencePulse {
+  0%, 100% {
+    box-shadow: 0 0 0 2px rgba(82, 196, 26, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(82, 196, 26, 0.1);
+  }
+}
+
+/* Offline state - Gray, no animation */
+.presence-dot.offline {
+  background: #bfbfbf;
+  box-shadow: none;
+}
+
+/* Label styling */
+.presence-label {
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.presence-label.online {
+  color: #389e0d;
+}
+
+.presence-label.offline {
+  color: #8c8c8c;
+}
+
+/* Size-specific label adjustments */
+.size-small .presence-label {
+  font-size: 10px;
+}
+
+.size-large .presence-label {
+  font-size: 14px;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .presence-dot.online {
+    background: #73d13d;
+    box-shadow: 0 0 0 2px rgba(115, 209, 61, 0.2);
+  }
+
+  .presence-dot.online.pulse {
+    animation: presencePulseDark 2s ease-in-out infinite;
+  }
+
+  @keyframes presencePulseDark {
+    0%, 100% {
+      box-shadow: 0 0 0 2px rgba(115, 209, 61, 0.2);
+    }
+    50% {
+      box-shadow: 0 0 0 4px rgba(115, 209, 61, 0.1);
+    }
+  }
+
+  .presence-dot.offline {
+    background: #595959;
+  }
+
+  .presence-label.online {
+    color: #95de64;
+  }
+
+  .presence-label.offline {
+    color: #595959;
+  }
+}

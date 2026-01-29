@@ -1,0 +1,146 @@
+.conflict-resolution-modal .ant-modal-body {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.conflict-info-alert {
+  margin-bottom: 20px;
+}
+
+.comparison-section {
+  margin-bottom: 16px;
+}
+
+.decision-metadata {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding: 8px;
+  background: #fafafa;
+  border-radius: 4px;
+}
+
+.decision-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.meta-timestamp {
+  font-size: 12px;
+}
+
+.resolution-section {
+  margin-top: 16px;
+}
+
+.resolution-choices {
+  margin: 12px 0;
+  width: 100%;
+}
+
+.resolution-choices .ant-radio-wrapper {
+  display: flex;
+  padding: 12px;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  transition: all 0.2s;
+}
+
+.resolution-choices .ant-radio-wrapper:hover {
+  border-color: #1890ff;
+  background: #f0f5ff;
+}
+
+.resolution-choices .ant-radio-wrapper-checked {
+  border-color: #1890ff;
+  background: #e6f7ff;
+}
+
+.resolution-notes {
+  margin-top: 16px;
+}
+
+.resolution-notes .ant-typography {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.override-section {
+  margin-top: 16px;
+}
+
+.override-section .ant-alert {
+  margin-bottom: 16px;
+}
+
+.override-justification {
+  margin: 16px 0;
+}
+
+.override-justification .ant-typography {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.footer-left {
+  flex: 1;
+}
+
+.footer-right {
+  display: flex;
+  gap: 8px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .conflict-resolution-modal .ant-modal {
+    max-width: 95vw;
+    margin: 10px;
+  }
+
+  .decision-metadata {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .modal-footer {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .footer-left,
+  .footer-right {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .decision-metadata {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .resolution-choices .ant-radio-wrapper {
+    border-color: rgba(255, 255, 255, 0.15);
+    background: transparent;
+  }
+
+  .resolution-choices .ant-radio-wrapper:hover {
+    border-color: #177ddc;
+    background: rgba(23, 125, 220, 0.1);
+  }
+
+  .resolution-choices .ant-radio-wrapper-checked {
+    border-color: #177ddc;
+    background: rgba(23, 125, 220, 0.15);
+  }
+}

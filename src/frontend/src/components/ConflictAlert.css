@@ -1,0 +1,82 @@
+.conflict-alert {
+  margin-bottom: 16px;
+  border-radius: 8px;
+}
+
+.conflict-alert.severity-high {
+  background: #fff1f0;
+  border-color: #ffa39e;
+}
+
+.conflict-alert.severity-medium {
+  background: #fff7e6;
+  border-color: #ffd591;
+}
+
+.conflict-alert.severity-low,
+.conflict-alert.severity-info {
+  background: #e6f7ff;
+  border-color: #91d5ff;
+}
+
+.conflict-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.severity-tag {
+  text-transform: capitalize;
+}
+
+.conflict-alert .ant-alert-action {
+  margin-left: auto;
+}
+
+/* Animation for dismissing */
+.conflict-alert-exit {
+  opacity: 1;
+}
+
+.conflict-alert-exit-active {
+  opacity: 0;
+  transition: opacity 300ms ease-out;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .conflict-alert.severity-high {
+    background: rgba(255, 77, 79, 0.1);
+    border-color: rgba(255, 77, 79, 0.3);
+  }
+  
+  .conflict-alert.severity-medium {
+    background: rgba(250, 173, 20, 0.1);
+    border-color: rgba(250, 173, 20, 0.3);
+  }
+  
+  .conflict-alert.severity-low,
+  .conflict-alert.severity-info {
+    background: rgba(24, 144, 255, 0.1);
+    border-color: rgba(24, 144, 255, 0.3);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+  .conflict-message {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .conflict-alert .ant-alert-action {
+    margin-top: 8px;
+    width: 100%;
+  }
+  
+  .conflict-alert .ant-alert-action .ant-space {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

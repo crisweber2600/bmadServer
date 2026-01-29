@@ -1,0 +1,181 @@
+.diff-viewer {
+  padding: 16px;
+  background: var(--background-secondary, #fafafa);
+  border-radius: 8px;
+}
+
+.diff-viewer-empty {
+  padding: 32px;
+}
+
+.diff-title {
+  margin-bottom: 16px !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.diff-header {
+  margin-bottom: 16px;
+}
+
+.version-header-card {
+  text-align: center;
+}
+
+.version-header-card.from-version {
+  background: rgba(255, 77, 79, 0.05);
+  border-color: rgba(255, 77, 79, 0.2);
+}
+
+.version-header-card.to-version {
+  background: rgba(82, 196, 26, 0.05);
+  border-color: rgba(82, 196, 26, 0.2);
+}
+
+.version-tag {
+  margin-left: 8px;
+}
+
+.diff-changes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.diff-row {
+  background: var(--background-primary, #fff);
+  border: 1px solid var(--border-color, #f0f0f0);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.diff-field-name {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color, #f0f0f0);
+}
+
+.diff-values {
+  margin-top: 4px;
+}
+
+.diff-value {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 4px;
+  min-height: 36px;
+  word-break: break-word;
+}
+
+.diff-value.old-value {
+  background: rgba(255, 77, 79, 0.05);
+}
+
+.diff-value.new-value {
+  background: rgba(82, 196, 26, 0.05);
+}
+
+.diff-icon {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.diff-icon.removed {
+  color: #ff4d4f;
+}
+
+.diff-icon.added {
+  color: #52c41a;
+}
+
+.diff-summary {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color, #f0f0f0);
+  text-align: center;
+}
+
+/* Content mode styles */
+.diff-viewer.content-mode {
+  margin: 12px 0;
+}
+
+.diff-content-comparison {
+  min-height: 150px;
+}
+
+.content-card {
+  height: 100%;
+}
+
+.content-card.original {
+  border-left: 3px solid #ff4d4f;
+}
+
+.content-card.modified {
+  border-left: 3px solid #52c41a;
+}
+
+.content-card .ant-card-head {
+  min-height: 36px;
+  padding: 8px 12px;
+}
+
+.content-card .ant-card-body {
+  padding: 12px;
+}
+
+.content-text {
+  margin-bottom: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .diff-viewer {
+    background: #1f1f1f;
+  }
+  
+  .diff-row {
+    background: #141414;
+    border-color: #303030;
+  }
+  
+  .diff-field-name {
+    border-bottom-color: #303030;
+  }
+  
+  .diff-summary {
+    border-top-color: #303030;
+  }
+
+  .content-card {
+    background: #141414;
+    border-color: #303030;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+  .diff-values .ant-col {
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .diff-values .ant-col:first-child {
+    margin-bottom: 8px;
+  }
+
+  .diff-content-comparison .ant-col {
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: 12px;
+  }
+}
+}

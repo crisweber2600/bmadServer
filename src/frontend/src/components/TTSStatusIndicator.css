@@ -1,0 +1,133 @@
+.tts-status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 16px;
+  transition: all 0.2s ease;
+  cursor: default;
+}
+
+.tts-status-indicator.idle {
+  background: #f5f5f5;
+  color: #8c8c8c;
+}
+
+.tts-status-indicator.playing {
+  background: linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%);
+  color: #1890ff;
+  cursor: pointer;
+}
+
+.tts-status-indicator.playing:hover {
+  background: linear-gradient(135deg, #bae7ff 0%, #91d5ff 100%);
+  transform: scale(1.02);
+}
+
+.tts-status-indicator.playing:focus {
+  outline: 2px solid #1890ff;
+  outline-offset: 2px;
+}
+
+.tts-icon {
+  font-size: 14px;
+  transition: color 0.2s ease;
+}
+
+.tts-icon.idle {
+  color: #bfbfbf;
+}
+
+.tts-icon.playing {
+  color: #1890ff;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+.tts-text {
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.tts-text.idle {
+  color: #8c8c8c;
+}
+
+.tts-text.playing {
+  color: #1890ff;
+  font-weight: 500;
+}
+
+/* Sound wave animation for playing state */
+.tts-icon.playing::after {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 3px;
+  background: currentColor;
+  border-radius: 50%;
+  margin-left: 2px;
+  animation: soundWave 0.8s ease-in-out infinite;
+}
+
+@keyframes soundWave {
+  0%, 100% {
+    transform: scaleY(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scaleY(1.5);
+    opacity: 1;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .tts-status-indicator.idle {
+    background: #2a2a2a;
+    color: #8c8c8c;
+  }
+
+  .tts-status-indicator.playing {
+    background: linear-gradient(135deg, #112a45 0%, #1a3b5c 100%);
+    color: #40a9ff;
+  }
+
+  .tts-status-indicator.playing:hover {
+    background: linear-gradient(135deg, #1a3b5c 0%, #234b73 100%);
+  }
+
+  .tts-icon.idle {
+    color: #595959;
+  }
+
+  .tts-text.idle {
+    color: #595959;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .tts-status-indicator {
+    padding: 3px 8px;
+  }
+
+  .tts-icon {
+    font-size: 12px;
+  }
+
+  .tts-text {
+    font-size: 11px;
+  }
+}

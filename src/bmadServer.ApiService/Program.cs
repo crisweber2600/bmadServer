@@ -13,6 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Configure BMAD options for agent/workflow integration
 builder.Services.Configure<BmadOptions>(builder.Configuration.GetSection(BmadOptions.SectionName));
 builder.Services.Configure<OpenCodeOptions>(builder.Configuration.GetSection(OpenCodeOptions.SectionName));
+builder.Services.Configure<CopilotOptions>(builder.Configuration.GetSection(CopilotOptions.SectionName));
 
 // Add Aspire service defaults: health checks, telemetry (logging + tracing), service discovery, and resilience patterns
 // See ServiceDefaults/Extensions.cs for detailed configuration of:
@@ -84,7 +85,7 @@ var bmadOptions = builder.Configuration.GetSection(BmadOptions.SectionName).Get<
 // Log BMAD configuration at startup (deferred logging via LoggerMessage)
 var testModeDescription = bmadOptions.TestMode switch
 {
-    AgentTestMode.Live => $"Live - OpenCode executable: {bmadOptions.OpenCode.ExecutablePath}, DefaultModel: {bmadOptions.OpenCode.DefaultModel}",
+    AgentTestMode.Live => $"Live - Using Copilot SDK, DefaultModel: {bmadOptions.OpenCode.DefaultModel}",
     AgentTestMode.Replay => "Replay - responses will be cached/replayed",
     AgentTestMode.Mock => "Mock - using MockAgentHandler (no LLM calls)",
     _ => "Unknown mode"

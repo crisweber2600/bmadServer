@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { List, Typography } from 'antd';
 import './CommandPalette.css';
 
@@ -7,6 +7,8 @@ const { Text } = Typography;
 export interface Command {
   name: string;
   description: string;
+  /** If true, only shown when isPartyMode is true */
+  partyModeOnly?: boolean;
 }
 
 const COMMANDS: Command[] = [
@@ -14,6 +16,9 @@ const COMMANDS: Command[] = [
   { name: '/status', description: 'Check agent status' },
   { name: '/pause', description: 'Pause agent execution' },
   { name: '/resume', description: 'Resume agent execution' },
+  // Party mode exit commands
+  { name: '/exit', description: 'Exit party mode', partyModeOnly: true },
+  { name: '/goodbye', description: 'End conversation and exit', partyModeOnly: true },
 ];
 
 export interface CommandPaletteProps {
@@ -21,6 +26,10 @@ export interface CommandPaletteProps {
   onClose: () => void;
   position?: { top: number; left: number };
   filter?: string;
+  /** Whether party mode is active - shows exit commands when true */
+  isPartyMode?: boolean;
+  /** Callback when a party mode exit command is selected */
+  onExitPartyMode?: () => void;
 }
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
@@ -28,14 +37,27 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   onClose,
   position = { top: 0, left: 0 },
   filter = '',
+  isPartyMode = false,
+  onExitPartyMode,
 }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const paletteRef = useRef<HTMLDivElement>(null);
 
-  // Filter commands based on input
-  const filteredCommands = filter
-    ? COMMANDS.filter((cmd) => cmd.name.toLowerCase().includes(filter.toLowerCase()))
-    : COMMANDS;
+  // Filter commands based on input and party mode
+  const filteredCommands = useMemo(() => {
+    return COMMANDS
+      .filter((cmd) => !cmd.partyModeOnly || isPartyMode) // Exclude party mode commands if not in party mode
+      .filter((cmd) => cmd.name.toLowerCase().includes(filter.toLowerCase()));
+  }, [filter, isPartyMode]);
+
+  // Handle command selection including party mode exit
+  const handleSelect = (command: string) => {
+    // Check if it's a party mode exit command
+    if ((command === '/exit' || command === '/goodbye') && onExitPartyMode) {
+      onExitPartyMode();
+    }
+    onSelect(command);
+  };
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -52,7 +74,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         case 'Enter':
           e.preventDefault();
           if (filteredCommands[selectedIndex]) {
-            onSelect(filteredCommands[selectedIndex].name);
+            handleSelect(filteredCommands[selectedIndex].name);
           }
           break;
         case 'Escape':
@@ -105,7 +127,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
           <List.Item
             key={command.name}
             className={`command-item ${index === selectedIndex ? 'command-item-selected' : ''}`}
-            onClick={() => onSelect(command.name)}
+            onClick={() => handleSelect(command.name)}
             role="option"
             aria-selected={index === selectedIndex}
             tabIndex={-1}
