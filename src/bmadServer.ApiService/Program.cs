@@ -3,11 +3,16 @@ using System.Reflection;
 using System.Text;
 using AspNetCoreRateLimit;
 using bmadServer.ApiService.Configuration;
+using bmadServer.ApiService.Services.Workflows.Agents;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure BMAD options for agent/workflow integration
+builder.Services.Configure<BmadOptions>(builder.Configuration.GetSection(BmadOptions.SectionName));
+builder.Services.Configure<OpenCodeOptions>(builder.Configuration.GetSection(OpenCodeOptions.SectionName));
 
 // Add Aspire service defaults: health checks, telemetry (logging + tracing), service discovery, and resilience patterns
 // See ServiceDefaults/Extensions.cs for detailed configuration of:
@@ -71,8 +76,35 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.IResponseMetadataServi
 // Register session cleanup background service
 builder.Services.AddHostedService<bmadServer.ApiService.BackgroundServices.SessionCleanupService>();
 
-// Register workflow registry as singleton (shared in-memory registry)
-builder.Services.AddSingleton<bmadServer.ServiceDefaults.Services.Workflows.IWorkflowRegistry, bmadServer.ServiceDefaults.Services.Workflows.WorkflowRegistry>();
+// Register workflow registry based on test mode configuration
+// In Mock mode: use hardcoded WorkflowRegistry (POC/fast tests)
+// In Live/Replay mode: use BmadWorkflowRegistry (loads from BMAD files)
+var bmadOptions = builder.Configuration.GetSection(BmadOptions.SectionName).Get<BmadOptions>() ?? new BmadOptions();
+
+// Log BMAD configuration at startup (deferred logging via LoggerMessage)
+var testModeDescription = bmadOptions.TestMode switch
+{
+    AgentTestMode.Live => $"Live - OpenCode executable: {bmadOptions.OpenCode.ExecutablePath}, DefaultModel: {bmadOptions.OpenCode.DefaultModel}",
+    AgentTestMode.Replay => "Replay - responses will be cached/replayed",
+    AgentTestMode.Mock => "Mock - using MockAgentHandler (no LLM calls)",
+    _ => "Unknown mode"
+};
+Console.WriteLine($"[BMAD] TestMode: {testModeDescription}");
+
+if (bmadOptions.TestMode == AgentTestMode.Mock)
+{
+    builder.Services.AddSingleton<bmadServer.ServiceDefaults.Services.Workflows.IWorkflowRegistry, bmadServer.ServiceDefaults.Services.Workflows.WorkflowRegistry>();
+}
+else
+{
+    builder.Services.Configure<bmadServer.ServiceDefaults.Services.Workflows.BmadWorkflowOptions>(options =>
+    {
+        options.ManifestPath = bmadOptions.WorkflowManifestPath;
+        options.EnabledModules = bmadOptions.EnabledModules;
+        options.BasePath = bmadOptions.BasePath;
+    });
+    builder.Services.AddSingleton<bmadServer.ServiceDefaults.Services.Workflows.IWorkflowRegistry, bmadServer.ServiceDefaults.Services.Workflows.BmadWorkflowRegistry>();
+}
 
 // Register workflow instance service
 builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IWorkflowInstanceService, bmadServer.ApiService.Services.Workflows.WorkflowInstanceService>();
@@ -80,8 +112,20 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.IWorkflowIns
 // Register agent router as singleton (shared agent handler registry)
 builder.Services.AddSingleton<bmadServer.ApiService.Services.Workflows.IAgentRouter, bmadServer.ApiService.Services.Workflows.AgentRouter>();
 
-// Register agent registry as singleton (shared agent metadata registry)
-builder.Services.AddSingleton<bmadServer.ApiService.Services.Workflows.Agents.IAgentRegistry, bmadServer.ApiService.Services.Workflows.Agents.AgentRegistry>();
+// Register agent registry based on test mode configuration
+// In Mock mode: use hardcoded AgentRegistry (POC/fast tests)
+// In Live/Replay mode: use BmadAgentRegistry (loads from BMAD manifest CSV)
+if (bmadOptions.TestMode == AgentTestMode.Mock)
+{
+    builder.Services.AddSingleton<IAgentRegistry, AgentRegistry>();
+}
+else
+{
+    builder.Services.AddSingleton<IAgentRegistry, BmadAgentRegistry>();
+}
+
+// Register agent handler factory for creating handlers based on test mode
+builder.Services.AddSingleton<IAgentHandlerFactory, AgentHandlerFactory>();
 
 // Register agent messaging service for agent-to-agent communication
 builder.Services.AddScoped<bmadServer.ApiService.Services.Workflows.Agents.IAgentMessaging, bmadServer.ApiService.Services.Workflows.Agents.AgentMessaging>();

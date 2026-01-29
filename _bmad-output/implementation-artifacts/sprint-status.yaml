@@ -138,6 +138,12 @@ development_status:
   # ===============================================
   # EPIC 9: Data Persistence & State Management
   # ===============================================
+  # TYPE: foundation-epic (best practice exception documented)
+  # NOTE: Technical infrastructure epic enabling user value in dependent features.
+  # User-facing milestones:
+  #   - Milestone 1: "Session Continuity Functional" (after 9-2, 9-5)
+  #   - Milestone 2: "Export Capability Live" (after 9-4)
+  #   - Milestone 3: "Compliance Enabled" (after 9-6)
   epic-9: backlog
   9-1-event-log-architecture: backlog
   9-2-jsonb-state-storage-with-concurrency-control: backlog

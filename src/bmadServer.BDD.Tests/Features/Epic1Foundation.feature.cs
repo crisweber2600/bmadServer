@@ -26,8 +26,8 @@ namespace bmadServer.BDD.Tests.Features
         
         private static string[] featureTags = ((string[])(null));
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en"), "Features", "Aspire Foundation & Project Setup", ("  As a developer\n  I want a properly configured Aspire foundation\n  So that I can" +
-                " build reliable microservices"), global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en"), "Features", "Aspire Foundation & Project Setup", ("  As a developer\r\n  I want a properly configured Aspire foundation\r\n  So that I c" +
+                "an build reliable microservices"), global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
         
         private Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         
