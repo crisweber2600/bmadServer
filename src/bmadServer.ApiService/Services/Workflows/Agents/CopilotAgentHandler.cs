@@ -245,7 +245,7 @@ public class CopilotAgentHandler : IAgentHandler
             if (client != null)
             {
                 await client.StopAsync();
-                client.Dispose();
+                await client.DisposeAsync();
             }
         }
     }
