@@ -245,6 +245,7 @@ public class CopilotAgentHandler : IAgentHandler
             if (client != null)
             {
                 await client.StopAsync();
+                client.Dispose();
             }
         }
     }
@@ -356,15 +357,9 @@ public class CopilotAgentHandler : IAgentHandler
                 : null;
 
             // Extract the output property or use the whole response
-            JsonDocument? outputDoc;
-            if (root.TryGetProperty("output", out var outputProp))
-            {
-                outputDoc = JsonDocument.Parse(outputProp.GetRawText());
-            }
-            else
-            {
-                outputDoc = jsonDoc;
-            }
+            JsonDocument? outputDoc = root.TryGetProperty("output", out var outputProp)
+                ? JsonDocument.Parse(outputProp.GetRawText())
+                : jsonDoc;
 
             return new AgentResult
             {

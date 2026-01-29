@@ -328,7 +328,6 @@ describe('DecisionAttributionBanner', () => {
 
   describe('Lock Controls', () => {
     const mockDate = new Date('2026-01-26T14:30:00Z');
-    const mockLockedAt = new Date('2026-01-26T10:00:00Z');
 
     // Use real timers for lock controls tests since they involve complex UI interactions
     beforeEach(() => {

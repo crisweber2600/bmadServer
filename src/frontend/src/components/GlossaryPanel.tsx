@@ -17,7 +17,7 @@ import { GlossaryTerm, PersonaType } from '../types/persona';
 import defaultGlossary from '../data/glossary.json';
 import './GlossaryPanel.css';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 const { Search } = Input;
 
 export interface GlossaryPanelProps {
