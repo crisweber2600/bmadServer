@@ -1,0 +1,37 @@
+# Domain Map Template
+
+# Copy this to _lens/domain-map.yaml and customize for your project
+
+domain:
+  name: "My Project"
+  description: "Brief description of your project"
+
+services:
+  # Example service - replace with your actual services
+  example-service:
+    description: "What this service does"
+    owner: "team-name"
+    microservices:
+      - name: api
+        description: "Public API endpoints"
+      - name: worker
+        description: "Background job processing"
+
+# Add more services as needed:
+#   another-service:
+#     description: "..."
+#     microservices:
+#       - name: ...
+
+# Cross-cutting concerns (shared across services)
+shared:
+  - name: logging
+    description: "Centralized logging"
+  - name: auth-middleware
+    description: "Shared authentication"
+
+# Service relationships (optional but helpful)
+# relationships:
+#   - from: service-a/micro-1
+#     to: service-b/micro-2
+#     type: depends-on

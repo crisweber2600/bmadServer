@@ -1,0 +1,49 @@
+# Service Definition Template
+# Copy this to _lens/services/{service-name}/service.yaml
+
+name: {service-name}
+description: "Brief description of what this service does"
+owner: team-name  # or @username
+
+# Microservices within this service
+microservices:
+  - name: api
+    path: services/{service-name}/api
+    description: "Public API endpoints"
+    type: api  # api | worker | gateway | library | frontend
+
+  # Add more microservices as needed:
+  # - name: worker
+  #   path: services/{service-name}/worker
+  #   description: "Background job processing"
+  #   type: worker
+
+# Dependencies on other services
+dependencies:
+  # - service: other-service
+  #   reason: "Why this dependency exists"
+  #   type: sync  # sync | async | optional
+
+# Key documentation
+docs:
+  - README.md
+  # Add more doc paths:
+  # - docs/architecture.md
+  # - docs/api-contracts.md
+
+# Health indicators (optional)
+health:
+  endpoint: /health
+  checks:
+    - database
+    - cache
+
+# Metadata (optional)
+metadata:
+  created: 2026-01-29
+  last_updated: 2026-01-29
+  status: active  # active | deprecated | experimental
+  tags:
+    - core
+    # - authentication
+    # - payments

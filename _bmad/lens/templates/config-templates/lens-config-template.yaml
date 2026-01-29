@@ -1,0 +1,31 @@
+# LENS Configuration Template
+
+# Copy this to _lens/lens-config.yaml and customize
+
+# Branch patterns (uncomment and modify to override defaults)
+# branch_patterns:
+#   domain:
+#     - main
+#     - master
+#     - develop
+#   service:
+#     - "service/{name}"
+#   feature:
+#     - "feature/{service}/{microservice}/{name}"
+#     - "feature/{name}"
+
+# Notification settings
+notifications:
+  level: smart  # silent | smart | verbose
+
+# Session settings
+session:
+  auto_restore: true
+
+# Discovery settings
+discovery:
+  enabled: true
+  scan_directories:
+    - services/
+    - apps/
+    - src/

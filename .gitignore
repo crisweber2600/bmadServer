@@ -3,6 +3,9 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
+# Windows reserved device names
+nul
+
 # dotenv files
 .env
 
