@@ -26,8 +26,8 @@ namespace bmadServer.BDD.Tests.Features
         
         private static string[] featureTags = ((string[])(null));
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en"), "Features", "Multi-Agent Collaboration", ("  As a workflow participant\r\n  I want multiple agents to collaborate\r\n  So that c" +
-                "omplex tasks are handled by specialists"), global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en"), "Features", "Multi-Agent Collaboration", ("  As a workflow participant\n  I want multiple agents to collaborate\n  So that com" +
+                "plex tasks are handled by specialists"), global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
         
         private Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

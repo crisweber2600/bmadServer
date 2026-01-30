@@ -26,8 +26,8 @@ namespace bmadServer.BDD.Tests.Features
         
         private static string[] featureTags = ((string[])(null));
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en"), "Features", "GitHub Actions CI/CD Pipeline Configuration", ("  As a developer\r\n  I want automated CI/CD\r\n  So that every commit triggers build" +
-                ", test, and deployment checks"), global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en"), "Features", "GitHub Actions CI/CD Pipeline Configuration", ("  As a developer\n  I want automated CI/CD\n  So that every commit triggers build, " +
+                "test, and deployment checks"), global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
         
         private Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

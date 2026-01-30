@@ -26,8 +26,8 @@ namespace bmadServer.BDD.Tests.Features
         
         private static string[] featureTags = ((string[])(null));
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en"), "Features", "Decision Management & Locking", ("  As a workflow participant\r\n  I want decisions captured and stored\r\n  So that I " +
-                "have a record of all choices made"), global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en"), "Features", "Decision Management & Locking", ("  As a workflow participant\n  I want decisions captured and stored\n  So that I ha" +
+                "ve a record of all choices made"), global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
         
         private Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

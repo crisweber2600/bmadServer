@@ -26,8 +26,8 @@ namespace bmadServer.BDD.Tests.Features
         
         private static string[] featureTags = ((string[])(null));
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en"), "Features", "Workflow Orchestration Engine", ("  As a user\r\n  I want to manage workflow execution\r\n  So that I can orchestrate m" +
-                "ulti-step BMAD processes"), global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en"), "Features", "Workflow Orchestration Engine", ("  As a user\n  I want to manage workflow execution\n  So that I can orchestrate mul" +
+                "ti-step BMAD processes"), global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
         
         private Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         
