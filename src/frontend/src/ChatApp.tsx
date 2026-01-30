@@ -67,6 +67,15 @@ export function ChatApp() {
     // Workflow management hook
     const workflows = useWorkflows({ token: authState.token, apiUrl });
 
+    const isTerminalWorkflowStatus = (status?: string | null) => {
+        if (!status) return false;
+        return ['cancelled', 'completed', 'failed'].includes(status.toLowerCase());
+    };
+
+    const hasActiveWorkflow =
+        workflows.currentWorkflow !== null &&
+        !isTerminalWorkflowStatus(workflows.currentWorkflow.status);
+
     // Fetch workflow definitions when authenticated
     useEffect(() => {
         if (authState.isAuthenticated) {
@@ -128,14 +137,14 @@ export function ChatApp() {
 
             const data = await response.json();
             const token = data.accessToken;
-            
+
             localStorage.setItem('jwt_token', token);
             setAuthState({
                 isAuthenticated: true,
                 token,
                 user: { email: data.email, displayName: data.displayName },
             });
-            
+
             notification.success({
                 message: 'Login Successful',
                 description: `Welcome, ${data.displayName}!`,
@@ -183,7 +192,7 @@ export function ChatApp() {
             const content = (message.Content || message.content) as string;
             const timestampStr = (message.Timestamp || message.timestamp) as string | undefined;
             const agentName = (message.AgentName || message.agentName) as string | undefined;
-            
+
             const timestamp = timestampStr ? new Date(timestampStr) : new Date();
             // Validate timestamp - fallback to current time if invalid
             const validTimestamp = isNaN(timestamp.getTime()) ? new Date() : timestamp;
@@ -461,15 +470,15 @@ export function ChatApp() {
                 <WorkflowSelector
                     definitions={workflows.definitions}
                     selectedWorkflowId={selectedWorkflowId}
-                    hasActiveWorkflow={workflows.currentWorkflow !== null}
+                    hasActiveWorkflow={hasActiveWorkflow}
                     isLoading={workflows.isLoading}
                     onSelect={setSelectedWorkflowId}
                     onStart={handleStartWorkflow}
                     disabled={connectionState !== 'connected'}
                 />
-                
+
                 {/* Active Workflow Status */}
-                {workflows.currentWorkflow && (
+                {hasActiveWorkflow && workflows.currentWorkflow && (
                     <WorkflowStatusBar
                         status={workflows.currentWorkflow}
                         isLoading={workflows.isLoading}

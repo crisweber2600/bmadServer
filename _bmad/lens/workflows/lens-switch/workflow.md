@@ -81,6 +81,7 @@ If missing, prompt user to select.
 ```
 ⚠️ Switching from {current_lens} to {target_lens}
    Reason: {reason}
+   Detected via: {detection_source} ({detection_signal})
    Loading context...
 ```
 
@@ -139,7 +140,7 @@ If user's changes affect other services/microservices:
    - {service_1}: {reason}
    - {service_2}: {reason}
    
-   [Return to Feature Lens] [Show Impact Analysis]
+   [Return to Previous Lens] [Show Impact Analysis]
 ```
 
 ---

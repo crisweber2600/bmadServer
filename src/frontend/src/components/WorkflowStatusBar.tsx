@@ -28,6 +28,7 @@ export const WorkflowStatusBar: React.FC<WorkflowStatusBarProps> = ({
       case 'paused': return 'warning';
       case 'completed': return 'success';
       case 'failed': return 'error';
+      case 'cancelled': return 'default';
       default: return 'default';
     }
   };
@@ -40,34 +41,34 @@ export const WorkflowStatusBar: React.FC<WorkflowStatusBarProps> = ({
           <Tag color={getStatusColor(status.status)}>{status.status.toUpperCase()}</Tag>
           {status.currentStep && <Text type="secondary">Step: {status.currentStep}</Text>}
         </Space>
-        
+
         <Space>
           {status.status === 'running' && (
-            <Button 
-              size="small" 
-              icon={<PauseCircleOutlined />} 
+            <Button
+              size="small"
+              icon={<PauseCircleOutlined />}
               onClick={onPause}
               disabled={disabled || isLoading}
             >
               Pause
             </Button>
           )}
-          
+
           {status.status === 'paused' && (
-            <Button 
-              size="small" 
-              icon={<PlayCircleOutlined />} 
+            <Button
+              size="small"
+              icon={<PlayCircleOutlined />}
               onClick={onResume}
               disabled={disabled || isLoading}
             >
               Resume
             </Button>
           )}
-          
-          <Button 
-            size="small" 
-            danger 
-            icon={<StopOutlined />} 
+
+          <Button
+            size="small"
+            danger
+            icon={<StopOutlined />}
             onClick={onCancel}
             disabled={disabled || isLoading || ['completed', 'failed', 'cancelled'].includes(status.status)}
           >

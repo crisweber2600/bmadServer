@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.Services.Workflows.Agents;
+using bmadServer.ApiService.Infrastructure.Policies;
 
 namespace bmadServer.ApiService.Services.Workflows.Agents;
 
@@ -97,65 +98,71 @@ public class AgentMessaging : IAgentMessaging
             };
         }
 
-        var attempt = 0;
+        // Use Polly policy for retry and timeout
+        var policy = AgentCallPolicy.CreateRetryPolicy<AgentResponse>(_logger, correlationId);
         AgentResponse? response = null;
 
-        while (attempt < 2 && response == null)
+        try
         {
-            attempt++;
-
-            try
+            response = await policy.ExecuteAsync(async (ct) =>
             {
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 cts.CancelAfter(timeoutDuration);
 
-                var agentContext = ConvertToAgentContext(
-                    context.CurrentStepName,
-                    targetAgentId,
-                    requestType,
-                    payload,
-                    context);
-
-                var agentResult = await handler.ExecuteAsync(agentContext, cts.Token);
-                response = ConvertToAgentResponse(agentResult);
-
-                _logger.LogInformation(
-                    "Agent request succeeded (attempt {Attempt}): {TargetAgent}, CorrelationId: {CorrelationId}",
-                    attempt, targetAgentId, correlationId);
-            }
-            catch (OperationCanceledException) when (attempt == 1)
-            {
-                _logger.LogWarning(
-                    "Agent request timeout (attempt {Attempt}), retrying: {TargetAgent}, CorrelationId: {CorrelationId}",
-                    attempt, targetAgentId, correlationId);
-                continue;
-            }
-            catch (OperationCanceledException)
-            {
-                _logger.LogError(
-                    "Agent request timeout after retry: {TargetAgent}, CorrelationId: {CorrelationId}, TimeoutSeconds: {TimeoutSeconds}",
-                    targetAgentId, correlationId, timeoutDuration.TotalSeconds);
-
-                response = new AgentResponse
+                try
                 {
-                    Success = false,
-                    ErrorMessage = $"Agent request timed out after {timeoutDuration.TotalSeconds}s and 1 retry",
-                    IsRetryable = true
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Agent request failed (attempt {Attempt}): {TargetAgent}, CorrelationId: {CorrelationId}",
-                    attempt, targetAgentId, correlationId);
+                    var agentContext = ConvertToAgentContext(
+                        context.CurrentStepName,
+                        targetAgentId,
+                        requestType,
+                        payload,
+                        context);
 
-                response = new AgentResponse
+                    var agentResult = await handler.ExecuteAsync(agentContext, cts.Token);
+                    var agentResponse = ConvertToAgentResponse(agentResult);
+
+                    _logger.LogInformation(
+                        "Agent request succeeded: {TargetAgent}, CorrelationId: {CorrelationId}",
+                        targetAgentId, correlationId);
+
+                    return agentResponse;
+                }
+                catch (OperationCanceledException)
                 {
-                    Success = false,
-                    ErrorMessage = ex.Message,
-                    IsRetryable = false
-                };
-            }
+                    _logger.LogWarning(
+                        "Agent request timeout: {TargetAgent}, CorrelationId: {CorrelationId}, TimeoutSeconds: {TimeoutSeconds}",
+                        targetAgentId, correlationId, timeoutDuration.TotalSeconds);
+
+                    // Throw to trigger retry
+                    throw new TimeoutException($"Agent request timed out after {timeoutDuration.TotalSeconds}s");
+                }
+            }, cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            _logger.LogCritical(
+                "Agent request failed after all retries exhausted (timeout): {TargetAgent}, CorrelationId: {CorrelationId}",
+                targetAgentId, correlationId);
+
+            response = new AgentResponse
+            {
+                Success = false,
+                ErrorMessage = $"Agent request timed out after retries",
+                IsRetryable = true
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogCritical(ex,
+                "Agent request failed after all retries exhausted: {TargetAgent}, CorrelationId: {CorrelationId}",
+                targetAgentId, correlationId);
+
+            response = new AgentResponse
+            {
+                Success = false,
+                ErrorMessage = ex.Message,
+                IsRetryable = false
+            };
         }
 
         if (response != null)

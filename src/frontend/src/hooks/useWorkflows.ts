@@ -36,23 +36,23 @@ export const useWorkflows = ({ token, apiUrl }: UseWorkflowsOptions) => {
     try {
       const response = await fetch(`${apiUrl}/api/v1/workflows`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}` 
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({ workflowId: params.workflowId })
       });
-      
+
       if (!response.ok) throw new Error('Failed to create workflow');
-      
+
       const instance = await response.json();
       // Normalize backend response to match frontend expectations
       const normalizedInstance = {
-          ...instance,
-          status: instance.status ? instance.status.toLowerCase() : 'created',
-          currentStep: instance.currentStep !== undefined ? instance.currentStep.toString() : undefined
+        ...instance,
+        status: instance.status ? instance.status.toLowerCase() : 'created',
+        currentStep: instance.currentStep !== undefined ? instance.currentStep.toString() : undefined
       };
-      
+
       setCurrentWorkflow(normalizedInstance);
       return normalizedInstance as WorkflowState;
     } catch (error) {
@@ -71,9 +71,9 @@ export const useWorkflows = ({ token, apiUrl }: UseWorkflowsOptions) => {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (!response.ok) throw new Error('Failed to start workflow');
-      
+
       setCurrentWorkflow(prev => prev ? { ...prev, status: 'running' } : null);
       return true;
     } catch (error) {
@@ -106,7 +106,7 @@ export const useWorkflows = ({ token, apiUrl }: UseWorkflowsOptions) => {
       });
       setCurrentWorkflow(prev => prev ? { ...prev, status: 'running' } : null);
     } catch (error) {
-        notification.error({ message: 'Failed to resume workflow' });
+      notification.error({ message: 'Failed to resume workflow' });
     }
   }, [apiUrl, token]);
 
@@ -117,9 +117,9 @@ export const useWorkflows = ({ token, apiUrl }: UseWorkflowsOptions) => {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });
-      setCurrentWorkflow(prev => prev ? { ...prev, status: 'cancelled' } : null);
+      setCurrentWorkflow(null);
     } catch (error) {
-        notification.error({ message: 'Failed to cancel workflow' });
+      notification.error({ message: 'Failed to cancel workflow' });
     }
   }, [apiUrl, token]);
 

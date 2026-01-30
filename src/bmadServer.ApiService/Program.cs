@@ -82,6 +82,24 @@ builder.Services.AddHostedService<bmadServer.ApiService.BackgroundServices.Sessi
 // In Live/Replay mode: use BmadWorkflowRegistry (loads from BMAD files)
 var bmadOptions = builder.Configuration.GetSection(BmadOptions.SectionName).Get<BmadOptions>() ?? new BmadOptions();
 
+static string ResolveBmadBasePath(string? basePath, string contentRootPath)
+{
+    if (string.IsNullOrWhiteSpace(basePath))
+    {
+        return contentRootPath;
+    }
+
+    return Path.IsPathRooted(basePath)
+        ? basePath
+        : Path.GetFullPath(Path.Combine(contentRootPath, basePath));
+}
+
+var resolvedBmadBasePath = ResolveBmadBasePath(bmadOptions.BasePath, builder.Environment.ContentRootPath);
+builder.Services.PostConfigure<BmadOptions>(options =>
+{
+    options.BasePath = resolvedBmadBasePath;
+});
+
 // Log BMAD configuration at startup (deferred logging via LoggerMessage)
 var testModeDescription = bmadOptions.TestMode switch
 {
@@ -102,7 +120,7 @@ else
     {
         options.ManifestPath = bmadOptions.WorkflowManifestPath;
         options.EnabledModules = bmadOptions.EnabledModules;
-        options.BasePath = bmadOptions.BasePath;
+        options.BasePath = resolvedBmadBasePath;
     });
     builder.Services.AddSingleton<bmadServer.ServiceDefaults.Services.Workflows.IWorkflowRegistry, bmadServer.ServiceDefaults.Services.Workflows.BmadWorkflowRegistry>();
 }

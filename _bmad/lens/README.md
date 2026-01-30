@@ -30,6 +30,16 @@ LENS works **zero-config** out of the box. Just install and start working:
 3. LENS automatically detects your architectural context
 4. Get relevant context loaded and notifications on meaningful transitions
 
+### Installation
+
+```bash
+bmad install lens
+```
+
+### Documentation
+
+See the usage guide: [docs/usage-guide.md](docs/usage-guide.md)
+
 ### Example Summary Card
 
 ```
@@ -46,7 +56,7 @@ lens/
 ├── module.yaml              # Module configuration
 ├── README.md                # This file
 ├── agents/
-│   └── navigator.agent.yaml # Single Navigator agent
+│   └── navigator.agent.yaml   # Single Navigator agent
 ├── workflows/
 │   ├── lens-detect/         # Detect current lens
 │   ├── lens-switch/         # Switch lens with notification
@@ -129,6 +139,8 @@ LENS integrates deeply with BMM workflows:
 - **Implementation** context pre-loaded based on feature lens
 
 ## 📋 Workflows
+
+**Workflow format:** LENS workflows are single-file `workflow.md` specifications executed by the core workflow runner (no steps/ subfolders).
 
 ### Core Workflows
 

@@ -99,6 +99,9 @@ Based on your current state:
 
 LENS determined you're at: {detected_lens} Lens
 
+Why this lens:
+   {detection_reason} (source: {detection_source})
+
 {appropriate_summary_card}
 
 This context was loaded automatically.
@@ -165,6 +168,8 @@ LENS is now active and will:
    ✓ Load relevant files and info
    ✓ Notify you on meaningful lens changes
    ✓ Remember your session for continuity
+
+Next time you return, LENS will offer to restore your last context.
 
 Quick Reference:
    📍 "lens status" — Check current lens

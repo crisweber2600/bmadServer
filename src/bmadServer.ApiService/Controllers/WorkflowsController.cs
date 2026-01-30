@@ -1,5 +1,6 @@
 using bmadServer.ApiService.DTOs;
 using bmadServer.ApiService.Hubs;
+using bmadServer.ApiService.Models;
 using bmadServer.ApiService.Models.Workflows;
 using bmadServer.ApiService.Services;
 using bmadServer.ApiService.Services.Workflows;
@@ -29,6 +30,7 @@ public class WorkflowsController : ControllerBase
     private readonly IHubContext<ChatHub> _hubContext;
     private readonly ILogger<WorkflowsController> _logger;
     private readonly IParticipantService _participantService;
+    private readonly ISessionService _sessionService;
 
     public WorkflowsController(
         IWorkflowInstanceService workflowInstanceService,
@@ -38,7 +40,8 @@ public class WorkflowsController : ControllerBase
         IApprovalService approvalService,
         IHubContext<ChatHub> hubContext,
         ILogger<WorkflowsController> logger,
-        IParticipantService participantService)
+        IParticipantService participantService,
+        ISessionService sessionService)
     {
         _workflowInstanceService = workflowInstanceService;
         _workflowRegistry = workflowRegistry;
@@ -48,6 +51,7 @@ public class WorkflowsController : ControllerBase
         _hubContext = hubContext;
         _logger = logger;
         _participantService = participantService;
+        _sessionService = sessionService;
     }
 
     private Guid GetCurrentUserId()
@@ -65,6 +69,43 @@ public class WorkflowsController : ControllerBase
         var isParticipant = await _participantService.IsParticipantAsync(workflowId, userId);
         var isOwner = await _participantService.IsWorkflowOwnerAsync(workflowId, userId);
         return isParticipant || isOwner;
+    }
+
+    private async Task SetActiveWorkflowSessionAsync(Guid workflowId, Guid userId)
+    {
+        var session = await _sessionService.GetMostRecentActiveSessionAsync(userId);
+        if (session == null)
+        {
+            _logger.LogWarning(
+                "No active session found when starting workflow {WorkflowId} for user {UserId}",
+                workflowId, userId);
+            return;
+        }
+
+        var instance = await _workflowInstanceService.GetWorkflowInstanceAsync(workflowId);
+
+        var updated = await _sessionService.UpdateSessionStateAsync(session.Id, userId, s =>
+        {
+            s.WorkflowState ??= new WorkflowState();
+            s.WorkflowState.ActiveWorkflowInstanceId = workflowId;
+
+            if (!string.IsNullOrWhiteSpace(instance?.WorkflowDefinitionId))
+            {
+                s.WorkflowState.WorkflowName = instance.WorkflowDefinitionId;
+            }
+
+            if (instance?.CurrentStep > 0)
+            {
+                s.WorkflowState.CurrentStep = instance.CurrentStep;
+            }
+        });
+
+        if (!updated)
+        {
+            _logger.LogWarning(
+                "Failed to update session state for workflow {WorkflowId} and user {UserId}",
+                workflowId, userId);
+        }
     }
 
     private async Task SendWorkflowStatusChangedNotification(Guid workflowId)
@@ -321,9 +362,10 @@ public class WorkflowsController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> StartWorkflow(Guid id)
     {
+        Guid userId;
         try
         {
-            var userId = GetCurrentUserId();
+            userId = GetCurrentUserId();
             // Only owner can start workflows
             if (!await _participantService.IsWorkflowOwnerAsync(id, userId))
             {
@@ -349,6 +391,9 @@ public class WorkflowsController : ControllerBase
 
         // Send status change notification
         await SendWorkflowStatusChangedNotification(id);
+
+        // Update session with active workflow so chat messages route to the workflow engine
+        await SetActiveWorkflowSessionAsync(id, userId);
 
         return NoContent();
     }

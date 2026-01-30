@@ -48,6 +48,18 @@ Once Navigator is active, use any of these commands:
 
 You can type the command name, the number, or a fuzzy match (e.g., "feat" matches "feature").
 
+### Mental Model: Commands → Goals
+
+Use this cheat sheet to pick the fastest path:
+
+- **Understand the whole system** → `domain` (Domain Lens)
+- **Focus on one service** → `service`
+- **Focus on one microservice** → `micro`
+- **Focus on active work** → `feature`
+- **Start new work** → `new-service`, `new-micro`, `new-feature`
+- **Keep config accurate** → `map` (overview) and `sync` (drift fixes)
+- **Assess blast radius** → `impact`
+
 ---
 
 ## Common Workflows
@@ -175,6 +187,8 @@ shared:
 2. **Git branch patterns** — primary detection method
 3. **Working directory** — fallback for trunk-based development
 4. **Auto-discovery** — infer from directory structure
+
+When LENS switches lenses, it will explain **why** (e.g., branch pattern match or directory context) so you can verify the decision.
 
 ### Branch Pattern Matching
 
