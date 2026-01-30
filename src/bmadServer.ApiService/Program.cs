@@ -10,6 +10,9 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Allow runtime overrides for BMAD settings without editing appsettings.json
+builder.Configuration.AddJsonFile("bmadsettings.json", optional: true, reloadOnChange: true);
+
 // Configure BMAD options for agent/workflow integration
 builder.Services.Configure<BmadOptions>(builder.Configuration.GetSection(BmadOptions.SectionName));
 builder.Services.Configure<OpenCodeOptions>(builder.Configuration.GetSection(OpenCodeOptions.SectionName));
@@ -73,6 +76,12 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.IContextAnalysisServic
 
 // Register response metadata service
 builder.Services.AddScoped<bmadServer.ApiService.Services.IResponseMetadataService, bmadServer.ApiService.Services.ResponseMetadataService>();
+
+// Register Copilot SDK test service
+builder.Services.AddScoped<bmadServer.ApiService.Services.ICopilotTestService, bmadServer.ApiService.Services.CopilotTestService>();
+
+// Register BMAD settings service
+builder.Services.AddScoped<bmadServer.ApiService.Services.IBmadSettingsService, bmadServer.ApiService.Services.BmadSettingsService>();
 
 // Register session cleanup background service
 builder.Services.AddHostedService<bmadServer.ApiService.BackgroundServices.SessionCleanupService>();

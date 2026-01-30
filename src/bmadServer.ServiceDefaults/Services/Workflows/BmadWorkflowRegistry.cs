@@ -40,9 +40,9 @@ public class BmadWorkflowRegistry : IWorkflowRegistry
 {
     private readonly Dictionary<string, WorkflowDefinition> _workflows = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, WorkflowManifestEntry> _manifestEntries = new(StringComparer.OrdinalIgnoreCase);
-    private readonly BmadWorkflowOptions _options;
+    private BmadWorkflowOptions _options;
     private readonly ILogger<BmadWorkflowRegistry> _logger;
-    private readonly HashSet<string> _enabledModules;
+    private HashSet<string> _enabledModules;
     private bool _isLoaded;
 
     public BmadWorkflowRegistry(
@@ -54,6 +54,27 @@ public class BmadWorkflowRegistry : IWorkflowRegistry
         _enabledModules = new HashSet<string>(
             _options.EnabledModules,
             StringComparer.OrdinalIgnoreCase);
+    }
+
+    public void Reload(BmadWorkflowOptions options)
+    {
+        if (options == null)
+        {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        lock (_workflows)
+        {
+            _options = options;
+            _enabledModules = new HashSet<string>(
+                _options.EnabledModules,
+                StringComparer.OrdinalIgnoreCase);
+            _workflows.Clear();
+            _manifestEntries.Clear();
+            _isLoaded = false;
+        }
+
+        _logger.LogInformation("Reloaded BMAD workflow registry with BasePath {BasePath}", _options.BasePath);
     }
 
     /// <inheritdoc />

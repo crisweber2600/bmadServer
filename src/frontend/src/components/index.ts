@@ -74,3 +74,6 @@ export type { CheckpointListProps, CheckpointResponse } from './CheckpointList';
 
 export { GlossaryPanel } from './GlossaryPanel';
 export type { GlossaryPanelProps } from './GlossaryPanel';
+
+// Copilot SDK Testing
+export { CopilotTest } from './CopilotTest';

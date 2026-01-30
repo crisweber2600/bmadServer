@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Button, Input, Space, Alert, Spin, Typography, notification } from 'antd';
-import { LoginOutlined, LogoutOutlined, SendOutlined } from '@ant-design/icons';
+import { Button, Input, Space, Alert, Spin, Typography, notification, Modal } from 'antd';
+import { LoginOutlined, LogoutOutlined, SendOutlined, BugOutlined } from '@ant-design/icons';
 import * as signalR from '@microsoft/signalr';
 import {
     ChatContainer,
@@ -9,6 +9,7 @@ import {
     WorkflowSelector,
     ConversationActions,
     WorkflowStatusBar,
+    CopilotTest,
 } from './components';
 import { useWorkflows } from './hooks';
 import './ChatDemo.css';
@@ -56,6 +57,7 @@ export function ChatApp() {
     const [isRegistering, setIsRegistering] = useState(false);
     const [connectionState, setConnectionState] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
     const [error, setError] = useState<string | null>(null);
+    const [showTestModal, setShowTestModal] = useState(false);
     const connectionRef = useRef<signalR.HubConnection | null>(null);
 
     // Workflow state
@@ -455,13 +457,22 @@ export function ChatApp() {
                             {' '} | {authState.user?.displayName}
                         </Text>
                     </div>
-                    <Button
-                        icon={<LogoutOutlined />}
-                        onClick={handleLogout}
-                        danger
-                    >
-                        Sign Out
-                    </Button>
+                    <Space>
+                        <Button
+                            icon={<BugOutlined />}
+                            onClick={() => setShowTestModal(true)}
+                            type="dashed"
+                        >
+                            Test Copilot SDK
+                        </Button>
+                        <Button
+                            icon={<LogoutOutlined />}
+                            onClick={handleLogout}
+                            danger
+                        >
+                            Sign Out
+                        </Button>
+                    </Space>
                 </div>
             </div>
 
@@ -551,6 +562,19 @@ export function ChatApp() {
                     </Button>
                 </Space.Compact>
             </div>
+
+            {/* Copilot Test Modal */}
+            <Modal
+                title="Copilot SDK Test Interface"
+                open={showTestModal}
+                onCancel={() => setShowTestModal(false)}
+                footer={null}
+                width={1000}
+                style={{ maxHeight: '90vh' }}
+                bodyStyle={{ maxHeight: '70vh', overflowY: 'auto' }}
+            >
+                <CopilotTest />
+            </Modal>
         </div>
     );
 }

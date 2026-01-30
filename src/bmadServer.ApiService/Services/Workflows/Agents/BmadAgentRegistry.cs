@@ -12,9 +12,9 @@ public class BmadAgentRegistry : IAgentRegistry
 {
     private readonly Dictionary<string, AgentDefinition> _agents = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, AgentManifestEntry> _manifestEntries = new(StringComparer.OrdinalIgnoreCase);
-    private readonly BmadOptions _options;
+    private BmadOptions _options;
     private readonly ILogger<BmadAgentRegistry> _logger;
-    private readonly HashSet<string> _enabledModules;
+    private HashSet<string> _enabledModules;
     private bool _isLoaded;
 
     public BmadAgentRegistry(
@@ -26,6 +26,27 @@ public class BmadAgentRegistry : IAgentRegistry
         _enabledModules = new HashSet<string>(
             _options.EnabledModules,
             StringComparer.OrdinalIgnoreCase);
+    }
+
+    public void Reload(BmadOptions options)
+    {
+        if (options == null)
+        {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        lock (_agents)
+        {
+            _options = options;
+            _enabledModules = new HashSet<string>(
+                _options.EnabledModules,
+                StringComparer.OrdinalIgnoreCase);
+            _agents.Clear();
+            _manifestEntries.Clear();
+            _isLoaded = false;
+        }
+
+        _logger.LogInformation("Reloaded BMAD agent registry with BasePath {BasePath}", _options.BasePath);
     }
 
     /// <inheritdoc />
