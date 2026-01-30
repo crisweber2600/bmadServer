@@ -8,6 +8,11 @@ var builder = DistributedApplication.CreateBuilder(args);
 // Check if we're running in test mode (no frontend needed)
 var isTestMode = builder.Configuration.GetValue<bool>("IsTestMode");
 
+// Check if PgAdmin should use credentials (feature flag for debugging)
+// When false (default in Development), PgAdmin will use default/auto-generated credentials
+// When true (can be set in Production), PgAdmin will require configured username/password parameters
+var usePgAdminCredentials = builder.Configuration.GetValue<bool>("PgAdmin:UseCredentials");
+
 // Configure PostgreSQL database resource via Aspire
 // - "pgsql" is the resource name (used for service discovery)
 // - WithPgAdmin() adds a pgAdmin UI at https://localhost:5050 for database management
@@ -18,7 +23,24 @@ var isTestMode = builder.Configuration.GetValue<bool>("IsTestMode");
 var pgsql = builder.AddPostgres("pgsql");
 if (!isTestMode)
 {
-    pgsql.WithPgAdmin();
+    if (usePgAdminCredentials)
+    {
+        // When credentials are enabled, use parameters for username/password
+        // These must be configured via user secrets or environment variables:
+        // dotnet user-secrets set "Parameters:pgadmin-username" "admin@example.com"
+        // dotnet user-secrets set "Parameters:pgadmin-password" "your-password"
+        var pgAdminUsername = builder.AddParameter("pgadmin-username");
+        var pgAdminPassword = builder.AddParameter("pgadmin-password", secret: true);
+        pgsql.WithPgAdmin(container => container
+            .WithEnvironment("PGADMIN_DEFAULT_EMAIL", pgAdminUsername)
+            .WithEnvironment("PGADMIN_DEFAULT_PASSWORD", pgAdminPassword));
+    }
+    else
+    {
+        // When credentials are disabled (default for debugging), PgAdmin uses default credentials
+        // This is the recommended setting during development/debugging
+        pgsql.WithPgAdmin();
+    }
 }
 var db = pgsql.AddDatabase("bmadserver", "bmadserver_dev");
 
