@@ -30,8 +30,8 @@ namespace bmadServer.BDD.Tests.Features
                 "epic-3",
                 "ui"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en"), "Features", "Real-Time Chat Interface", ("  As a user\r\n  I want a real-time chat interface\r\n  So that I can communicate wit" +
-                "h AI agents seamlessly"), global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en"), "Features", "Real-Time Chat Interface", ("  As a user\n  I want a real-time chat interface\n  So that I can communicate with " +
+                "AI agents seamlessly"), global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
         
         private Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         
