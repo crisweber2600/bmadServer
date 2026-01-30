@@ -62,7 +62,7 @@ export interface UsePresenceReturn {
 export function usePresence(options: UsePresenceOptions): UsePresenceReturn {
   const {
     workflowId,
-    apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080',
+    apiUrl = '',
     onUserOnline,
     onUserOffline,
     onUserTyping,

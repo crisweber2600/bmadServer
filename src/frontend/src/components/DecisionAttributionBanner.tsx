@@ -39,7 +39,6 @@ export const DecisionAttributionBanner: React.FC<DecisionAttributionBannerProps>
   reasoning,
   confidence,
   decidedAt = timestamp,
-  avatarUrl,
   isLocked = false,
   lockedBy,
   lockedAt,

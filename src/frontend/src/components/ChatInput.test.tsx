@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ChatInput } from './ChatInput';
 
 describe('ChatInput', () => {
-  let mockOnSend: ReturnType<typeof vi.fn>;
+  let mockOnSend: Mock<(message: string, abortSignal?: AbortSignal) => Promise<void>>;
   let localStorageMock: { [key: string]: string };
 
   beforeEach(() => {
@@ -280,7 +280,9 @@ describe('ChatInput', () => {
 
   describe('Request Cancellation', () => {
     it('shows cancel button after 5 seconds of processing', async () => {
-      const slowOnSend = vi.fn(() => new Promise(() => {})); // Never resolves
+      const slowOnSend = vi.fn(async (_msg: string, _signal?: AbortSignal) => {
+        await new Promise<void>(() => {});
+      }) as Mock<(message: string, abortSignal?: AbortSignal) => Promise<void>>;
       render(<ChatInput onSend={slowOnSend} />);
 
       const textarea = screen.getByRole('textbox', { name: /message input/i });
@@ -299,10 +301,10 @@ describe('ChatInput', () => {
 
     it('cancels request when cancel button is clicked', async () => {
       let abortSignal: AbortSignal | undefined;
-      const slowOnSend = vi.fn((msg: string, signal?: AbortSignal) => {
+      const slowOnSend = vi.fn(async (_msg: string, signal?: AbortSignal) => {
         abortSignal = signal;
-        return new Promise(() => {}); // Never resolves
-      });
+        await new Promise<void>(() => {}); // Never resolves
+      }) as Mock<(message: string, abortSignal?: AbortSignal) => Promise<void>>;
 
       render(<ChatInput onSend={slowOnSend} />);
 
@@ -412,7 +414,7 @@ describe('ChatInput', () => {
 
   describe('Loading State', () => {
     it('shows loading indicator while sending', async () => {
-      const slowOnSend = vi.fn(() => new Promise((resolve) => setTimeout(resolve, 1000)));
+      const slowOnSend = vi.fn(async () => { await new Promise((resolve) => setTimeout(resolve, 1000)); });
       render(<ChatInput onSend={slowOnSend} />);
 
       const textarea = screen.getByRole('textbox', { name: /message input/i });
@@ -425,7 +427,7 @@ describe('ChatInput', () => {
     });
 
     it('disables input while sending', async () => {
-      const slowOnSend = vi.fn(() => new Promise((resolve) => setTimeout(resolve, 1000)));
+      const slowOnSend = vi.fn(async () => { await new Promise((resolve) => setTimeout(resolve, 1000)); });
       render(<ChatInput onSend={slowOnSend} />);
 
       const textarea = screen.getByRole('textbox', { name: /message input/i });

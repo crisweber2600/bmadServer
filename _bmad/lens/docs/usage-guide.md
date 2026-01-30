@@ -250,6 +250,48 @@ Type "expand" or ask for more details to see the full context.
 
 ---
 
+## Testing & Validation Checklist
+
+Use this checklist to validate LENS behavior in real-world scenarios. These are manual tests intended to confirm detection, switching, and session persistence.
+
+### 1. Monorepo Detection (Multi-Service)
+
+- [ ] Ensure repo has multiple services (e.g., services/identity, services/payments)
+- [ ] Start Navigator on main/develop branch
+- [ ] Expected: **Domain Lens** detected with service count > 1
+- [ ] Switch to service branch `service/identity`
+- [ ] Expected: **Service Lens** with identity context
+- [ ] Switch to feature branch `feature/identity/auth-api/oauth-refresh`
+- [ ] Expected: **Feature Lens** with service + microservice inferred
+
+### 2. Trunk-Based Directory Fallback
+
+- [ ] Stay on main branch (no feature/service branches)
+- [ ] Change working directory to `services/identity/`
+- [ ] Expected: **Service Lens** detected via directory
+- [ ] Change directory to `services/identity/auth-api/`
+- [ ] Expected: **Microservice Lens** detected
+- [ ] Return to repo root
+- [ ] Expected: **Domain Lens** detected
+
+### 3. Session Restore (.lens-state)
+
+- [ ] Enter Feature Lens and open several feature files
+- [ ] Exit Navigator (or end session)
+- [ ] Start Navigator again
+- [ ] Expected: Restore prompt appears
+- [ ] Accept restore
+- [ ] Expected: Previous lens + files loaded, summary card displayed
+
+### 4. Drift Detection & Sync
+
+- [ ] Add a new microservice folder without updating domain-map
+- [ ] Run `sync`
+- [ ] Expected: Drift detected, new microservice listed
+- [ ] Apply sync and confirm domain-map updated
+
+---
+
 ## Troubleshooting
 
 ### LENS Doesn't Activate

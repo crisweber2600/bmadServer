@@ -5,6 +5,7 @@ using bmadServer.ApiService.Services;
 using bmadServer.ApiService.Services.Workflows;
 using bmadServer.ApiService.Services.Workflows.Agents;
 using bmadServer.ServiceDefaults.Services.Workflows;
+using bmadServer.ServiceDefaults.Models.Workflows;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -83,6 +84,18 @@ public class WorkflowsController : ControllerBase
     }
 
     /// <summary>
+    /// Get all available workflow definitions
+    /// </summary>
+    /// <returns>List of workflow definitions</returns>
+    [HttpGet("definitions")]
+    [ProducesResponseType(typeof(IEnumerable<WorkflowDefinition>), StatusCodes.Status200OK)]
+    public ActionResult<IEnumerable<WorkflowDefinition>> GetWorkflowDefinitions()
+    {
+        var definitions = _workflowRegistry.GetAllWorkflows();
+        return Ok(definitions);
+    }
+
+    /// <summary>
     /// Get list of workflow instances for the authenticated user
     /// </summary>
     /// <param name="showCancelled">Include cancelled workflows in results (default: false)</param>
@@ -118,7 +131,7 @@ public class WorkflowsController : ControllerBase
             }
 
             // Use filtered query if any filters are provided
-            if (status.HasValue || !string.IsNullOrEmpty(workflowType) || 
+            if (status.HasValue || !string.IsNullOrEmpty(workflowType) ||
                 createdAfter.HasValue || createdBefore.HasValue || page > 1 || pageSize != 20)
             {
                 var pagedResult = await _workflowInstanceService.GetFilteredWorkflowsAsync(
@@ -352,7 +365,7 @@ public class WorkflowsController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<StepExecutionResult>> ExecuteStep(
-        Guid id, 
+        Guid id,
         [FromBody] ExecuteStepRequest? request = null)
     {
         try
@@ -367,7 +380,7 @@ public class WorkflowsController : ControllerBase
             }
 
             var result = await _stepExecutor.ExecuteStepAsync(
-                id, 
+                id,
                 request?.UserInput);
 
             if (!result.Success)
@@ -420,7 +433,7 @@ public class WorkflowsController : ControllerBase
 
             // Attempt to pause the workflow
             var (success, message) = await _workflowInstanceService.PauseWorkflowAsync(id, userId);
-            
+
             if (!success)
             {
                 // Check if it's a "not found" error or validation error
@@ -441,7 +454,7 @@ public class WorkflowsController : ControllerBase
 
             // Get updated workflow instance
             var updatedInstance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
-            
+
             // Send SignalR notification with full status
             await SendWorkflowStatusChangedNotification(id);
 
@@ -487,7 +500,7 @@ public class WorkflowsController : ControllerBase
 
             // Attempt to resume the workflow
             var (success, message) = await _workflowInstanceService.ResumeWorkflowAsync(id, userId);
-            
+
             if (!success)
             {
                 // Check if it's a "not found" error or validation error
@@ -508,7 +521,7 @@ public class WorkflowsController : ControllerBase
 
             // Get updated workflow instance
             var updatedInstance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
-            
+
             // Send SignalR notification with full status
             await SendWorkflowStatusChangedNotification(id);
 
@@ -558,7 +571,7 @@ public class WorkflowsController : ControllerBase
 
             // Attempt to cancel the workflow
             var (success, message) = await _workflowInstanceService.CancelWorkflowAsync(id, userId);
-            
+
             if (!success)
             {
                 // Check if it's a "not found" error or validation error
@@ -579,7 +592,7 @@ public class WorkflowsController : ControllerBase
 
             // Get updated workflow instance
             var updatedInstance = await _workflowInstanceService.GetWorkflowInstanceAsync(id);
-            
+
             // Send SignalR notification with full status
             await SendWorkflowStatusChangedNotification(id);
 
@@ -626,10 +639,10 @@ public class WorkflowsController : ControllerBase
 
             // Attempt to skip the current step
             var (success, message) = await _workflowInstanceService.SkipCurrentStepAsync(
-                id, 
-                userId, 
+                id,
+                userId,
                 request?.Reason);
-            
+
             if (!success)
             {
                 // Check if it's a "not found" error or validation error
@@ -697,7 +710,7 @@ public class WorkflowsController : ControllerBase
 
             // Attempt to navigate to the step
             var (success, message) = await _workflowInstanceService.GoToStepAsync(id, stepId, userId);
-            
+
             if (!success)
             {
                 // Check if it's a "not found" error or validation error
@@ -750,7 +763,7 @@ public class WorkflowsController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ParticipantResponse>> AddParticipant(
-        Guid id, 
+        Guid id,
         [FromBody] AddParticipantRequest request)
     {
         try
@@ -786,9 +799,9 @@ public class WorkflowsController : ControllerBase
 
             // Add participant
             var participant = await _participantService.AddParticipantAsync(
-                id, 
-                request.UserId, 
-                role, 
+                id,
+                request.UserId,
+                role,
                 userId);
 
             // Send notification via SignalR
@@ -855,7 +868,7 @@ public class WorkflowsController : ControllerBase
         try
         {
             var userId = GetCurrentUserId();
-            
+
             // Authorization check: only participants or owners can see participant list
             if (!await CanAccessWorkflowAsync(id, userId))
             {
@@ -1012,7 +1025,7 @@ public class WorkflowsController : ControllerBase
 
             // Get contribution metrics
             var metrics = await contributionMetricsService.GetContributionMetricsAsync(id);
-            
+
             return Ok(metrics);
         }
         catch (Exception ex)

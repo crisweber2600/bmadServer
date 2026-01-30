@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Typography, Button } from 'antd';
 import {
-  WifiOutlined,
   DisconnectOutlined,
   SyncOutlined,
   CheckCircleOutlined,

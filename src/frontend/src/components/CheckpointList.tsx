@@ -47,13 +47,12 @@ export interface CheckpointListProps {
 }
 
 export function CheckpointList({
-  workflowId,
   checkpoints: initialCheckpoints,
   fetchCheckpoints,
   onRestore,
   onCreateCheckpoint,
   loading: externalLoading,
-}: CheckpointListProps): JSX.Element {
+}: CheckpointListProps) {
   const [checkpoints, setCheckpoints] = useState<CheckpointResponse[]>(initialCheckpoints || []);
   const [loading, setLoading] = useState<boolean>(!initialCheckpoints && !!fetchCheckpoints);
   const [error, setError] = useState<string | null>(null);

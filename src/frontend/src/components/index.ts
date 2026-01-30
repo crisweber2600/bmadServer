@@ -43,11 +43,11 @@ export type { ModeratorAlertProps } from './ModeratorAlert';
 
 // Collaboration & Presence
 export { PresenceIndicator } from './PresenceIndicator';
-export type { PresenceIndicatorProps, PresenceStatus } from './PresenceIndicator';
+export type { PresenceIndicatorProps } from './PresenceIndicator';
 
 // Decision Management (Phase D)
 export { VersionHistoryPanel } from './VersionHistoryPanel';
-export type { VersionHistoryPanelProps, VersionEntry } from './VersionHistoryPanel';
+export type { VersionHistoryPanelProps, DecisionVersion } from './VersionHistoryPanel';
 
 export { DiffViewer } from './DiffViewer';
 export type { DiffViewerProps, FieldChange, VersionDiffProps, ContentDiffProps } from './DiffViewer';
@@ -57,6 +57,14 @@ export type { ConflictAlertProps, ConflictSeverity } from './ConflictAlert';
 
 export { ConflictResolutionPanel } from './ConflictResolutionPanel';
 export type { ConflictResolutionPanelProps, ConflictData, ConflictDecision, ResolutionData } from './ConflictResolutionPanel';
+
+// Workflow
+export { WorkflowSelector } from './WorkflowSelector';
+export type { WorkflowSelectorProps } from './WorkflowSelector';
+export { WorkflowStatusBar } from './WorkflowStatusBar';
+export type { WorkflowStatusBarProps } from './WorkflowStatusBar';
+export { ConversationActions } from './ConversationActions';
+export type { ConversationActionsProps } from './ConversationActions';
 
 export { ReviewRequestForm } from './ReviewRequestForm';
 export type { ReviewRequestFormProps, Reviewer, ReviewRequestData } from './ReviewRequestForm';

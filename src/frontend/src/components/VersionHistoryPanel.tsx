@@ -71,7 +71,7 @@ export const VersionHistoryPanel: React.FC<VersionHistoryPanelProps> = ({
       setError(null);
       
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+        const apiUrl = '';
         const response = await fetch(`${apiUrl}/api/v1/decisions/${decisionId}/versions`);
         
         if (!response.ok) {
@@ -109,7 +109,7 @@ export const VersionHistoryPanel: React.FC<VersionHistoryPanelProps> = ({
         setRevertingVersion(versionNumber);
         
         try {
-          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+          const apiUrl = '';
           const response = await fetch(`${apiUrl}/api/v1/decisions/${decisionId}/revert`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

@@ -4,11 +4,13 @@
  */
 
 /** Persona type enum - values match backend exactly */
-export enum PersonaType {
-  Business = 0,
-  Technical = 1,
-  Hybrid = 2,
-}
+export const PersonaType = {
+  Business: 0,
+  Technical: 1,
+  Hybrid: 2,
+} as const;
+
+export type PersonaType = typeof PersonaType[keyof typeof PersonaType];
 
 /** Human-readable labels for personas */
 export const PersonaLabels: Record<PersonaType, string> = {

@@ -1,11 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CommandPalette } from './CommandPalette';
 
 describe('CommandPalette', () => {
-  let mockOnSelect: ReturnType<typeof vi.fn>;
-  let mockOnClose: ReturnType<typeof vi.fn>;
+  let mockOnSelect: Mock<(command: string) => void>;
+  let mockOnClose: Mock<() => void>;
 
   beforeEach(() => {
     mockOnSelect = vi.fn();

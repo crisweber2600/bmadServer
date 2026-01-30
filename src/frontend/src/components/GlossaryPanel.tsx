@@ -13,11 +13,12 @@ import {
   BookOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
-import { GlossaryTerm, PersonaType } from '../types/persona';
+import type { GlossaryTerm } from '../types/persona';
+import { PersonaType } from '../types/persona';
 import defaultGlossary from '../data/glossary.json';
 import './GlossaryPanel.css';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 const { Search } = Input;
 
 export interface GlossaryPanelProps {
@@ -34,7 +35,7 @@ export function GlossaryPanel({
   terms: providedTerms,
   fetchTerms,
   currentPersona,
-}: GlossaryPanelProps): JSX.Element {
+}: GlossaryPanelProps) {
   // Only use default glossary if no terms and no fetchTerms provided
   const shouldUseDefaultGlossary = providedTerms === undefined && !fetchTerms;
   const [terms, setTerms] = useState<GlossaryTerm[]>(

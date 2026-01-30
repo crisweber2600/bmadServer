@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DecisionAttributionBanner } from './DecisionAttributionBanner';
 
@@ -291,7 +291,6 @@ describe('DecisionAttributionBanner', () => {
   });
 
   it('handles empty reasoning string gracefully', async () => {
-    const user = userEvent.setup();
     render(
       <DecisionAttributionBanner
         agentId="agent-1"
@@ -328,7 +327,6 @@ describe('DecisionAttributionBanner', () => {
 
   describe('Lock Controls', () => {
     const mockDate = new Date('2026-01-26T14:30:00Z');
-    const mockLockedAt = new Date('2026-01-26T10:00:00Z');
 
     // Use real timers for lock controls tests since they involve complex UI interactions
     beforeEach(() => {

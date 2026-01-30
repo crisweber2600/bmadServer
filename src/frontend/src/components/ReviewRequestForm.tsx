@@ -52,7 +52,6 @@ interface FormValues {
  */
 export const ReviewRequestForm: React.FC<ReviewRequestFormProps> = ({
   decisionId,
-  workflowId,
   open,
   onClose,
   onSuccess,

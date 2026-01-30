@@ -94,7 +94,7 @@ export interface UseDecisionsReturn {
 export function useDecisions(options: UseDecisionsOptions): UseDecisionsReturn {
   const {
     workflowId,
-    apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080',
+    apiUrl = '',
     debug = false,
     onDecisionUpdated,
     onDecisionLocked,

@@ -1,17 +1,23 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { ChatWithHandoffs } from './ChatWithHandoffs';
-import { AgentHandoffEvent } from '../hooks/useSignalRHandoffs';
+import { type AgentHandoffEvent, type UseSignalRHandoffsOptions } from '../hooks/useSignalRHandoffs';
+
+// Mock hook with all required properties
+const mockUseSignalRHandoffs = vi.fn().mockReturnValue({
+  connectionState: 'connected',
+  error: null,
+  handoffHistory: [],
+  currentAgent: null,
+  clearHistory: vi.fn(),
+  connection: null,
+  onlineUsers: [],
+  typingUsers: [],
+  clearPresence: vi.fn(),
+});
 
 vi.mock('../hooks/useSignalRHandoffs', () => ({
-  useSignalRHandoffs: vi.fn().mockReturnValue({
-    connectionState: 'connected',
-    error: null,
-    handoffHistory: [],
-    currentAgent: null,
-    clearHistory: vi.fn(),
-    connection: null,
-  }),
+  useSignalRHandoffs: (options?: UseSignalRHandoffsOptions) => mockUseSignalRHandoffs(options),
   AgentHandoffEvent: {},
 }));
 
@@ -77,14 +83,16 @@ describe('ChatWithHandoffs', () => {
   });
 
   it('should render disconnect warning when connection is disconnected', () => {
-    const { useSignalRHandoffs } = await import('../hooks/useSignalRHandoffs');
-    vi.mocked(useSignalRHandoffs).mockReturnValue({
+    mockUseSignalRHandoffs.mockReturnValue({
       connectionState: 'disconnected',
       error: 'Connection failed',
       handoffHistory: [],
       currentAgent: null,
       clearHistory: vi.fn(),
       connection: null,
+      onlineUsers: [],
+      typingUsers: [],
+      clearPresence: vi.fn(),
     });
 
     render(
@@ -100,14 +108,16 @@ describe('ChatWithHandoffs', () => {
   });
 
   it('should render reconnecting status when connection is reconnecting', () => {
-    const { useSignalRHandoffs } = await import('../hooks/useSignalRHandoffs');
-    vi.mocked(useSignalRHandoffs).mockReturnValue({
+    mockUseSignalRHandoffs.mockReturnValue({
       connectionState: 'reconnecting',
       error: null,
       handoffHistory: [],
       currentAgent: null,
       clearHistory: vi.fn(),
       connection: null,
+      onlineUsers: [],
+      typingUsers: [],
+      clearPresence: vi.fn(),
     });
 
     render(
@@ -121,14 +131,16 @@ describe('ChatWithHandoffs', () => {
   });
 
   it('should not show status indicators when connected', () => {
-    const { useSignalRHandoffs } = await import('../hooks/useSignalRHandoffs');
-    vi.mocked(useSignalRHandoffs).mockReturnValue({
+    mockUseSignalRHandoffs.mockReturnValue({
       connectionState: 'connected',
       error: null,
       handoffHistory: [],
       currentAgent: null,
       clearHistory: vi.fn(),
       connection: null,
+      onlineUsers: [],
+      typingUsers: [],
+      clearPresence: vi.fn(),
     });
 
     render(
@@ -162,11 +174,12 @@ describe('ChatWithHandoffs', () => {
   });
 
   it('should handle handoff events from SignalR', async () => {
-    let handoffCallback: ((event: AgentHandoffEvent) => void) | null = null;
+    let handoffCallback: any = null;
 
-    const { useSignalRHandoffs } = await import('../hooks/useSignalRHandoffs');
-    vi.mocked(useSignalRHandoffs).mockImplementation((options: any) => {
-      handoffCallback = options.onHandoff;
+    mockUseSignalRHandoffs.mockImplementation((options: UseSignalRHandoffsOptions) => {
+      if (options?.onHandoff) {
+        handoffCallback = options.onHandoff;
+      }
       return {
         connectionState: 'connected',
         error: null,
@@ -174,6 +187,9 @@ describe('ChatWithHandoffs', () => {
         currentAgent: null,
         clearHistory: vi.fn(),
         connection: null,
+        onlineUsers: [],
+        typingUsers: [],
+        clearPresence: vi.fn(),
       };
     });
 
@@ -196,11 +212,12 @@ describe('ChatWithHandoffs', () => {
   });
 
   it('should display handoff with step name', async () => {
-    let handoffCallback: ((event: AgentHandoffEvent) => void) | null = null;
+    let handoffCallback: any = null;
 
-    const { useSignalRHandoffs } = await import('../hooks/useSignalRHandoffs');
-    vi.mocked(useSignalRHandoffs).mockImplementation((options: any) => {
-      handoffCallback = options.onHandoff;
+    mockUseSignalRHandoffs.mockImplementation((options: UseSignalRHandoffsOptions) => {
+      if (options?.onHandoff) {
+        handoffCallback = options.onHandoff;
+      }
       return {
         connectionState: 'connected',
         error: null,
@@ -208,6 +225,9 @@ describe('ChatWithHandoffs', () => {
         currentAgent: null,
         clearHistory: vi.fn(),
         connection: null,
+        onlineUsers: [],
+        typingUsers: [],
+        clearPresence: vi.fn(),
       };
     });
 
@@ -231,11 +251,11 @@ describe('ChatWithHandoffs', () => {
   });
 
   it('should handle multiple handoff events', async () => {
-    let handoffCallback: ((event: AgentHandoffEvent) => void) | null = null;
-
-    const { useSignalRHandoffs } = await import('../hooks/useSignalRHandoffs');
-    vi.mocked(useSignalRHandoffs).mockImplementation((options: any) => {
-      handoffCallback = options.onHandoff;
+    let handoffCallback: any = null;
+    mockUseSignalRHandoffs.mockImplementation((options: UseSignalRHandoffsOptions) => {
+      if (options?.onHandoff) {
+         handoffCallback = options.onHandoff;
+      }
       return {
         connectionState: 'connected',
         error: null,
@@ -243,6 +263,9 @@ describe('ChatWithHandoffs', () => {
         currentAgent: null,
         clearHistory: vi.fn(),
         connection: null,
+        onlineUsers: [],
+        typingUsers: [],
+        clearPresence: vi.fn(),
       };
     });
 
@@ -271,11 +294,8 @@ describe('ChatWithHandoffs', () => {
   });
 
   it('should call onConnectionStateChange callback', () => {
-    const { useSignalRHandoffs } = await import('../hooks/useSignalRHandoffs');
-    const onConnectionStateChange = vi.fn();
-
-    vi.mocked(useSignalRHandoffs).mockImplementation((options: any) => {
-      expect(options.onConnectionStateChange).toBeDefined();
+    mockUseSignalRHandoffs.mockImplementation((options: UseSignalRHandoffsOptions) => {
+      expect(options?.onConnectionStateChange).toBeDefined();
       return {
         connectionState: 'connected',
         error: null,
@@ -283,6 +303,9 @@ describe('ChatWithHandoffs', () => {
         currentAgent: null,
         clearHistory: vi.fn(),
         connection: null,
+        onlineUsers: [],
+        typingUsers: [],
+        clearPresence: vi.fn(),
       };
     });
 
@@ -293,7 +316,7 @@ describe('ChatWithHandoffs', () => {
       />
     );
 
-    expect(vi.mocked(useSignalRHandoffs)).toHaveBeenCalled();
+    expect(mockUseSignalRHandoffs).toHaveBeenCalled();
   });
 
   it('should not render handoff messages container when no handoffs', () => {

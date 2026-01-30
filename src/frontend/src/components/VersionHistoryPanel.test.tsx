@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { VersionHistoryPanel, DecisionVersion } from './VersionHistoryPanel';
+import { VersionHistoryPanel, type DecisionVersion } from './VersionHistoryPanel';
 
 // Mock Ant Design Modal
 vi.mock('antd', async () => {

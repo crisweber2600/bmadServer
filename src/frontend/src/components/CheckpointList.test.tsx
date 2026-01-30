@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { CheckpointList, CheckpointResponse } from './CheckpointList';
+import { CheckpointList, type CheckpointResponse } from './CheckpointList';
 
 // Mock antd message
 vi.mock('antd', async () => {

@@ -1,7 +1,7 @@
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ApprovalPrompt, ApprovalRequestDto } from './ApprovalPrompt';
+import { ApprovalPrompt, type ApprovalRequestDto } from './ApprovalPrompt';
 
 describe('ApprovalPrompt Component', () => {
   const mockApprovalRequest: ApprovalRequestDto = {
@@ -16,12 +16,12 @@ describe('ApprovalPrompt Component', () => {
     requestedAt: '2026-01-25T10:30:00Z',
   };
 
-  const mockOnClose = jest.fn();
-  const mockOnApproved = jest.fn();
+  const mockOnClose = vi.fn();
+  const mockOnApproved = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    global.fetch = jest.fn();
+    vi.clearAllMocks();
+    global.fetch = vi.fn();
   });
 
   it('renders the approval prompt modal', () => {
@@ -127,7 +127,7 @@ describe('ApprovalPrompt Component', () => {
   });
 
   it('handles approve action with API call', async () => {
-    const mockFetch = global.fetch as jest.Mock;
+    const mockFetch = global.fetch as Mock;
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({}),
@@ -159,7 +159,7 @@ describe('ApprovalPrompt Component', () => {
   });
 
   it('handles modify action with API call', async () => {
-    const mockFetch = global.fetch as jest.Mock;
+    const mockFetch = global.fetch as Mock;
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({}),
@@ -201,7 +201,7 @@ describe('ApprovalPrompt Component', () => {
   });
 
   it('handles reject action with API call', async () => {
-    const mockFetch = global.fetch as jest.Mock;
+    const mockFetch = global.fetch as Mock;
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({}),
@@ -240,7 +240,7 @@ describe('ApprovalPrompt Component', () => {
   });
 
   it('displays error message when API call fails', async () => {
-    const mockFetch = global.fetch as jest.Mock;
+    const mockFetch = global.fetch as Mock;
     mockFetch.mockResolvedValueOnce({
       ok: false,
       json: async () => ({ detail: 'Server error' }),

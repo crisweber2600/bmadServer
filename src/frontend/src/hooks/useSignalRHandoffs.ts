@@ -111,7 +111,7 @@ export function useSignalRHandoffs(options?: UseSignalRHandoffsOptions) {
         log('Initializing SignalR connection...');
         
         // Get the API base URL (could be from env or config)
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+        const apiUrl = '';
         const hubUrl = `${apiUrl}/hubs/chat`;
         
         // Build connection with automatic reconnection
