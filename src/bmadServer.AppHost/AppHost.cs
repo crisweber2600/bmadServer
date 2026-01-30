@@ -27,10 +27,10 @@ if (!isTestMode)
     {
         // When credentials are enabled, use parameters for username/password
         // These must be configured via user secrets or environment variables:
-        // dotnet user-secrets set "Parameters:pgadmin-username" "admin@example.com"
-        // dotnet user-secrets set "Parameters:pgadmin-password" "your-password"
-        var pgAdminUsername = builder.AddParameter("pgadmin-username");
-        var pgAdminPassword = builder.AddParameter("pgadmin-password", secret: true);
+        // dotnet user-secrets set "Parameters:pgadminusername" "admin@example.com"
+        // dotnet user-secrets set "Parameters:pgadminpassword" "your-password"
+        var pgAdminUsername = builder.AddParameter("pgadminusername");
+        var pgAdminPassword = builder.AddParameter("pgadminpassword", secret: true);
         pgsql.WithPgAdmin(container => container
             .WithEnvironment("PGADMIN_DEFAULT_EMAIL", pgAdminUsername)
             .WithEnvironment("PGADMIN_DEFAULT_PASSWORD", pgAdminPassword));

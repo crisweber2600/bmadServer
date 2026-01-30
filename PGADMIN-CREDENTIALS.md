@@ -30,15 +30,17 @@ To enable custom credentials for PgAdmin:
 2. Configure the credentials using user secrets:
    ```bash
    cd src/bmadServer.AppHost
-   dotnet user-secrets set "Parameters:pgadmin-username" "admin@example.com"
-   dotnet user-secrets set "Parameters:pgadmin-password" "your-secure-password"
+   dotnet user-secrets set "Parameters:pgadminusername" "admin@example.com"
+   dotnet user-secrets set "Parameters:pgadminpassword" "your-secure-password"
    ```
 
    Or using environment variables:
    ```bash
-   export Parameters__pgadmin-username="admin@example.com"
-   export Parameters__pgadmin-password="your-secure-password"
+   export Parameters__pgadminusername="admin@example.com"
+   export Parameters__pgadminpassword="your-secure-password"
    ```
+
+   Note: Environment variables use double underscores (__) to represent nested configuration keys.
 
 ## How It Works
 
@@ -48,8 +50,9 @@ To enable custom credentials for PgAdmin:
   - Simplifies local development workflow
 
 - **When `UseCredentials` is `true`** (production/staging):
-  - PgAdmin requires `pgadmin-username` and `pgadmin-password` parameters
+  - PgAdmin requires `pgadminusername` and `pgadminpassword` parameters
   - Credentials must be configured via user secrets or environment variables
+  - If parameters are not configured, Aspire will prompt for them at runtime
   - Provides better security for non-development environments
 
 ## Security Considerations

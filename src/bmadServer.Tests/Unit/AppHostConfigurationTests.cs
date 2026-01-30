@@ -29,7 +29,7 @@ public class AppHostConfigurationTests
     }
 
     [Fact]
-    public void PgAdminUseCredentials_ReturnsFalseWhenNotConfigured()
+    public void PgAdminUseCredentials_DefaultsToFalseWhenNotConfigured()
     {
         // Arrange
         var configuration = new ConfigurationBuilder()
@@ -40,26 +40,6 @@ public class AppHostConfigurationTests
         var useCredentials = configuration.GetValue<bool>("PgAdmin:UseCredentials");
 
         // Assert
-        Assert.False(useCredentials, "PgAdmin:UseCredentials should default to false when not configured");
-    }
-
-    [Fact]
-    public void PgAdminUseCredentials_DefaultsToFalseForDebugging()
-    {
-        // Arrange - simulate default configuration behavior
-        var configurationData = new Dictionary<string, string?>
-        {
-            { "PgAdmin:UseCredentials", "false" }
-        };
-        
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(configurationData)
-            .Build();
-
-        // Act
-        var useCredentials = configuration.GetValue<bool>("PgAdmin:UseCredentials");
-
-        // Assert
-        Assert.False(useCredentials, "PgAdmin:UseCredentials should be false for debugging scenarios");
+        Assert.False(useCredentials, "PgAdmin:UseCredentials should default to false when not configured, which is appropriate for debugging scenarios");
     }
 }
