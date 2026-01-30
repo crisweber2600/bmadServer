@@ -1,0 +1,63 @@
+# Feature Context Template
+# Auto-generated when creating a feature branch via new-feature workflow
+# Location: _lens/features/{feature-name}.yaml
+
+name: {feature-name}
+branch: feature/{service}/{microservice}/{feature-name}
+description: "Brief description of what this feature implements"
+created: 2026-01-29T00:00:00Z
+author: {git_user_name}
+
+# Architectural context
+context:
+  service: {service-name}
+  microservice: {microservice-name}
+
+# Files involved in this feature (auto-populated as you work)
+related_files:
+  # - src/services/{service}/{microservice}/feature.ts
+  # - src/services/{service}/{microservice}/feature.test.ts
+
+# Task tracking
+tasks:
+  - description: "Initial implementation"
+    status: not-started  # not-started | in-progress | completed | blocked
+  - description: "Unit tests"
+    status: not-started
+  - description: "Integration tests"
+    status: not-started
+  - description: "Documentation"
+    status: not-started
+  - description: "Code review"
+    status: not-started
+
+# Related links
+related:
+  issues:
+    # - "#123"
+    # - "https://github.com/org/repo/issues/123"
+    # - "JIRA-456"
+  prs:
+    # - "#124"
+  docs:
+    # - "docs/design/feature-design.md"
+  stories:
+    # - "_bmad-output/stories/story-xyz.md"
+
+# Acceptance criteria (from story if linked)
+acceptance_criteria:
+  # - "User can do X"
+  # - "System responds within Y ms"
+
+# Notes and decisions
+notes: |
+  Add implementation notes, decisions, and context here.
+  This helps when resuming work later.
+
+# Session state (auto-updated by LENS)
+session:
+  last_active: 2026-01-29T00:00:00Z
+  last_files:
+    # Auto-populated with recently accessed files
+  commits:
+    # Auto-populated with feature branch commits

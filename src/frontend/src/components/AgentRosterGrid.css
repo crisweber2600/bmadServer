@@ -1,0 +1,157 @@
+.agent-roster-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  padding: 16px;
+}
+
+.agent-roster-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  text-align: center;
+}
+
+.agent-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border-radius: 12px;
+}
+
+.agent-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.agent-card:focus {
+  outline: 2px solid #1890ff;
+  outline-offset: 2px;
+}
+
+.agent-card.active {
+  border-color: #52c41a;
+  box-shadow: 0 0 0 2px rgba(82, 196, 26, 0.2);
+}
+
+.agent-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.agent-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.agent-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.agent-name {
+  font-size: 16px;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agent-role {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.relevance-badge {
+  align-self: flex-start;
+  margin: 0;
+}
+
+.agent-capabilities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.capability-tag {
+  margin: 0;
+  font-size: 11px;
+  padding: 0 6px;
+  height: 20px;
+  line-height: 18px;
+}
+
+.capability-more {
+  margin: 0;
+  font-size: 11px;
+  padding: 0 6px;
+  height: 20px;
+  line-height: 18px;
+  cursor: help;
+  background: #f5f5f5;
+  border-color: #d9d9d9;
+}
+
+/* Responsive - Tablet */
+@media (max-width: 1024px) {
+  .agent-roster-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Responsive - Mobile */
+@media (max-width: 768px) {
+  .agent-roster-grid {
+    grid-template-columns: 1fr;
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .agent-card {
+    border-radius: 8px;
+  }
+
+  .agent-header {
+    gap: 10px;
+  }
+
+  .agent-name {
+    font-size: 14px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .agent-card {
+    background: #1f1f1f;
+    border-color: #434343;
+  }
+
+  .agent-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .capability-more {
+    background: #2a2a2a;
+    border-color: #434343;
+    color: #e8e8e8;
+  }
+}
+
+/* Animation for new agents */
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.agent-card {
+  animation: fadeInScale 0.3s ease-out;
+}

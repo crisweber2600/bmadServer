@@ -165,7 +165,7 @@ development_status:
   10-4-conversation-stall-recovery: backlog
   10-5-graceful-degradation-under-load: backlog
   # HARDENING STORIES (ready-for-dev):
-  10-1-h-polly-retry-policies: ready-for-dev
+  10-1-h-polly-retry-policies: review
   10-2-h-circuit-breaker: ready-for-dev
   10-3-h-graceful-degradation: ready-for-dev
   epic-10-retrospective: optional

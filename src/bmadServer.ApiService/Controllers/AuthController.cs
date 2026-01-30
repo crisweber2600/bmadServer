@@ -288,6 +288,40 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Get current authenticated user details
+    /// </summary>
+    /// <returns>User details</returns>
+    /// <response code="200">User is authenticated</response>
+    /// <response code="401">User is not authenticated</response>
+    [HttpGet("me")]
+    [Authorize]
+    [ProducesResponseType(typeof(UserResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetMe()
+    {
+        // Get user ID from claims
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var user = await _dbContext.Users.FindAsync(userId);
+        if (user == null)
+        {
+            return Unauthorized();
+        }
+
+        return Ok(new UserResponse
+        {
+            Id = user.Id,
+            Email = user.Email,
+            DisplayName = user.DisplayName,
+            CreatedAt = user.CreatedAt
+        });
+    }
+
+    /// <summary>
     /// Logout and revoke refresh token
     /// </summary>
     /// <returns>No content on successful logout</returns>

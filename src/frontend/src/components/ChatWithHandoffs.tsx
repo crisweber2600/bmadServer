@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { ResponsiveChat } from './ResponsiveChat';
 import { AgentHandoffIndicator } from './AgentHandoffIndicator';
 import { useSignalRHandoffs } from '../hooks/useSignalRHandoffs';
@@ -20,8 +20,6 @@ interface RegularMessage {
   agentName?: string;
 }
 
-type ChatMessageType = RegularMessage | HandoffMessage;
-
 export interface ChatWithHandoffsProps {
   messages: RegularMessage[];
   onSendMessage: (message: string) => void;
@@ -42,7 +40,6 @@ export const ChatWithHandoffs: React.FC<ChatWithHandoffsProps> = ({
   debug = false,
 }) => {
   const [handoffMessages, setHandoffMessages] = useState<Map<string, HandoffMessage>>(new Map());
-  const [handoffConnectionState, setHandoffConnectionState] = useState<'connected' | 'reconnecting' | 'disconnected'>('disconnected');
 
   const handleHandoffEvent = useCallback((event: AgentHandoffEvent) => {
     if (debug) {
@@ -62,46 +59,10 @@ export const ChatWithHandoffs: React.FC<ChatWithHandoffsProps> = ({
 
   const { connectionState: signalRConnectionState, error: signalRError } = useSignalRHandoffs({
     onHandoff: handleHandoffEvent,
-    onConnectionStateChange: setHandoffConnectionState,
     debug,
   });
 
-  const mergedMessages = React.useMemo(() => {
-    const merged: ChatMessageType[] = [...messages];
-
-    handoffMessages.forEach((handoffMsg) => {
-      merged.push(handoffMsg);
-    });
-
-    merged.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-
-    return merged;
-  }, [messages, handoffMessages]);
-
-  const renderMessages = () => {
-    return mergedMessages.map((msg) => {
-      if (msg.type === 'handoff') {
-        return (
-          <AgentHandoffIndicator
-            key={msg.id}
-            fromAgentId={msg.handoffEvent.FromAgentId}
-            fromAgentName={msg.handoffEvent.FromAgentName}
-            toAgentId={msg.handoffEvent.ToAgentId}
-            toAgentName={msg.handoffEvent.ToAgentName}
-            timestamp={msg.handoffEvent.Timestamp}
-            reason={msg.handoffEvent.Reason}
-            stepName={msg.handoffEvent.StepName}
-            fromAvatarUrl={msg.handoffEvent.FromAvatarUrl}
-            toAvatarUrl={msg.handoffEvent.ToAvatarUrl}
-          />
-        );
-      } else {
-        return (
-          <div key={msg.id} data-testid={`message-${msg.id}`} />
-        );
-      }
-    });
-  };
+  /* Removed unused mergedMessages and renderMessages logic */
 
   return (
     <div data-testid="chat-with-handoffs">

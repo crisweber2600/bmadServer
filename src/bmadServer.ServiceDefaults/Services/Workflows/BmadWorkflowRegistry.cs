@@ -76,6 +76,16 @@ public class BmadWorkflowRegistry : IWorkflowRegistry
 
         if (_workflows.TryGetValue(id, out var workflow))
         {
+            if (workflow.Steps.Count == 0 && _manifestEntries.TryGetValue(id, out var manifestEntry))
+            {
+                var loadedWorkflow = LoadWorkflowFromFile(manifestEntry);
+                if (loadedWorkflow != null)
+                {
+                    _workflows[id] = loadedWorkflow;
+                    return loadedWorkflow;
+                }
+            }
+
             return workflow;
         }
 

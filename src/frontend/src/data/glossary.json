@@ -1,0 +1,110 @@
+[
+  {
+    "term": "PRD",
+    "definition": "Product Requirements Document - A document that outlines the purpose, features, functionality, and behavior of a product or feature.",
+    "category": "business",
+    "relatedTerms": ["Requirements", "User Stories", "Acceptance Criteria"]
+  },
+  {
+    "term": "API",
+    "definition": "Application Programming Interface - A set of protocols and tools for building software applications that allow different systems to communicate.",
+    "category": "technical",
+    "relatedTerms": ["REST", "Endpoint", "HTTP"]
+  },
+  {
+    "term": "MVP",
+    "definition": "Minimum Viable Product - A product with just enough features to satisfy early customers and provide feedback for future development.",
+    "category": "business",
+    "relatedTerms": ["Prototype", "Beta", "Iteration"]
+  },
+  {
+    "term": "CI/CD",
+    "definition": "Continuous Integration/Continuous Deployment - Practices that enable teams to frequently deliver code changes through automated builds and deployments.",
+    "category": "technical",
+    "relatedTerms": ["Pipeline", "Automation", "DevOps"]
+  },
+  {
+    "term": "Workflow",
+    "definition": "A sequence of tasks or steps that are executed in a specific order to achieve a particular outcome.",
+    "category": "general",
+    "relatedTerms": ["Process", "Pipeline", "Automation"]
+  },
+  {
+    "term": "Agent",
+    "definition": "An autonomous software entity that performs tasks on behalf of users, often using AI to make decisions.",
+    "category": "technical",
+    "relatedTerms": ["Bot", "AI", "Automation"]
+  },
+  {
+    "term": "Persona",
+    "definition": "A user archetype that represents a specific type of user with distinct needs, goals, and behaviors.",
+    "category": "business",
+    "relatedTerms": ["User Type", "Role", "Stakeholder"]
+  },
+  {
+    "term": "Handoff",
+    "definition": "The process of transferring control or information from one agent or user to another during a workflow.",
+    "category": "general",
+    "relatedTerms": ["Transition", "Transfer", "Delegation"]
+  },
+  {
+    "term": "Decision",
+    "definition": "A recorded choice or determination made during a workflow that affects the project's direction.",
+    "category": "business",
+    "relatedTerms": ["Resolution", "Choice", "Determination"]
+  },
+  {
+    "term": "Checkpoint",
+    "definition": "A saved state of the workflow at a specific point in time that can be restored if needed.",
+    "category": "technical",
+    "relatedTerms": ["Snapshot", "Backup", "Save Point"]
+  },
+  {
+    "term": "Sprint",
+    "definition": "A fixed time period (usually 2 weeks) during which a specific set of work must be completed.",
+    "category": "business",
+    "relatedTerms": ["Iteration", "Cycle", "Timebox"]
+  },
+  {
+    "term": "User Story",
+    "definition": "A short description of a feature from the perspective of the end user, typically following the format: As a [user], I want [goal] so that [benefit].",
+    "category": "business",
+    "relatedTerms": ["Requirements", "Feature", "Acceptance Criteria"]
+  },
+  {
+    "term": "REST",
+    "definition": "Representational State Transfer - An architectural style for designing networked applications using standard HTTP methods.",
+    "category": "technical",
+    "relatedTerms": ["API", "HTTP", "Endpoint"]
+  },
+  {
+    "term": "SignalR",
+    "definition": "A library for ASP.NET that enables real-time, bidirectional communication between server and client.",
+    "category": "technical",
+    "relatedTerms": ["WebSocket", "Real-time", "Hub"]
+  },
+  {
+    "term": "Stakeholder",
+    "definition": "Any person, group, or organization that has an interest in or is affected by the project.",
+    "category": "business",
+    "relatedTerms": ["User", "Customer", "Sponsor"]
+  },
+  {
+    "term": "Conflict",
+    "definition": "A situation where two or more decisions or actions are incompatible and require resolution.",
+    "category": "general",
+    "relatedTerms": ["Contradiction", "Disagreement", "Issue"]
+  },
+  {
+    "term": "Glossary",
+    "definition": "A collection of terms and their definitions specific to a particular domain or project.",
+    "category": "general",
+    "relatedTerms": ["Dictionary", "Terminology", "Lexicon"]
+  },
+  {
+    "term": "Version",
+    "definition": "A specific iteration or release of a document, code, or product.",
+    "category": "technical",
+    "relatedTerms": ["Release", "Revision", "Iteration"]
+  }
+]

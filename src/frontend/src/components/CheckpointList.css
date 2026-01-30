@@ -1,0 +1,73 @@
+.checkpoint-list {
+  padding: 16px;
+}
+
+.checkpoint-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.checkpoint-list-header h4 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkpoint-timeline {
+  margin-top: 16px;
+}
+
+.checkpoint-item {
+  padding: 8px 0;
+}
+
+.checkpoint-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.checkpoint-item-meta {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.checkpoint-item-description {
+  margin-top: 8px;
+  padding: 8px;
+  background-color: var(--bg-secondary, #f5f5f5);
+  border-radius: 4px;
+}
+
+/* Loading state */
+.checkpoint-list .ant-skeleton {
+  padding: 16px 0;
+}
+
+/* Empty state */
+.checkpoint-list .ant-empty {
+  padding: 32px 0;
+}
+
+/* Timeline styling */
+.checkpoint-list .ant-timeline-item-content {
+  min-height: 0;
+  padding-bottom: 16px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+  .checkpoint-item-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .checkpoint-item-header button {
+    margin-top: 8px;
+  }
+}

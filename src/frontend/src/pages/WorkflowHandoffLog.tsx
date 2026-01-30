@@ -25,14 +25,12 @@ interface WorkflowHandoffLogProps {
 export const WorkflowHandoffLog: React.FC<WorkflowHandoffLogProps> = ({
   workflowId,
   apiBaseUrl = 'http://localhost:8080',
-  onExport,
 }) => {
   const [handoffs, setHandoffs] = useState<AgentHandoffRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fromDate, setFromDate] = useState<dayjs.Dayjs | null>(null);
   const [toDate, setToDate] = useState<dayjs.Dayjs | null>(null);
-  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -281,7 +279,6 @@ export const WorkflowHandoffLog: React.FC<WorkflowHandoffLogProps> = ({
             onClick={() => {
               setFromDate(null);
               setToDate(null);
-              setSelectedAgent(null);
               setCurrentPage(1);
             }}
           >

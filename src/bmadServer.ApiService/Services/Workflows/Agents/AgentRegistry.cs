@@ -71,7 +71,7 @@ public class AgentRegistry : IAgentRegistry
         }
 
         _agents[agent.AgentId] = agent;
-        _logger.LogInformation("Registered agent {AgentId} with {CapabilityCount} capabilities", 
+        _logger.LogInformation("Registered agent {AgentId} with {CapabilityCount} capabilities",
             agent.AgentId, agent.Capabilities.Count);
     }
 
@@ -94,8 +94,28 @@ public class AgentRegistry : IAgentRegistry
              },
              new AgentDefinition
              {
+                 AgentId = "prd-agent",
+                 Name = "PRD Agent",
+                 Description = "Guides users through creating product requirements documents",
+                 SystemPrompt = "You are a product requirements specialist. Your role is to guide users through creating clear, complete PRDs by gathering requirements, identifying user needs, and translating business goals into structured specifications.",
+                 Capabilities = ["gather-requirements", "create-specifications", "analyze-market", "prioritize-features"],
+                 ModelPreference = "gpt-4",
+                 Temperature = 0.7m
+             },
+             new AgentDefinition
+             {
                  AgentId = "architect",
                  Name = "Architect",
+                 Description = "Designs system architecture and technical solutions",
+                 SystemPrompt = "You are a senior solutions architect. Your role is to design scalable, maintainable system architectures that meet both functional and non-functional requirements.",
+                 Capabilities = ["create-architecture", "design-system", "evaluate-tradeoffs", "plan-migration"],
+                 ModelPreference = "gpt-4-turbo",
+                 Temperature = 0.7m
+             },
+             new AgentDefinition
+             {
+                 AgentId = "architecture-agent",
+                 Name = "Architecture Agent",
                  Description = "Designs system architecture and technical solutions",
                  SystemPrompt = "You are a senior solutions architect. Your role is to design scalable, maintainable system architectures that meet both functional and non-functional requirements.",
                  Capabilities = ["create-architecture", "design-system", "evaluate-tradeoffs", "plan-migration"],
@@ -114,8 +134,28 @@ public class AgentRegistry : IAgentRegistry
              },
              new AgentDefinition
              {
+                 AgentId = "ux-agent",
+                 Name = "UX Agent",
+                 Description = "Creates user experience and interface designs",
+                 SystemPrompt = "You are a UX/UI designer. Your role is to create intuitive, accessible, and visually appealing user interfaces and experiences.",
+                 Capabilities = ["create-ui-design", "design-ux-flow", "evaluate-usability", "create-wireframes"],
+                 ModelPreference = "gpt-4",
+                 Temperature = 0.8m
+             },
+             new AgentDefinition
+             {
                  AgentId = "developer",
                  Name = "Developer",
+                 Description = "Implements features and writes production code",
+                 SystemPrompt = "You are a senior software developer. Your role is to implement features, write clean and maintainable code, and ensure code quality through testing and best practices.",
+                 Capabilities = ["write-code", "implement-feature", "write-tests", "refactor-code", "fix-bugs"],
+                 ModelPreference = "gpt-4-turbo",
+                 Temperature = 0.5m
+             },
+             new AgentDefinition
+             {
+                 AgentId = "dev-agent",
+                 Name = "Dev Agent",
                  Description = "Implements features and writes production code",
                  SystemPrompt = "You are a senior software developer. Your role is to implement features, write clean and maintainable code, and ensure code quality through testing and best practices.",
                  Capabilities = ["write-code", "implement-feature", "write-tests", "refactor-code", "fix-bugs"],
@@ -134,11 +174,31 @@ public class AgentRegistry : IAgentRegistry
              },
              new AgentDefinition
              {
+                 AgentId = "story-agent",
+                 Name = "Story Agent",
+                 Description = "Creates user stories and acceptance criteria",
+                 SystemPrompt = "You are a product delivery specialist. Your role is to translate requirements into clear user stories with acceptance criteria and implementation guidance.",
+                 Capabilities = ["create-user-stories", "define-acceptance-criteria", "prioritize-features"],
+                 ModelPreference = "gpt-4",
+                 Temperature = 0.7m
+             },
+             new AgentDefinition
+             {
                  AgentId = "orchestrator",
                  Name = "Orchestrator",
                  Description = "Coordinates between agents and manages workflow execution",
                  SystemPrompt = "You are a workflow orchestrator. Your role is to coordinate between different agents, manage task distribution, and ensure smooth workflow execution.",
                  Capabilities = ["coordinate-agents", "manage-workflow", "route-tasks", "aggregate-results"],
+                 ModelPreference = "gpt-4-turbo",
+                 Temperature = 0.6m
+             },
+             new AgentDefinition
+             {
+                 AgentId = "review-agent",
+                 Name = "Review Agent",
+                 Description = "Reviews work products and provides quality feedback",
+                 SystemPrompt = "You are a senior reviewer. Your role is to evaluate deliverables for completeness, correctness, and quality, and provide actionable feedback.",
+                 Capabilities = ["review-artifacts", "identify-risks", "provide-recommendations"],
                  ModelPreference = "gpt-4-turbo",
                  Temperature = 0.6m
              }

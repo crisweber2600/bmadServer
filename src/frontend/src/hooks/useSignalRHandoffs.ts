@@ -17,6 +17,25 @@ export interface AgentHandoffEvent {
 }
 
 /**
+ * Represents a user online/offline event
+ */
+export interface UserPresenceEvent {
+  UserId: string;
+  DisplayName: string;
+  IsOnline: boolean;
+  LastSeen?: Date;
+}
+
+/**
+ * Represents a user typing event
+ */
+export interface UserTypingEvent {
+  UserId: string;
+  DisplayName: string;
+  WorkflowId?: string;
+}
+
+/**
  * Hook options for SignalR handoff handling
  */
 export interface UseSignalRHandoffsOptions {
@@ -24,8 +43,16 @@ export interface UseSignalRHandoffsOptions {
   onHandoff?: (event: AgentHandoffEvent) => void;
   /** Callback when connection state changes */
   onConnectionStateChange?: (state: 'connected' | 'reconnecting' | 'disconnected') => void;
+  /** Callback when a user comes online */
+  onUserOnline?: (event: UserPresenceEvent) => void;
+  /** Callback when a user goes offline */
+  onUserOffline?: (event: UserPresenceEvent) => void;
+  /** Callback when a user is typing */
+  onUserTyping?: (event: UserTypingEvent) => void;
   /** Enable debug logging */
   debug?: boolean;
+  /** Typing timeout in milliseconds - default 3000 */
+  typingTimeoutMs?: number;
 }
 
 /**
@@ -45,7 +72,15 @@ export interface UseSignalRHandoffsOptions {
  * ```
  */
 export function useSignalRHandoffs(options?: UseSignalRHandoffsOptions) {
-  const { onHandoff, onConnectionStateChange, debug = false } = options || {};
+  const { 
+    onHandoff, 
+    onConnectionStateChange, 
+    onUserOnline,
+    onUserOffline,
+    onUserTyping,
+    debug = false,
+    typingTimeoutMs = 3000,
+  } = options || {};
   
   // Connection state
   const [connectionState, setConnectionState] = useState<'connected' | 'reconnecting' | 'disconnected'>('disconnected');
@@ -56,6 +91,11 @@ export function useSignalRHandoffs(options?: UseSignalRHandoffsOptions) {
   
   // Handoff history
   const [handoffHistory, setHandoffHistory] = useState<AgentHandoffEvent[]>([]);
+  
+  // Presence tracking
+  const [onlineUsers, setOnlineUsers] = useState<UserPresenceEvent[]>([]);
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const typingTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   // Debug logging helper
   const log = useCallback((message: string, data?: unknown) => {
@@ -71,7 +111,7 @@ export function useSignalRHandoffs(options?: UseSignalRHandoffsOptions) {
         log('Initializing SignalR connection...');
         
         // Get the API base URL (could be from env or config)
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+        const apiUrl = '';
         const hubUrl = `${apiUrl}/hubs/chat`;
         
         // Build connection with automatic reconnection
@@ -160,6 +200,110 @@ export function useSignalRHandoffs(options?: UseSignalRHandoffsOptions) {
           onHandoff?.(handoffEvent);
         });
 
+        // Register handler for USER_ONLINE events
+        connection.on('USER_ONLINE', (payload: {
+          UserId: string;
+          DisplayName: string;
+          IsOnline?: boolean;
+          LastSeen?: string;
+        }) => {
+          log('USER_ONLINE event received', payload);
+          
+          const presenceEvent: UserPresenceEvent = {
+            UserId: payload.UserId,
+            DisplayName: payload.DisplayName,
+            IsOnline: payload.IsOnline ?? true,
+            LastSeen: payload.LastSeen ? new Date(payload.LastSeen) : undefined,
+          };
+          
+          // Add or update user in online list
+          setOnlineUsers((prev) => {
+            const existing = prev.findIndex(u => u.UserId === presenceEvent.UserId);
+            if (existing >= 0) {
+              const updated = [...prev];
+              updated[existing] = presenceEvent;
+              return updated;
+            }
+            return [...prev, presenceEvent];
+          });
+          
+          // Call consumer callback
+          onUserOnline?.(presenceEvent);
+        });
+
+        // Register handler for USER_OFFLINE events
+        connection.on('USER_OFFLINE', (payload: {
+          UserId: string;
+          DisplayName: string;
+          IsOnline?: boolean;
+          LastSeen?: string;
+        }) => {
+          log('USER_OFFLINE event received', payload);
+          
+          const presenceEvent: UserPresenceEvent = {
+            UserId: payload.UserId,
+            DisplayName: payload.DisplayName,
+            IsOnline: false,
+            LastSeen: payload.LastSeen ? new Date(payload.LastSeen) : new Date(),
+          };
+          
+          // Remove user from online list
+          setOnlineUsers((prev) => prev.filter(u => u.UserId !== payload.UserId));
+          
+          // Also remove from typing users
+          setTypingUsers((prev) => prev.filter(name => name !== payload.DisplayName));
+          
+          // Clear any typing timeout for this user
+          const existingTimeout = typingTimeoutsRef.current.get(payload.DisplayName);
+          if (existingTimeout) {
+            clearTimeout(existingTimeout);
+            typingTimeoutsRef.current.delete(payload.DisplayName);
+          }
+          
+          // Call consumer callback
+          onUserOffline?.(presenceEvent);
+        });
+
+        // Register handler for USER_TYPING events
+        connection.on('USER_TYPING', (payload: {
+          UserId: string;
+          DisplayName: string;
+          WorkflowId?: string;
+        }) => {
+          log('USER_TYPING event received', payload);
+          
+          const typingEvent: UserTypingEvent = {
+            UserId: payload.UserId,
+            DisplayName: payload.DisplayName,
+            WorkflowId: payload.WorkflowId,
+          };
+          
+          // Add to typing users if not already present
+          setTypingUsers((prev) => {
+            if (prev.includes(payload.DisplayName)) {
+              return prev;
+            }
+            return [...prev, payload.DisplayName];
+          });
+          
+          // Clear existing timeout for this user
+          const existingTimeout = typingTimeoutsRef.current.get(payload.DisplayName);
+          if (existingTimeout) {
+            clearTimeout(existingTimeout);
+          }
+          
+          // Set timeout to remove from typing list
+          const timeoutId = setTimeout(() => {
+            setTypingUsers((prev) => prev.filter(name => name !== payload.DisplayName));
+            typingTimeoutsRef.current.delete(payload.DisplayName);
+          }, typingTimeoutMs);
+          
+          typingTimeoutsRef.current.set(payload.DisplayName, timeoutId);
+          
+          // Call consumer callback
+          onUserTyping?.(typingEvent);
+        });
+
         // Store connection and attempt to connect
         connectionRef.current = connection;
         
@@ -182,12 +326,16 @@ export function useSignalRHandoffs(options?: UseSignalRHandoffsOptions) {
 
     // Cleanup on unmount
     return () => {
+      // Clear all typing timeouts
+      typingTimeoutsRef.current.forEach((timeout) => clearTimeout(timeout));
+      typingTimeoutsRef.current.clear();
+      
       if (connectionRef.current) {
         connectionRef.current.stop()
           .catch((err) => log('Error stopping connection', err));
       }
     };
-  }, [log, onHandoff, onConnectionStateChange]);
+  }, [log, onHandoff, onConnectionStateChange, onUserOnline, onUserOffline, onUserTyping, typingTimeoutMs]);
 
   // Get current agent from most recent handoff
   const getCurrentAgent = useCallback((): { agentId: string; agentName: string } | null => {
@@ -207,17 +355,28 @@ export function useSignalRHandoffs(options?: UseSignalRHandoffsOptions) {
     setHandoffHistory([]);
   }, []);
 
+  // Clear presence data
+  const clearPresence = useCallback(() => {
+    setOnlineUsers([]);
+    setTypingUsers([]);
+    typingTimeoutsRef.current.forEach((timeout) => clearTimeout(timeout));
+    typingTimeoutsRef.current.clear();
+  }, []);
+
   return {
     // State
     connectionState,
     error,
     handoffHistory,
+    onlineUsers,
+    typingUsers,
     
     // Computed
     currentAgent: getCurrentAgent(),
     
     // Methods
     clearHistory,
+    clearPresence,
     
     // Connection control
     connection: connectionRef.current,

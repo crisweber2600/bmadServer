@@ -1,0 +1,52 @@
+- generic [ref=e3]:
+  - generic [ref=e55]:
+    - generic [ref=e56]:
+      - heading "BMAD Chat" [level=2] [ref=e57]
+      - generic [ref=e58]: ● Connected |
+    - button "logout Sign Out" [ref=e59] [cursor=pointer]:
+      - img "logout" [ref=e61]:
+        - img [ref=e62]
+      - generic [ref=e64]: Sign Out
+  - generic [ref=e67]:
+    - generic [ref=e69]:
+      - img "setting" [ref=e71]:
+        - img [ref=e72]
+      - strong [ref=e76]: "Workflow:"
+      - generic [ref=e77]:
+        - generic: Perform Code Review
+        - generic [ref=e78] [cursor=pointer]:
+          - generic [ref=e79]:
+            - generic "Perform Code Review" [ref=e175]
+            - combobox [active] [ref=e80]
+          - img "down" [ref=e82]:
+            - img [ref=e83]
+    - button "play-circle Start Workflow" [disabled] [ref=e86]:
+      - generic:
+        - img "play-circle":
+          - img
+      - generic: Start Workflow
+  - log "Chat messages" [ref=e88]:
+    - generic [ref=e89]: Select a workflow above and start chatting!
+  - generic [ref=e91]:
+    - button "arrow-right Next Step" [ref=e93] [cursor=pointer]:
+      - img "arrow-right" [ref=e95]:
+        - img [ref=e96]
+      - generic [ref=e98]: Next Step
+    - button "check-circle Summarize" [ref=e100] [cursor=pointer]:
+      - img "check-circle" [ref=e102]:
+        - img [ref=e103]
+      - generic [ref=e106]: Summarize
+    - button "question-circle Clarify" [ref=e108] [cursor=pointer]:
+      - img "question-circle" [ref=e110]:
+        - img [ref=e111]
+      - generic [ref=e114]: Clarify
+    - button "stop Finish" [ref=e116] [cursor=pointer]:
+      - img "stop" [ref=e118]:
+        - img [ref=e119]
+      - generic [ref=e121]: Finish
+  - generic [ref=e123]:
+    - textbox "Type your message..." [ref=e124]
+    - button "send Send" [ref=e125] [cursor=pointer]:
+      - img "send" [ref=e127]:
+        - img [ref=e128]
+      - generic [ref=e130]: Send

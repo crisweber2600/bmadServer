@@ -1,0 +1,101 @@
+code: lens
+name: "LENS: Layered Enterprise Navigation System"
+header: "Git-aware architectural navigation for large interconnected projects"
+subheader: "Automatically detects and switches between Domain, Service, Microservice, and Feature lenses"
+default_selected: false
+global: true
+
+# Activation Conditions (Conditionally Global)
+# LENS only activates when multi-service indicators are detected
+activation:
+  mode: conditional
+  conditions:
+    - has_directory: services/
+    - has_directory: apps/
+    - has_file: _lens/lens-config.yaml
+    - has_file: _lens/domain-map.yaml
+    - branch_matches: "service/*"
+    - branch_matches: "feature/*"
+  match: any  # Activates if ANY condition is true
+
+# Variables from Core Config inserted:
+## user_name
+## communication_language
+## document_output_language
+## output_folder
+
+# LENS-Provided Variables (available to all modules when LENS is active)
+# These are populated by the lens-detect workflow at session start
+exports:
+  current_lens:
+    description: "Active lens level (domain|service|microservice|feature)"
+    source: "runtime"
+    default: ""
+  active_domain:
+    description: "Current domain context name"
+    source: "runtime"
+    default: ""
+  active_service:
+    description: "Current service name"
+    source: "runtime"
+    default: ""
+  active_microservice:
+    description: "Current microservice name"
+    source: "runtime"
+    default: ""
+  active_feature:
+    description: "Current feature name"
+    source: "runtime"
+    default: ""
+  lens_summary:
+    description: "Brief context summary (e.g., '3 files, 2 commits')"
+    source: "runtime"
+    default: ""
+
+# LENS Configuration Variables
+
+lens_config_folder:
+  prompt: "Where should LENS store its configuration?"
+  default: "_lens"
+  result: "{project-root}/{value}"
+
+notification_level:
+  prompt:
+    - "How verbose should LENS notifications be?"
+    - "This controls how much LENS tells you during lens switches."
+  default: "smart"
+  result: "{value}"
+  single-select:
+    - value: "silent"
+      label: "Silent - Only errors and warnings"
+    - value: "smart"
+      label: "Smart - Meaningful transitions only (recommended)"
+    - value: "verbose"
+      label: "Verbose - All lens activity"
+
+auto_restore_session:
+  prompt: "Automatically offer to restore previous session context?"
+  default: true
+  result: "{value}"
+
+enable_onboarding:
+  prompt: "Enable first-time onboarding walkthrough for new users?"
+  default: true
+  result: "{value}"
+
+branch_detection_mode:
+  prompt: "How should LENS detect the current lens?"
+  default: "auto"
+  result: "{value}"
+  single-select:
+    - value: "git-first"
+      label: "Git First - Prioritize branch name patterns"
+    - value: "directory-first"
+      label: "Directory First - Prioritize working directory (trunk-based)"
+    - value: "auto"
+      label: "Auto - Smart detection based on project setup"
+
+default_branch_patterns:
+  prompt: "Use default branch patterns? (main/develop → Domain, feature/* → Feature)"
+  default: true
+  result: "{value}"

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Avatar, Tooltip, Typography, Divider } from 'antd';
+import { Avatar, Tooltip, Typography, Divider, Tag } from 'antd';
 import { RobotOutlined } from '@ant-design/icons';
 import './AgentAttribution.css';
 
@@ -15,6 +15,8 @@ export interface AgentAttributionProps {
   timestamp: Date;
   size?: 'small' | 'large';
   variant?: 'inline' | 'block';
+  /** Relevance score (0-1) for party mode - shows relevance badge when provided */
+  relevanceScore?: number;
 }
 
 export const AgentAttribution: React.FC<AgentAttributionProps> = ({
@@ -27,6 +29,7 @@ export const AgentAttribution: React.FC<AgentAttributionProps> = ({
   timestamp,
   size = 'large',
   variant = 'block',
+  relevanceScore,
 }) => {
   const [hovering, setHovering] = useState(false);
 
@@ -101,6 +104,19 @@ export const AgentAttribution: React.FC<AgentAttributionProps> = ({
     </div>
   );
 
+  // Get relevance badge based on score
+  const getRelevanceBadge = () => {
+    if (relevanceScore === undefined) return null;
+    
+    if (relevanceScore > 0.7) {
+      return <Tag color="green" className="relevance-badge">Highly Relevant</Tag>;
+    }
+    if (relevanceScore > 0.4) {
+      return <Tag color="blue" className="relevance-badge">Relevant</Tag>;
+    }
+    return <Tag color="default" className="relevance-badge">Low Relevance</Tag>;
+  };
+
   const avatar = (
     <Avatar
       icon={<RobotOutlined />}
@@ -120,6 +136,7 @@ export const AgentAttribution: React.FC<AgentAttributionProps> = ({
           <Text strong className="agent-name">
             {agentName}
           </Text>
+          {getRelevanceBadge()}
         </span>
       </Tooltip>
     );
@@ -138,6 +155,7 @@ export const AgentAttribution: React.FC<AgentAttributionProps> = ({
             <Text strong className="agent-name">
               {agentName}
             </Text>
+            {getRelevanceBadge()}
             <Text type="secondary" className="agent-timestamp">
               {formattedTime}
             </Text>

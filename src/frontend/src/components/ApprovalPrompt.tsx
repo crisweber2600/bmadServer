@@ -20,7 +20,7 @@ import {
 } from '@ant-design/icons';
 import './ApprovalPrompt.css';
 
-const { Text, Paragraph, Title } = Typography;
+const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
 export interface ApprovalRequestDto {
@@ -62,9 +62,9 @@ export const ApprovalPrompt: React.FC<ApprovalPromptProps> = ({
     return 'red';
   };
 
-  const getConfidenceStatus = (score: number): 'success' | 'warning' | 'exception' => {
+  const getConfidenceStatus = (score: number): 'success' | 'normal' | 'exception' => {
     if (score >= 0.9) return 'success';
-    if (score >= 0.7) return 'warning';
+    if (score >= 0.7) return 'normal';
     return 'exception';
   };
 

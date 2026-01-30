@@ -1,0 +1,145 @@
+.moderator-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 8px;
+  animation: slideIn 0.3s ease-out;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.moderator-alert.dismissing {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+/* Info severity - Blue */
+.moderator-alert-info {
+  background: linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%);
+  border: 1px solid #91d5ff;
+}
+
+.moderator-alert-info .alert-icon {
+  color: #1890ff;
+}
+
+.moderator-alert-info .alert-message {
+  color: #0050b3;
+}
+
+/* Warning severity - Amber */
+.moderator-alert-warning {
+  background: linear-gradient(135deg, #fff7e6 0%, #ffe7ba 100%);
+  border: 1px solid #ffc53d;
+}
+
+.moderator-alert-warning .alert-icon {
+  color: #fa8c16;
+}
+
+.moderator-alert-warning .alert-message {
+  color: #ad4e00;
+}
+
+/* Error severity - Red */
+.moderator-alert-error {
+  background: linear-gradient(135deg, #fff1f0 0%, #ffccc7 100%);
+  border: 1px solid #ff7875;
+}
+
+.moderator-alert-error .alert-icon {
+  color: #ff4d4f;
+}
+
+.moderator-alert-error .alert-message {
+  color: #a8071a;
+}
+
+.alert-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex: 1;
+}
+
+.alert-icon {
+  font-size: 18px;
+  margin-top: 2px;
+}
+
+.alert-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.alert-message {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.alert-details {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.alert-button {
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .moderator-alert-info {
+    background: linear-gradient(135deg, #112a45 0%, #1a3b5c 100%);
+    border-color: #1890ff;
+  }
+
+  .moderator-alert-info .alert-message {
+    color: #69c0ff;
+  }
+
+  .moderator-alert-warning {
+    background: linear-gradient(135deg, #3d3320 0%, #4a3d1f 100%);
+    border-color: #d48806;
+  }
+
+  .moderator-alert-warning .alert-message {
+    color: #ffc53d;
+  }
+
+  .moderator-alert-error {
+    background: linear-gradient(135deg, #2a1f1e 0%, #3d2524 100%);
+    border-color: #cf1322;
+  }
+
+  .moderator-alert-error .alert-message {
+    color: #ff7875;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .moderator-alert {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .alert-button {
+    margin-left: 0;
+    width: 100%;
+  }
+}

@@ -9,12 +9,17 @@ public class AgentRouter : IAgentRouter
 {
     private readonly Dictionary<string, IAgentHandler> _handlers = new();
     private readonly IAgentRegistry _agentRegistry;
+    private readonly IAgentHandlerFactory _handlerFactory;
     private readonly ILogger<AgentRouter> _logger;
     private string? _modelOverride;
 
-    public AgentRouter(IAgentRegistry agentRegistry, ILogger<AgentRouter> logger)
+    public AgentRouter(
+        IAgentRegistry agentRegistry,
+        IAgentHandlerFactory handlerFactory,
+        ILogger<AgentRouter> logger)
     {
         _agentRegistry = agentRegistry;
+        _handlerFactory = handlerFactory;
         _logger = logger;
     }
 
@@ -33,8 +38,18 @@ public class AgentRouter : IAgentRouter
             return handler;
         }
 
-        _logger.LogWarning("No handler registered for agent {AgentId}", agentId);
-        return null;
+        var agentDefinition = _agentRegistry.GetAgent(agentId);
+        if (agentDefinition == null)
+        {
+            _logger.LogWarning("No agent definition found for agent {AgentId}", agentId);
+            return null;
+        }
+
+        var modelPreference = GetModelPreference(agentId);
+        handler = _handlerFactory.CreateHandler(agentDefinition, modelPreference);
+        RegisterHandler(agentId, handler);
+
+        return handler;
     }
 
     /// <inheritdoc />

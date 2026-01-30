@@ -1,0 +1,160 @@
+.connection-status-wrapper {
+  overflow: hidden;
+  transition: all 0.3s ease-out;
+}
+
+.connection-status-wrapper.hidden {
+  height: 0;
+  opacity: 0;
+  margin: 0;
+}
+
+.connection-status-wrapper.visible {
+  height: auto;
+  opacity: 1;
+}
+
+.connection-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 14px;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Disconnected state - Amber warning */
+.connection-banner-disconnected {
+  background: linear-gradient(135deg, #fff7e6 0%, #fff3cd 100%);
+  border-bottom: 2px solid #faad14;
+  color: #8c5a00;
+}
+
+.connection-banner-disconnected .banner-icon {
+  color: #fa8c16;
+  font-size: 16px;
+}
+
+.connection-banner-disconnected .banner-text {
+  color: #8c5a00;
+}
+
+/* Reconnecting state - Yellow */
+.connection-banner-reconnecting {
+  background: linear-gradient(135deg, #fffbe6 0%, #fff7cd 100%);
+  border-bottom: 2px solid #fadb14;
+  color: #7c6b00;
+}
+
+.connection-banner-reconnecting .banner-icon {
+  color: #faad14;
+  font-size: 16px;
+}
+
+.connection-banner-reconnecting .banner-text {
+  color: #7c6b00;
+}
+
+/* Reconnected state - Green success */
+.connection-banner-reconnected {
+  background: linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%);
+  border-bottom: 2px solid #52c41a;
+  color: #135200;
+  animation: slideDown 0.3s ease-out, fadeOutUp 0.5s ease-in 1.5s forwards;
+}
+
+@keyframes fadeOutUp {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+}
+
+.connection-banner-reconnected .banner-icon {
+  color: #52c41a;
+  font-size: 16px;
+}
+
+.connection-banner-reconnected .banner-text {
+  color: #135200;
+}
+
+/* Action button */
+.banner-action {
+  padding: 0 8px;
+  height: 24px;
+  font-size: 12px;
+}
+
+.connection-banner-disconnected .banner-action {
+  color: #d46b08;
+}
+
+.connection-banner-disconnected .banner-action:hover {
+  color: #fa8c16;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .connection-banner-disconnected {
+    background: linear-gradient(135deg, #3d3320 0%, #4a3d1f 100%);
+    border-color: #d48806;
+  }
+
+  .connection-banner-disconnected .banner-text,
+  .connection-banner-disconnected .banner-action {
+    color: #ffc53d;
+  }
+
+  .connection-banner-reconnecting {
+    background: linear-gradient(135deg, #3d3a20 0%, #4a4520 100%);
+    border-color: #d4b106;
+  }
+
+  .connection-banner-reconnecting .banner-text {
+    color: #ffd666;
+  }
+
+  .connection-banner-reconnected {
+    background: linear-gradient(135deg, #1a3620 0%, #203a25 100%);
+    border-color: #389e0d;
+  }
+
+  .connection-banner-reconnected .banner-text {
+    color: #95de64;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .connection-banner {
+    flex-wrap: wrap;
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .banner-icon {
+    font-size: 14px !important;
+  }
+
+  .banner-action {
+    width: 100%;
+    margin-top: 4px;
+  }
+}

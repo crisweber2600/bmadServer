@@ -13,6 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Configure BMAD options for agent/workflow integration
 builder.Services.Configure<BmadOptions>(builder.Configuration.GetSection(BmadOptions.SectionName));
 builder.Services.Configure<OpenCodeOptions>(builder.Configuration.GetSection(OpenCodeOptions.SectionName));
+builder.Services.Configure<CopilotOptions>(builder.Configuration.GetSection(CopilotOptions.SectionName));
 
 // Add Aspire service defaults: health checks, telemetry (logging + tracing), service discovery, and resilience patterns
 // See ServiceDefaults/Extensions.cs for detailed configuration of:
@@ -81,10 +82,28 @@ builder.Services.AddHostedService<bmadServer.ApiService.BackgroundServices.Sessi
 // In Live/Replay mode: use BmadWorkflowRegistry (loads from BMAD files)
 var bmadOptions = builder.Configuration.GetSection(BmadOptions.SectionName).Get<BmadOptions>() ?? new BmadOptions();
 
+static string ResolveBmadBasePath(string? basePath, string contentRootPath)
+{
+    if (string.IsNullOrWhiteSpace(basePath))
+    {
+        return contentRootPath;
+    }
+
+    return Path.IsPathRooted(basePath)
+        ? basePath
+        : Path.GetFullPath(Path.Combine(contentRootPath, basePath));
+}
+
+var resolvedBmadBasePath = ResolveBmadBasePath(bmadOptions.BasePath, builder.Environment.ContentRootPath);
+builder.Services.PostConfigure<BmadOptions>(options =>
+{
+    options.BasePath = resolvedBmadBasePath;
+});
+
 // Log BMAD configuration at startup (deferred logging via LoggerMessage)
 var testModeDescription = bmadOptions.TestMode switch
 {
-    AgentTestMode.Live => $"Live - OpenCode executable: {bmadOptions.OpenCode.ExecutablePath}, DefaultModel: {bmadOptions.OpenCode.DefaultModel}",
+    AgentTestMode.Live => $"Live - Using Copilot SDK, DefaultModel: {bmadOptions.OpenCode.DefaultModel}",
     AgentTestMode.Replay => "Replay - responses will be cached/replayed",
     AgentTestMode.Mock => "Mock - using MockAgentHandler (no LLM calls)",
     _ => "Unknown mode"
@@ -101,7 +120,7 @@ else
     {
         options.ManifestPath = bmadOptions.WorkflowManifestPath;
         options.EnabledModules = bmadOptions.EnabledModules;
-        options.BasePath = bmadOptions.BasePath;
+        options.BasePath = resolvedBmadBasePath;
     });
     builder.Services.AddSingleton<bmadServer.ServiceDefaults.Services.Workflows.IWorkflowRegistry, bmadServer.ServiceDefaults.Services.Workflows.BmadWorkflowRegistry>();
 }
@@ -203,6 +222,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
         options.Events = new JwtBearerEvents
         {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) &&
+                    (path.StartsWithSegments("/hubs/chat")))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            },
             OnAuthenticationFailed = context =>
             {
                 if (context.Exception is SecurityTokenExpiredException)
@@ -242,7 +272,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 // Add controllers
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
 
 // Add SignalR for real-time communication
 builder.Services.AddSignalR();

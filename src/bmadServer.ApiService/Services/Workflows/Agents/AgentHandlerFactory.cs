@@ -23,6 +23,7 @@ public class AgentHandlerFactory : IAgentHandlerFactory
 {
     private readonly BmadOptions _bmadOptions;
     private readonly IOptions<OpenCodeOptions> _openCodeOptions;
+    private readonly IOptions<CopilotOptions> _copilotOptions;
     private readonly IOptions<BmadOptions> _bmadOptionsWrapper;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<AgentHandlerFactory> _logger;
@@ -30,11 +31,13 @@ public class AgentHandlerFactory : IAgentHandlerFactory
     public AgentHandlerFactory(
         IOptions<BmadOptions> bmadOptions,
         IOptions<OpenCodeOptions> openCodeOptions,
+        IOptions<CopilotOptions> copilotOptions,
         ILoggerFactory loggerFactory)
     {
         _bmadOptions = bmadOptions?.Value ?? throw new ArgumentNullException(nameof(bmadOptions));
         _bmadOptionsWrapper = bmadOptions;
         _openCodeOptions = openCodeOptions ?? throw new ArgumentNullException(nameof(openCodeOptions));
+        _copilotOptions = copilotOptions ?? throw new ArgumentNullException(nameof(copilotOptions));
         _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
         _logger = loggerFactory.CreateLogger<AgentHandlerFactory>();
     }
@@ -68,11 +71,11 @@ public class AgentHandlerFactory : IAgentHandlerFactory
 
     private IAgentHandler CreateLiveHandler(AgentDefinition agentDefinition, string? modelOverride)
     {
-        _logger.LogDebug("Creating OpenCodeAgentHandler for {AgentId}", agentDefinition.AgentId);
-        return new OpenCodeAgentHandler(
+        _logger.LogDebug("Creating CopilotAgentHandler for {AgentId}", agentDefinition.AgentId);
+        return new CopilotAgentHandler(
             agentDefinition,
-            _openCodeOptions,
-            _loggerFactory.CreateLogger<OpenCodeAgentHandler>(),
+            _copilotOptions,
+            _loggerFactory.CreateLogger<CopilotAgentHandler>(),
             modelOverride);
     }
 

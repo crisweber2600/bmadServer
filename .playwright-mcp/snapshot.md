@@ -1,0 +1,17 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - heading "BMAD Chat" [level=2] [ref=e5]
+    - generic [ref=e6]: Sign in to start chatting
+  - generic [ref=e7]:
+    - generic [ref=e8]:
+      - textbox "Email" [ref=e10]: newuser5@example.com
+      - generic [ref=e12]:
+        - textbox "Password" [ref=e13]: Test1234!
+        - img "eye-invisible" [ref=e15] [cursor=pointer]:
+          - img [ref=e16]
+      - button "login Sign In" [active] [ref=e20] [cursor=pointer]:
+        - img "login" [ref=e22]:
+          - img [ref=e23]
+        - generic [ref=e25]: Sign In
+    - button "Don't have an account? Register" [ref=e27] [cursor=pointer]:
+      - generic [ref=e28]: Don't have an account? Register

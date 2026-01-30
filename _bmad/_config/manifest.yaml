@@ -8,5 +8,6 @@ modules:
   - bmgd
   - bmm
   - cis
+  - lens
 ides:
   - opencode

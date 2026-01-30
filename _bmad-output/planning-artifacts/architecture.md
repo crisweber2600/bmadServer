@@ -13,7 +13,7 @@ architecturalConstraints:
   - "Backend: .NET 10 with Aspire"
   - "Template: .NET Aspire Starter App (via Aspire CLI)"
   - "Framework: ASP.NET Core with Aspire orchestration"
-  - "Integration: OpenCode server for BMAD interactions"
+  - "Integration: GitHub Copilot SDK for BMAD agent interactions"
   - "Real-time: SignalR WebSocket (NuGet: Microsoft.AspNetCore.SignalR)"
   - "State: PostgreSQL with Event Log (+ JSONB concurrency control)"
   - "Agents: In-process (MVP), Queue-ready interface"
@@ -472,7 +472,7 @@ CREATE INDEX idx_workflows_tenant ON workflows(tenant_id);
 Project classification:
 - Backend: ASP.NET Core (.NET 10) with SignalR for real-time chat orchestration
 - Framework: Microsoft Aspire for cloud-native service orchestration
-- Integration: OpenCode server for BMAD agent interactions  
+- Integration: GitHub Copilot SDK for BMAD agent interactions  
 - Real-time: WebSocket-based chat + event streaming
 - Deployment: Self-hosted Docker containers with unified orchestration
 

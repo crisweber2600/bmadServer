@@ -10,6 +10,7 @@ public class AgentHandlerFactoryTests
 {
     private readonly Mock<IOptions<BmadOptions>> _bmadOptionsMock;
     private readonly Mock<IOptions<OpenCodeOptions>> _openCodeOptionsMock;
+    private readonly Mock<IOptions<CopilotOptions>> _copilotOptionsMock;
     private readonly Mock<ILoggerFactory> _loggerFactoryMock;
     private readonly Mock<ILogger<AgentHandlerFactory>> _loggerMock;
 
@@ -17,10 +18,12 @@ public class AgentHandlerFactoryTests
     {
         _bmadOptionsMock = new Mock<IOptions<BmadOptions>>();
         _openCodeOptionsMock = new Mock<IOptions<OpenCodeOptions>>();
+        _copilotOptionsMock = new Mock<IOptions<CopilotOptions>>();
         _loggerFactoryMock = new Mock<ILoggerFactory>();
         _loggerMock = new Mock<ILogger<AgentHandlerFactory>>();
 
         _openCodeOptionsMock.Setup(x => x.Value).Returns(new OpenCodeOptions());
+        _copilotOptionsMock.Setup(x => x.Value).Returns(new CopilotOptions());
         _loggerFactoryMock.Setup(x => x.CreateLogger(It.IsAny<string>())).Returns(_loggerMock.Object);
     }
 
@@ -36,6 +39,7 @@ public class AgentHandlerFactoryTests
         var factory = new AgentHandlerFactory(
             _bmadOptionsMock.Object,
             _openCodeOptionsMock.Object,
+            _copilotOptionsMock.Object,
             _loggerFactoryMock.Object);
 
         var agentDef = CreateTestAgentDefinition();
@@ -48,7 +52,7 @@ public class AgentHandlerFactoryTests
     }
 
     [Fact]
-    public void CreateHandler_LiveMode_ReturnsOpenCodeAgentHandler()
+    public void CreateHandler_LiveMode_ReturnsCopilotAgentHandler()
     {
         // Arrange
         _bmadOptionsMock.Setup(x => x.Value).Returns(new BmadOptions
@@ -59,6 +63,7 @@ public class AgentHandlerFactoryTests
         var factory = new AgentHandlerFactory(
             _bmadOptionsMock.Object,
             _openCodeOptionsMock.Object,
+            _copilotOptionsMock.Object,
             _loggerFactoryMock.Object);
 
         var agentDef = CreateTestAgentDefinition();
@@ -67,7 +72,7 @@ public class AgentHandlerFactoryTests
         var handler = factory.CreateHandler(agentDef);
 
         // Assert
-        Assert.IsType<OpenCodeAgentHandler>(handler);
+        Assert.IsType<CopilotAgentHandler>(handler);
     }
 
     [Fact]
@@ -83,6 +88,7 @@ public class AgentHandlerFactoryTests
         var factory = new AgentHandlerFactory(
             _bmadOptionsMock.Object,
             _openCodeOptionsMock.Object,
+            _copilotOptionsMock.Object,
             _loggerFactoryMock.Object);
 
         var agentDef = CreateTestAgentDefinition();
@@ -103,6 +109,7 @@ public class AgentHandlerFactoryTests
         var factory = new AgentHandlerFactory(
             _bmadOptionsMock.Object,
             _openCodeOptionsMock.Object,
+            _copilotOptionsMock.Object,
             _loggerFactoryMock.Object);
 
         // Act & Assert
