@@ -245,6 +245,7 @@ public class CopilotAgentHandler : IAgentHandler
             if (client != null)
             {
                 await client.StopAsync();
+                await client.DisposeAsync();
             }
         }
     }
@@ -360,6 +361,7 @@ public class CopilotAgentHandler : IAgentHandler
             if (root.TryGetProperty("output", out var outputProp))
             {
                 outputDoc = JsonDocument.Parse(outputProp.GetRawText());
+                jsonDoc.Dispose(); // Dispose the original document since we're using a new one
             }
             else
             {
