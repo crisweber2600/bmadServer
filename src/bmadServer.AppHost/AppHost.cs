@@ -8,15 +8,20 @@ var builder = DistributedApplication.CreateBuilder(args);
 // Check if we're running in test mode (no frontend needed)
 var isTestMode = builder.Configuration.GetValue<bool>("IsTestMode");
 
+// Check if pgAdmin should be enabled (disabled by default for security)
+// Set EnablePgAdmin=true in configuration to enable pgAdmin UI during development
+var enablePgAdmin = builder.Configuration.GetValue<bool>("EnablePgAdmin");
+
 // Configure PostgreSQL database resource via Aspire
 // - "pgsql" is the resource name (used for service discovery)
 // - WithPgAdmin() adds a pgAdmin UI at https://localhost:5050 for database management
+//   (only enabled when EnablePgAdmin=true to avoid exposing credentials during debugging)
 // - AddDatabase("bmadserver", "bmadserver_dev") creates a database with the user credentials
 // - WithHealthCheck() enables health check monitoring (CRITICAL for startup validation)
 // PostgreSQL will start automatically when 'aspire run' is executed
 // Health checks are automatically configured by Aspire and include startup verification
 var pgsql = builder.AddPostgres("pgsql");
-if (!isTestMode)
+if (!isTestMode && enablePgAdmin)
 {
     pgsql.WithPgAdmin();
 }

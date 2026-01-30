@@ -200,11 +200,26 @@ aspire run
 ## Database Management
 
 ### View Database with pgAdmin
-```bash
-# pgAdmin runs automatically with Aspire at:
-# https://localhost:5050
-# Login: admin@admin.com / admin
-```
+
+**Note:** pgAdmin is disabled by default for security reasons. To enable it during development:
+
+1. Edit `src/bmadServer.AppHost/appsettings.Development.json` and set:
+   ```json
+   "EnablePgAdmin": true
+   ```
+
+2. Restart Aspire:
+   ```bash
+   aspire run
+   ```
+
+3. Access pgAdmin at:
+   ```
+   https://localhost:5050
+   Login: admin@admin.com / admin
+   ```
+
+**Security Note:** Never enable pgAdmin in production environments as it exposes database credentials.
 
 ### Run Migrations
 ```bash
