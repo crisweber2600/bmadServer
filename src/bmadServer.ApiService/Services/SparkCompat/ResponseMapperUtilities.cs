@@ -12,7 +12,7 @@ namespace bmadServer.ApiService.Services.SparkCompat;
 /// 
 /// Design:
 /// - Stateless utility class (no dependencies)
-/// - Generic over payload type <T>
+/// - Generic over payload type T
 /// - Includes factory methods for common response types
 /// </summary>
 public static class ResponseMapperUtilities
@@ -41,7 +41,7 @@ public static class ResponseMapperUtilities
     /// <returns>Wrapped response envelope with custom status</returns>
     public static ResponseEnvelope<T> MapToEnvelope<T>(T data, int statusCode, string? traceId = null, string message = "Success")
     {
-        return ResponseEnvelope<T>.Success(data, statusCode, traceId, message);
+        return ResponseEnvelope<T>.Success(data, traceId, message, statusCode);
     }
 
     /// <summary>
@@ -65,7 +65,7 @@ public static class ResponseMapperUtilities
     /// <returns>Health response envelope</returns>
     public static ResponseEnvelope<HealthResponseDto> MapHealthResponse(HealthResponseDto healthResponse, string? traceId = null)
     {
-        return ResponseEnvelope<HealthResponseDto>.Success(healthResponse, 200, traceId, "Health check completed");
+        return ResponseEnvelope<HealthResponseDto>.Success(healthResponse, traceId, "Health check completed", 200);
     }
 
     /// <summary>

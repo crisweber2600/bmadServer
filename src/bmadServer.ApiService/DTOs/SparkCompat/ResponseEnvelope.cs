@@ -21,7 +21,7 @@ public class ResponseEnvelope<T>
     /// Indicates success or failure of the request.
     /// </summary>
     [JsonPropertyName("success")]
-    public bool Success { get; set; }
+    public bool IsSuccess { get; set; }
 
     /// <summary>
     /// HTTP status code of the response.
@@ -57,35 +57,15 @@ public class ResponseEnvelope<T>
     /// Creates a successful response envelope.
     /// </summary>
     /// <param name="data">The payload data</param>
-    /// <param name="message">Optional success message</param>
     /// <param name="traceId">Optional trace ID for debugging</param>
+    /// <param name="message">Optional success message</param>
+    /// <param name="statusCode">Optional HTTP status code (defaults to 200)</param>
     /// <returns>A successful ResponseEnvelope</returns>
-    public static ResponseEnvelope<T> Success(T data, string? traceId = null, string message = "Success")
+    public static ResponseEnvelope<T> Success(T data, string? traceId = null, string message = "Success", int statusCode = 200)
     {
         return new ResponseEnvelope<T>
         {
-            Success = true,
-            StatusCode = 200,
-            Message = message,
-            Data = data,
-            TraceId = traceId,
-            Timestamp = DateTime.UtcNow
-        };
-    }
-
-    /// <summary>
-    /// Creates a successful response envelope with custom status code.
-    /// </summary>
-    /// <param name="data">The payload data</param>
-    /// <param name="statusCode">The HTTP status code</param>
-    /// <param name="message">Optional success message</param>
-    /// <param name="traceId">Optional trace ID for debugging</param>
-    /// <returns>A successful ResponseEnvelope with custom status code</returns>
-    public static ResponseEnvelope<T> Success(T data, int statusCode, string? traceId = null, string message = "Success")
-    {
-        return new ResponseEnvelope<T>
-        {
-            Success = true,
+            IsSuccess = true,
             StatusCode = statusCode,
             Message = message,
             Data = data,
@@ -105,7 +85,7 @@ public class ResponseEnvelope<T>
     {
         return new ResponseEnvelope<T>
         {
-            Success = false,
+            IsSuccess = false,
             StatusCode = statusCode,
             Message = message,
             Data = default,
