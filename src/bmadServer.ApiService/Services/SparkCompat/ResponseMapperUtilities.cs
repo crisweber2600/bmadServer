@@ -69,23 +69,29 @@ public static class ResponseMapperUtilities
     }
 
     /// <summary>
-    /// Maps an exception into an error response envelope.
+    /// Maps an exception into a safe error response envelope.
+    /// IMPORTANT: Never exposes raw exception messages to clients (OWASP secure coding).
     /// </summary>
     /// <typeparam name="T">Type of original payload</typeparam>
     /// <param name="ex">The exception that occurred</param>
-    /// <param name="traceId">Optional request trace ID</param>
-    /// <returns>Error response envelope with exception details</returns>
+    /// <param name="traceId">Optional request trace ID for correlating logs</param>
+    /// <returns>Error response with safe message (no internal details exposed)</returns>
     public static ResponseEnvelope<T> MapException<T>(Exception ex, string? traceId = null)
     {
-        var statusCode = 500;
-        var message = ex switch
+        // Determine appropriate HTTP status code and SAFE client message
+        // NOTE: Never expose raw exception.Message to clients - always use generic messages
+        var (statusCode, safeMessage) = ex switch
         {
-            ArgumentException => (400, "Invalid argument: " + ex.Message),
-            KeyNotFoundException => (404, "Not found: " + ex.Message),
-            UnauthorizedAccessException => (401, "Unauthorized"),
-            _ => (500, "Internal server error")
+            ArgumentException => (400, "Invalid request data provided"),
+            KeyNotFoundException => (404, "The requested resource was not found"),
+            UnauthorizedAccessException => (401, "Authentication required or invalid credentials"),
+            _ => (500, "An internal error occurred. Please contact support with your request trace ID")
         };
 
-        return ResponseEnvelope<T>.Error(message.Item1, message.Item2, traceId);
+        // Log the actual exception internally (TODO: inject ILogger for production logging)
+        // This ensures debugging without exposing details to clients
+        System.Diagnostics.Debug.WriteLine($"[{typeof(T).Name}] Exception: {ex.GetType().Name}: {ex.Message}");
+
+        return ResponseEnvelope<T>.Error(statusCode, safeMessage, traceId);
     }
 }

@@ -49,13 +49,27 @@ public class HealthResponseDto
     public string Database { get; set; } = "healthy";
 
     /// <summary>
-    /// Creates a healthy response for the current environment.
+    /// Factory method: Creates a healthy response for the current environment.
+    /// Validates all input parameters.
     /// </summary>
-    /// <param name="environment">Current environment name</param>
-    /// <param name="uptime">Uptime in seconds</param>
-    /// <returns>A HealthResponseDto indicating healthy status</returns>
+    /// <param name="environment">Current environment name (required, non-empty)</param>
+    /// <param name="uptime">Uptime in seconds since application started (must be >= 0)</param>
+    /// <returns>A HealthResponseDto with validated data</returns>
+    /// <exception cref="ArgumentNullException">If environment is null</exception>
+    /// <exception cref="ArgumentException">If environment is empty</exception>
+    /// <exception cref="ArgumentOutOfRangeException">If uptime is negative</exception>
     public static HealthResponseDto Healthy(string environment, long uptime)
     {
+        ArgumentNullException.ThrowIfNull(environment);
+        if (string.IsNullOrWhiteSpace(environment))
+        {
+            throw new ArgumentException("Environment name cannot be empty", nameof(environment));
+        }
+        if (uptime < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(uptime), "Uptime cannot be negative");
+        }
+
         return new HealthResponseDto
         {
             Status = "healthy",

@@ -8,14 +8,11 @@ namespace bmadServer.ApiService.DTOs.SparkCompat;
 /// Purpose:
 /// - Provides consistent response format across all /v1/* endpoints
 /// - Wraps actual payload with metadata (status, timestamp, trace ID)
-/// - Enables client-side response envelope unpacking
-/// 
-/// Usage:
-///   var data = new HealthResponseDto { Status = "healthy" };
-///   return Ok(ResponseEnvelope.Success(data, HttpContext.TraceIdentifier));
+/// - Validates HTTP status codes (100-599)
+/// - Never exposes raw exception details to clients
 /// </summary>
 /// <typeparam name="T">The type of data being wrapped</typeparam>
-public class ResponseEnvelope<T>
+public sealed class ResponseEnvelope<T>
 {
     /// <summary>
     /// Indicates success or failure of the request.
@@ -63,6 +60,8 @@ public class ResponseEnvelope<T>
     /// <returns>A successful ResponseEnvelope</returns>
     public static ResponseEnvelope<T> Success(T data, string? traceId = null, string message = "Success", int statusCode = 200)
     {
+        ValidateStatusCode(statusCode);
+        ArgumentNullException.ThrowIfNull(message);
         return new ResponseEnvelope<T>
         {
             IsSuccess = true,
@@ -77,12 +76,14 @@ public class ResponseEnvelope<T>
     /// <summary>
     /// Creates an error response envelope.
     /// </summary>
-    /// <param name="statusCode">The HTTP status code</param>
-    /// <param name="message">Error message</param>
+    /// <param name="statusCode">The HTTP status code (100-599)</param>
+    /// <param name="message">Safe error message (never contains raw exception details)</param>
     /// <param name="traceId">Optional trace ID for debugging</param>
     /// <returns>An error ResponseEnvelope</returns>
     public static ResponseEnvelope<T> Error(int statusCode, string message, string? traceId = null)
     {
+        ValidateStatusCode(statusCode);
+        ArgumentNullException.ThrowIfNull(message);
         return new ResponseEnvelope<T>
         {
             IsSuccess = false,
@@ -92,5 +93,17 @@ public class ResponseEnvelope<T>
             TraceId = traceId,
             Timestamp = DateTime.UtcNow
         };
+    }
+
+    /// <summary>
+    /// Validates HTTP status code is within valid range (100-599).
+    /// </summary>
+    private static void ValidateStatusCode(int statusCode)
+    {
+        if (statusCode < 100 || statusCode > 599)
+        {
+            throw new ArgumentOutOfRangeException(nameof(statusCode),
+                $"HTTP status code must be between 100 and 599. Got: {statusCode}");
+        }
     }
 }
