@@ -70,7 +70,8 @@ public class WorkflowCancellationIntegrationTests : IDisposable
             new Mock<IApprovalService>().Object,
             _hubContextMock.Object,
             new Mock<ILogger<WorkflowsController>>().Object,
-            new Mock<IParticipantService>().Object);
+            new Mock<IParticipantService>().Object,
+            new Mock<ISessionService>().Object);
 
         _testUserId = Guid.NewGuid();
         var claims = new List<Claim>
@@ -256,7 +257,8 @@ public class WorkflowCancellationIntegrationTests : IDisposable
             new Mock<IApprovalService>().Object,
             _hubContextMock.Object,
             new Mock<ILogger<WorkflowsController>>().Object,
-            new Mock<IParticipantService>().Object);
+            new Mock<IParticipantService>().Object,
+            new Mock<ISessionService>().Object);
 
         controller.ControllerContext = new ControllerContext
         {

@@ -55,6 +55,7 @@ builder.Services.AddProblemDetails();
 
 // Configure JWT settings from appsettings.json
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.SectionName));
+builder.Services.Configure<SparkCompatRolloutOptions>(builder.Configuration.GetSection(SparkCompatRolloutOptions.SectionName));
 
 // Register JWT token service
 builder.Services.AddScoped<bmadServer.ApiService.Services.IJwtTokenService, bmadServer.ApiService.Services.JwtTokenService>();
@@ -67,6 +68,7 @@ builder.Services.AddScoped<bmadServer.ApiService.Services.IRefreshTokenService, 
 
 // Register session service
 builder.Services.AddScoped<bmadServer.ApiService.Services.ISessionService, bmadServer.ApiService.Services.SessionService>();
+builder.Services.AddScoped<bmadServer.ApiService.Services.IRoleService, bmadServer.ApiService.Services.RoleService>();
 
 // Register translation service
 builder.Services.AddScoped<bmadServer.ApiService.Services.ITranslationService, bmadServer.ApiService.Services.TranslationService>();
@@ -257,7 +259,28 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
                 if (!context.Response.HasStarted)
                 {
+                    var path = context.Request.Path.Value ?? string.Empty;
                     context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+
+                    if (path.StartsWith("/v1", StringComparison.OrdinalIgnoreCase))
+                    {
+                        context.Response.ContentType = "application/json";
+
+                        var envelope = new
+                        {
+                            success = false,
+                            statusCode = StatusCodes.Status401Unauthorized,
+                            message = context.AuthenticateFailure?.Message.Contains("expired", StringComparison.OrdinalIgnoreCase) == true
+                                ? "Access token has expired. Please refresh your token."
+                                : "Invalid or missing authentication token.",
+                            data = (object?)null,
+                            timestamp = DateTime.UtcNow,
+                            traceId = context.HttpContext.TraceIdentifier
+                        };
+
+                        return context.Response.WriteAsJsonAsync(envelope);
+                    }
+
                     context.Response.ContentType = "application/problem+json";
 
                     var problemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails
@@ -265,7 +288,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                         Type = "https://bmadserver.dev/errors/unauthorized",
                         Title = "Unauthorized",
                         Status = StatusCodes.Status401Unauthorized,
-                        Detail = context.AuthenticateFailure?.Message.Contains("expired") == true
+                        Detail = context.AuthenticateFailure?.Message.Contains("expired", StringComparison.OrdinalIgnoreCase) == true
                             ? "Access token has expired. Please refresh your token."
                             : "Invalid or missing authentication token."
                     };

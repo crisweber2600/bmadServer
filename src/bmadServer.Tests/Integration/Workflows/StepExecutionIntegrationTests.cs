@@ -42,8 +42,9 @@ public class StepExecutionIntegrationTests : IDisposable
         // Create real services
         _workflowRegistry = new TestWorkflowRegistry();
         var registryMock = new Mock<IAgentRegistry>();
+        var handlerFactoryMock = new Mock<IAgentHandlerFactory>();
         _agentRegistry = registryMock.Object;
-        _agentRouter = new AgentRouter(registryMock.Object, new Mock<ILogger<AgentRouter>>().Object);
+        _agentRouter = new AgentRouter(registryMock.Object, handlerFactoryMock.Object, new Mock<ILogger<AgentRouter>>().Object);
         
         var agentHandoffServiceMock = new Mock<IAgentHandoffService>();
         _workflowInstanceService = new WorkflowInstanceService(
@@ -87,7 +88,8 @@ public class StepExecutionIntegrationTests : IDisposable
             approvalServiceMock.Object,
             hubContextMock.Object,
             new Mock<ILogger<WorkflowsController>>().Object,
-            new Mock<IParticipantService>().Object);
+            new Mock<IParticipantService>().Object,
+            new Mock<ISessionService>().Object);
 
         // Setup test user
         _testUserId = Guid.NewGuid();

@@ -10,13 +10,15 @@ public class AgentRouterTests
 {
     private readonly Mock<ILogger<AgentRouter>> _loggerMock;
     private readonly Mock<IAgentRegistry> _registryMock;
+    private readonly Mock<IAgentHandlerFactory> _handlerFactoryMock;
     private readonly AgentRouter _agentRouter;
 
     public AgentRouterTests()
     {
         _loggerMock = new Mock<ILogger<AgentRouter>>();
         _registryMock = new Mock<IAgentRegistry>();
-        _agentRouter = new AgentRouter(_registryMock.Object, _loggerMock.Object);
+        _handlerFactoryMock = new Mock<IAgentHandlerFactory>();
+        _agentRouter = new AgentRouter(_registryMock.Object, _handlerFactoryMock.Object, _loggerMock.Object);
     }
 
     [Fact]
