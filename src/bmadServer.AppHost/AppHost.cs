@@ -35,11 +35,25 @@ var apiService = builder.AddProject<Projects.bmadServer_ApiService>("apiservice"
 // Configure the React frontend (using Vite dev server) - skip in test mode
 if (!isTestMode)
 {
+    var configuredUiPath = builder.Configuration.GetValue<string>("UiPath");
+    var uiPath = string.IsNullOrWhiteSpace(configuredUiPath)
+        ? Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "..", "bmad-chat"))
+        : (Path.IsPathRooted(configuredUiPath)
+            ? configuredUiPath
+            : Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, configuredUiPath)));
+
+    if (!Directory.Exists(uiPath))
+    {
+        throw new DirectoryNotFoundException($"Configured UI path does not exist: {uiPath}");
+    }
+
     // - WithExternalHttpEndpoints() exposes the frontend to the host machine
-    // - WithReference(apiService) injects API service endpoint for client calls
+    // - WithEnvironment("VITE_API_BASE_URL", ...) provides backend base URL to Vite client code
+    // - WithReference(apiService) ensures service discovery wiring is available
     // - WaitFor(apiService) ensures frontend starts after API is healthy
-    var frontend = builder.AddViteApp("frontend", "../frontend")
+    var frontend = builder.AddViteApp("frontend", uiPath)
         .WithExternalHttpEndpoints()
+        .WithEnvironment("VITE_API_BASE_URL", apiService.GetEndpoint("http"))
         .WithReference(apiService)
         .WaitFor(apiService);
 }
