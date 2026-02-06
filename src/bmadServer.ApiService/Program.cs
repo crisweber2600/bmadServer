@@ -303,6 +303,34 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
+// Configure CORS for cross-origin frontend access (Vite dev server runs on dynamic ports)
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        if (builder.Environment.IsDevelopment())
+        {
+            // In development, allow any origin (Aspire assigns dynamic ports to the Vite frontend)
+            // Use SetIsOriginAllowed instead of AllowAnyOrigin to support credentialed requests (Bearer tokens)
+            policy.SetIsOriginAllowed(_ => true)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials()
+                  .WithExposedHeaders("Token-Expired");
+        }
+        else
+        {
+            // In production, restrict to configured origins
+            var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials()
+                  .WithExposedHeaders("Token-Expired");
+        }
+    });
+});
+
 // Add controllers
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -362,6 +390,9 @@ app.UseExceptionHandler();
 
 // Apply rate limiting before authentication to protect auth endpoints
 app.UseIpRateLimiting();
+
+// Enable CORS middleware (must be before auth but after rate limiting)
+app.UseCors();
 
 // Add authentication and authorization middleware (order matters!)
 app.UseAuthentication();
