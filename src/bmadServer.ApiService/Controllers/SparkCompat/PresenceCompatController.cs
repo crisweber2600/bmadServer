@@ -28,6 +28,9 @@ public class PresenceCompatController : SparkCompatControllerBase
     }
 
     [HttpPut("users/{userId:guid}/presence")]
+    [ProducesResponseType(typeof(ResponseEnvelope<PresenceDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PresenceDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PresenceDto>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<PresenceDto>>> UpdatePresence(Guid userId, [FromBody] UpdatePresenceRequest request)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnablePresence)
@@ -62,6 +65,8 @@ public class PresenceCompatController : SparkCompatControllerBase
 
         snapshot.UserName = user.DisplayName;
         snapshot.AvatarUrl = AvatarFor(user.DisplayName);
+        snapshot.Status = string.IsNullOrWhiteSpace(request.Status) ? "online" : request.Status;
+        snapshot.Domain = string.IsNullOrWhiteSpace(request.Domain) ? "chat" : request.Domain;
         snapshot.ActiveChatId = request.ActiveChat;
         snapshot.IsTyping = request.IsTyping;
         snapshot.TypingChatId = request.TypingChatId;
@@ -79,7 +84,9 @@ public class PresenceCompatController : SparkCompatControllerBase
     }
 
     [HttpGet("presence")]
-    public async Task<ActionResult<ResponseEnvelope<PresenceListDto>>> ListPresence([FromQuery] string? chatId = null)
+    [ProducesResponseType(typeof(ResponseEnvelope<PresenceListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PresenceListDto>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ResponseEnvelope<PresenceListDto>>> ListPresence([FromQuery] string? domain = null, [FromQuery] string? chatId = null)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnablePresence)
         {
@@ -89,6 +96,10 @@ public class PresenceCompatController : SparkCompatControllerBase
         await CleanupStalePresenceAsync();
 
         var query = DbContext.SparkCompatPresenceSnapshots.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(domain))
+        {
+            query = query.Where(snapshot => snapshot.Domain == domain);
+        }
         if (!string.IsNullOrWhiteSpace(chatId))
         {
             query = query.Where(snapshot => snapshot.ActiveChatId == chatId);
@@ -124,8 +135,10 @@ public class PresenceCompatController : SparkCompatControllerBase
         return new PresenceDto
         {
             UserId = snapshot.UserId.ToString(),
-            UserName = snapshot.UserName,
+            DisplayName = snapshot.UserName,
             AvatarUrl = snapshot.AvatarUrl,
+            Status = snapshot.Status,
+            Domain = snapshot.Domain,
             ActiveChat = snapshot.ActiveChatId,
             LastSeen = SparkCompatUtilities.ToUnixMilliseconds(snapshot.LastSeenAt),
             IsTyping = snapshot.IsTyping,
@@ -138,6 +151,8 @@ public class PresenceCompatController : SparkCompatControllerBase
 
     public sealed class UpdatePresenceRequest
     {
+        public string? Status { get; set; }
+        public string? Domain { get; set; }
         public string? ActiveChat { get; set; }
         public bool IsTyping { get; set; }
         public string? TypingChatId { get; set; }
@@ -153,8 +168,10 @@ public class PresenceCompatController : SparkCompatControllerBase
     public sealed class PresenceDto
     {
         public string UserId { get; set; } = string.Empty;
-        public string UserName { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
         public string AvatarUrl { get; set; } = string.Empty;
+        public string Status { get; set; } = "online";
+        public string Domain { get; set; } = "chat";
         public string? ActiveChat { get; set; }
         public long LastSeen { get; set; }
         public bool IsTyping { get; set; }

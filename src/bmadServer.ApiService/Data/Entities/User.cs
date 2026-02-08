@@ -14,6 +14,11 @@ public class User
     /// </summary>
     public PersonaType PersonaType { get; set; } = PersonaType.Hybrid;
 
+    /// <summary>
+    /// Optional avatar URL for user profile display
+    /// </summary>
+    public string? AvatarUrl { get; set; }
+
     public ICollection<Session> Sessions { get; set; } = new List<Session>();
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }

@@ -31,7 +31,11 @@ public class CollaborationEventsCompatController : SparkCompatControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<ResponseEnvelope<CollaborationEventListDto>>> GetEvents([FromQuery] long? since = null)
+    [ProducesResponseType(typeof(ResponseEnvelope<CollaborationEventListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<CollaborationEventListDto>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ResponseEnvelope<CollaborationEventListDto>>> GetEvents(
+        [FromQuery] string? domain = null,
+        [FromQuery] long? since = null)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnableCollaborationEvents)
         {
@@ -43,6 +47,15 @@ public class CollaborationEventsCompatController : SparkCompatControllerBase
         {
             var sinceTime = SparkCompatUtilities.FromUnixMilliseconds(since.Value);
             query = query.Where(evt => evt.Timestamp > sinceTime);
+        }
+
+        if (!string.IsNullOrWhiteSpace(domain))
+        {
+            var typePrefixes = GetTypePrefixesForDomain(domain);
+            if (typePrefixes.Length > 0)
+            {
+                query = query.Where(evt => typePrefixes.Any(prefix => evt.Type.StartsWith(prefix)));
+            }
         }
 
         var items = await query
@@ -60,6 +73,10 @@ public class CollaborationEventsCompatController : SparkCompatControllerBase
     }
 
     [HttpPost]
+    [ProducesResponseType(typeof(ResponseEnvelope<CollaborationEventDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ResponseEnvelope<CollaborationEventDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ResponseEnvelope<CollaborationEventDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseEnvelope<CollaborationEventDto>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<CollaborationEventDto>>> PublishEvent([FromBody] CreateCollaborationEventRequest request)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnableCollaborationEvents)
@@ -105,6 +122,18 @@ public class CollaborationEventsCompatController : SparkCompatControllerBase
 
         var envelope = ResponseMapperUtilities.MapToEnvelope(dto, StatusCodes.Status201Created, HttpContext.TraceIdentifier, "Event published");
         return StatusCode(StatusCodes.Status201Created, envelope);
+    }
+
+    private static string[] GetTypePrefixesForDomain(string domain)
+    {
+        return domain.ToLowerInvariant() switch
+        {
+            "pr" => new[] { "pr_", "line_comment_" },
+            "chat" => new[] { "message_" },
+            "decision" => new[] { "decision_" },
+            "auth" => new[] { "user_" },
+            _ => Array.Empty<string>()
+        };
     }
 
     private static CollaborationEventDto MapEvent(SparkCompatCollaborationEvent evt)

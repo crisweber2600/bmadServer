@@ -13,4 +13,5 @@ public class SparkCompatMessage
     public string? WorkflowContextJson { get; set; }
     public string? AttributionJson { get; set; }
     public string? PersonaMetadataJson { get; set; }
+    public string? TranslationsJson { get; set; }
 }

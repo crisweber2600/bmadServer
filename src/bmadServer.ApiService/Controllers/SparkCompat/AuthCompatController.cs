@@ -1,11 +1,14 @@
 using bmadServer.ApiService.Configuration;
 using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
+using bmadServer.ApiService.Data.Entities.SparkCompat;
 using bmadServer.ApiService.DTOs.SparkCompat;
+using bmadServer.ApiService.Hubs;
 using bmadServer.ApiService.Services;
 using bmadServer.ApiService.Services.SparkCompat;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -18,25 +21,38 @@ public class AuthCompatController : SparkCompatControllerBase
 {
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenService _jwtTokenService;
+    private readonly IRefreshTokenService _refreshTokenService;
     private readonly IRoleService _roleService;
+    private readonly IHubContext<ChatHub> _hubContext;
     private readonly SparkCompatRolloutOptions _rolloutOptions;
+    private readonly JwtSettings _jwtSettings;
 
     public AuthCompatController(
         ApplicationDbContext dbContext,
         IPasswordHasher passwordHasher,
         IJwtTokenService jwtTokenService,
+        IRefreshTokenService refreshTokenService,
         IRoleService roleService,
-        IOptions<SparkCompatRolloutOptions> rolloutOptions)
+        IHubContext<ChatHub> hubContext,
+        IOptions<SparkCompatRolloutOptions> rolloutOptions,
+        IOptions<JwtSettings> jwtSettings)
         : base(dbContext, rolloutOptions)
     {
         _passwordHasher = passwordHasher;
         _jwtTokenService = jwtTokenService;
+        _refreshTokenService = refreshTokenService;
         _roleService = roleService;
+        _hubContext = hubContext;
         _rolloutOptions = rolloutOptions.Value;
+        _jwtSettings = jwtSettings.Value;
     }
 
     [HttpPost("signup")]
     [AllowAnonymous]
+    [ProducesResponseType(typeof(ResponseEnvelope<SparkAuthResponseDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ResponseEnvelope<SparkAuthResponseDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ResponseEnvelope<SparkAuthResponseDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ResponseEnvelope<SparkAuthResponseDto>), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<ResponseEnvelope<SparkAuthResponseDto>>> SignUp([FromBody] SparkSignUpRequest request)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnableAuth)
@@ -75,10 +91,20 @@ public class AuthCompatController : SparkCompatControllerBase
         await _roleService.AssignDefaultRoleAsync(user.Id);
 
         var token = _jwtTokenService.GenerateAccessToken(user);
+
+        // Issue refresh token and set HttpOnly cookie (backend-canonical)
+        var (_, plainRefreshToken) = await _refreshTokenService.CreateRefreshTokenAsync(user);
+        Response.Cookies.Append("refreshToken", plainRefreshToken, GetRefreshTokenCookieOptions());
+
+        // Emit user_joined collaboration event
+        await EmitCollaborationEventAsync("user_joined", user.Id, user.DisplayName, null, null,
+            new { userId = user.Id.ToString(), email = user.Email, name = user.DisplayName });
+
         var payload = new SparkAuthResponseDto
         {
             User = MapUser(user),
-            Token = token
+            Token = token,
+            ExpiresIn = _jwtSettings.AccessTokenExpirationMinutes * 60
         };
 
         return StatusCode(StatusCodes.Status201Created, ResponseMapperUtilities.MapToEnvelope(payload, StatusCodes.Status201Created, HttpContext.TraceIdentifier, "Account created"));
@@ -86,6 +112,10 @@ public class AuthCompatController : SparkCompatControllerBase
 
     [HttpPost("signin")]
     [AllowAnonymous]
+    [ProducesResponseType(typeof(ResponseEnvelope<SparkAuthResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<SparkAuthResponseDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ResponseEnvelope<SparkAuthResponseDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseEnvelope<SparkAuthResponseDto>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<SparkAuthResponseDto>>> SignIn([FromBody] SparkSignInRequest request)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnableAuth)
@@ -112,10 +142,16 @@ public class AuthCompatController : SparkCompatControllerBase
         }
 
         var token = _jwtTokenService.GenerateAccessToken(user);
+
+        // Issue refresh token and set HttpOnly cookie (backend-canonical)
+        var (_, plainRefreshToken) = await _refreshTokenService.CreateRefreshTokenAsync(user);
+        Response.Cookies.Append("refreshToken", plainRefreshToken, GetRefreshTokenCookieOptions());
+
         var payload = new SparkAuthResponseDto
         {
             User = MapUser(user),
-            Token = token
+            Token = token,
+            ExpiresIn = _jwtSettings.AccessTokenExpirationMinutes * 60
         };
 
         return Ok(ResponseMapperUtilities.MapToEnvelope(payload, HttpContext.TraceIdentifier, "Signed in"));
@@ -123,12 +159,29 @@ public class AuthCompatController : SparkCompatControllerBase
 
     [HttpPost("signout")]
     [Authorize]
-    public ActionResult<ResponseEnvelope<SparkSignOutResponse>> SignOutCompat()
+    [ProducesResponseType(typeof(ResponseEnvelope<SparkSignOutResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<SparkSignOutResponse>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ResponseEnvelope<SparkSignOutResponse>>> SignOutCompat()
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnableAuth)
         {
             return DisabledResponse<SparkSignOutResponse>("auth");
         }
+
+        // Revoke refresh token and clear cookie (backend-canonical)
+        if (Request.Cookies.TryGetValue("refreshToken", out var refreshToken) && !string.IsNullOrEmpty(refreshToken))
+        {
+            var tokenHash = _refreshTokenService.HashToken(refreshToken);
+            await _refreshTokenService.RevokeRefreshTokenAsync(tokenHash, "signout");
+        }
+
+        Response.Cookies.Delete("refreshToken", new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Strict,
+            Path = "/v1/auth/refresh"
+        });
 
         var payload = new SparkSignOutResponse
         {
@@ -141,6 +194,9 @@ public class AuthCompatController : SparkCompatControllerBase
 
     [HttpGet("me")]
     [Authorize]
+    [ProducesResponseType(typeof(ResponseEnvelope<SparkAuthUserDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<SparkAuthUserDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseEnvelope<SparkAuthUserDto>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<SparkAuthUserDto>>> Me()
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnableAuth)
@@ -159,6 +215,94 @@ public class AuthCompatController : SparkCompatControllerBase
 
         return Ok(ResponseMapperUtilities.MapToEnvelope(MapUser(user), HttpContext.TraceIdentifier));
     }
+
+    /// <summary>
+    /// Refresh access token using refresh token from HttpOnly cookie.
+    /// Mirrors native AuthController refresh with SparkCompat envelope format.
+    /// </summary>
+    [HttpPost("refresh")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(ResponseEnvelope<SparkAuthResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<SparkAuthResponseDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseEnvelope<SparkAuthResponseDto>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ResponseEnvelope<SparkAuthResponseDto>>> Refresh()
+    {
+        if (!IsCompatEnabled || !_rolloutOptions.EnableAuth)
+        {
+            return DisabledResponse<SparkAuthResponseDto>("auth");
+        }
+
+        if (!Request.Cookies.TryGetValue("refreshToken", out var refreshToken) || string.IsNullOrEmpty(refreshToken))
+        {
+            return Unauthorized(ResponseMapperUtilities.MapError<SparkAuthResponseDto>(
+                StatusCodes.Status401Unauthorized,
+                "Refresh token not found. Please sign in again.",
+                HttpContext.TraceIdentifier));
+        }
+
+        var (newToken, error) = await _refreshTokenService.ValidateAndRotateAsync(refreshToken);
+
+        if (error != null || newToken == null)
+        {
+            return Unauthorized(ResponseMapperUtilities.MapError<SparkAuthResponseDto>(
+                StatusCodes.Status401Unauthorized,
+                error ?? "Invalid refresh token.",
+                HttpContext.TraceIdentifier));
+        }
+
+        var accessToken = _jwtTokenService.GenerateAccessToken(newToken.User);
+
+        // Set rotated refresh token cookie
+        Response.Cookies.Append("refreshToken", newToken.TokenHash, GetRefreshTokenCookieOptions());
+
+        var payload = new SparkAuthResponseDto
+        {
+            User = MapUser(newToken.User),
+            Token = accessToken,
+            ExpiresIn = _jwtSettings.AccessTokenExpirationMinutes * 60
+        };
+
+        return Ok(ResponseMapperUtilities.MapToEnvelope(payload, HttpContext.TraceIdentifier, "Token refreshed"));
+    }
+
+    private async Task EmitCollaborationEventAsync(string eventType, Guid userId, string userName, string? chatId, string? prId, object? metadata)
+    {
+        var evt = new SparkCompatCollaborationEvent
+        {
+            Id = SparkCompatUtilities.CreateId("event"),
+            Type = eventType,
+            UserId = userId,
+            UserName = userName,
+            ChatId = chatId,
+            PrId = prId,
+            Timestamp = DateTime.UtcNow,
+            MetadataJson = metadata == null ? null : SparkCompatUtilities.ToJson(metadata)
+        };
+
+        DbContext.SparkCompatCollaborationEvents.Add(evt);
+        await DbContext.SaveChangesAsync();
+
+        await _hubContext.Clients.All.SendAsync("SparkCompatEvent", new
+        {
+            id = evt.Id,
+            type = evt.Type,
+            userId = evt.UserId.ToString(),
+            userName = evt.UserName,
+            chatId = evt.ChatId,
+            prId = evt.PrId,
+            timestamp = SparkCompatUtilities.ToUnixMilliseconds(evt.Timestamp),
+            metadata
+        });
+    }
+
+    private CookieOptions GetRefreshTokenCookieOptions() => new()
+    {
+        HttpOnly = true,
+        Secure = true,
+        SameSite = SameSiteMode.Strict,
+        Path = "/v1/auth/refresh",
+        MaxAge = TimeSpan.FromDays(7)
+    };
 
     private static SparkAuthUserDto MapUser(User user)
     {
@@ -201,6 +345,7 @@ public class AuthCompatController : SparkCompatControllerBase
     {
         public SparkAuthUserDto User { get; set; } = null!;
         public string Token { get; set; } = string.Empty;
+        public int ExpiresIn { get; set; }
     }
 
     public sealed class SparkSignOutResponse

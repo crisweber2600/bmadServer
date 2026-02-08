@@ -6,6 +6,8 @@ public class SparkCompatPullRequest
     public string? ChatId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public string SourceBranch { get; set; } = string.Empty;
+    public string TargetBranch { get; set; } = string.Empty;
     public Guid AuthorUserId { get; set; }
     public string AuthorName { get; set; } = string.Empty;
     public string Status { get; set; } = "open";

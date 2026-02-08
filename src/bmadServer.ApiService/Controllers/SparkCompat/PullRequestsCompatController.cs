@@ -36,6 +36,8 @@ public class PullRequestsCompatController : SparkCompatControllerBase
     }
 
     [HttpGet]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestListDto>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<PullRequestListDto>>> ListPullRequests(
         [FromQuery] string? status = null,
         [FromQuery] string? chatId = null,
@@ -83,6 +85,11 @@ public class PullRequestsCompatController : SparkCompatControllerBase
     }
 
     [HttpPost]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<PullRequestDto>>> CreatePullRequest([FromBody] CreatePullRequestRequest request)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnablePullRequests)
@@ -112,6 +119,8 @@ public class PullRequestsCompatController : SparkCompatControllerBase
             ChatId = request.ChatId,
             Title = request.Title.Trim(),
             Description = request.Description.Trim(),
+            SourceBranch = request.SourceBranch?.Trim() ?? string.Empty,
+            TargetBranch = request.TargetBranch?.Trim() ?? string.Empty,
             AuthorUserId = user.Id,
             AuthorName = user.DisplayName,
             Status = "open",
@@ -135,11 +144,15 @@ public class PullRequestsCompatController : SparkCompatControllerBase
         DbContext.SparkCompatPullRequests.Add(pullRequest);
         await DbContext.SaveChangesAsync();
 
+        await BroadcastPullRequestEventAsync(pullRequest, "pr_created", new { prId = pullRequest.Id, status = pullRequest.Status });
+
         var envelope = ResponseMapperUtilities.MapToEnvelope(MapPullRequest(pullRequest), StatusCodes.Status201Created, HttpContext.TraceIdentifier, "Pull request created");
         return StatusCode(StatusCodes.Status201Created, envelope);
     }
 
     [HttpGet("{prId}")]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<PullRequestDto>>> GetPullRequest(string prId)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnablePullRequests)
@@ -156,7 +169,110 @@ public class PullRequestsCompatController : SparkCompatControllerBase
         return Ok(ResponseMapperUtilities.MapToEnvelope(MapPullRequest(pullRequest), HttpContext.TraceIdentifier));
     }
 
+    [HttpPatch("{prId}")]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<ResponseEnvelope<PullRequestDto>>> UpdatePullRequest(string prId, [FromBody] UpdatePullRequestRequest request)
+    {
+        if (!IsCompatEnabled || !_rolloutOptions.EnablePullRequests)
+        {
+            return DisabledResponse<PullRequestDto>("pull-requests");
+        }
+
+        var user = await GetCurrentUserAsync();
+        if (user == null)
+        {
+            return Unauthorized(ResponseMapperUtilities.MapError<PullRequestDto>(StatusCodes.Status401Unauthorized, "Authentication required.", HttpContext.TraceIdentifier));
+        }
+
+        var pullRequest = await BuildPullRequestQuery(track: true).FirstOrDefaultAsync(pr => pr.Id == prId);
+        if (pullRequest == null)
+        {
+            return NotFound(ResponseMapperUtilities.MapError<PullRequestDto>(StatusCodes.Status404NotFound, "Pull request not found.", HttpContext.TraceIdentifier));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Title))
+        {
+            pullRequest.Title = request.Title.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Description))
+        {
+            pullRequest.Description = request.Description.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Status))
+        {
+            var newStatus = request.Status.Trim().ToLowerInvariant();
+            var currentStatus = pullRequest.Status;
+
+            // Validate status transitions
+            var validTransition = (currentStatus, newStatus) switch
+            {
+                ("open", "merged") => true,
+                ("open", "closed") => true,
+                ("approved", "merged") => true,
+                ("approved", "closed") => true,
+                ("closed", "open") => true, // reopen
+                _ => false
+            };
+
+            if (!validTransition)
+            {
+                return Conflict(ResponseMapperUtilities.MapError<PullRequestDto>(StatusCodes.Status409Conflict, $"Cannot transition from '{currentStatus}' to '{newStatus}'.", HttpContext.TraceIdentifier));
+            }
+
+            pullRequest.Status = newStatus;
+        }
+
+        pullRequest.UpdatedAt = DateTime.UtcNow;
+        await DbContext.SaveChangesAsync();
+
+        await BroadcastPullRequestEventAsync(pullRequest, "pr_updated", new { prId, status = pullRequest.Status });
+
+        return Ok(ResponseMapperUtilities.MapToEnvelope(MapPullRequest(pullRequest), HttpContext.TraceIdentifier, "Pull request updated"));
+    }
+
+    [HttpGet("{prId}/files")]
+    [ProducesResponseType(typeof(ResponseEnvelope<FileChangesListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<FileChangesListDto>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ResponseEnvelope<FileChangesListDto>>> GetPullRequestFiles(string prId)
+    {
+        if (!IsCompatEnabled || !_rolloutOptions.EnablePullRequests)
+        {
+            return DisabledResponse<FileChangesListDto>("pull-requests");
+        }
+
+        var pullRequest = await BuildPullRequestQuery().FirstOrDefaultAsync(pr => pr.Id == prId);
+        if (pullRequest == null)
+        {
+            return NotFound(ResponseMapperUtilities.MapError<FileChangesListDto>(StatusCodes.Status404NotFound, "Pull request not found.", HttpContext.TraceIdentifier));
+        }
+
+        var payload = new FileChangesListDto
+        {
+            PullRequestId = pullRequest.Id,
+            Files = pullRequest.FileChanges.Select(change => new FileChangeDto
+            {
+                Path = change.Path,
+                Additions = SparkCompatUtilities.FromJson<List<string>>(change.AdditionsJson) ?? new List<string>(),
+                Deletions = SparkCompatUtilities.FromJson<List<string>>(change.DeletionsJson) ?? new List<string>(),
+                Status = change.Status
+            }).ToList(),
+            Total = pullRequest.FileChanges.Count
+        };
+
+        return Ok(ResponseMapperUtilities.MapToEnvelope(payload, HttpContext.TraceIdentifier));
+    }
+
     [HttpPost("{prId}/approve")]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<ResponseEnvelope<PullRequestDto>>> ApprovePullRequest(string prId)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnablePullRequests)
@@ -208,6 +324,11 @@ public class PullRequestsCompatController : SparkCompatControllerBase
     }
 
     [HttpPost("{prId}/merge")]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<ResponseEnvelope<PullRequestDto>>> MergePullRequest(string prId)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnablePullRequests)
@@ -247,6 +368,9 @@ public class PullRequestsCompatController : SparkCompatControllerBase
     }
 
     [HttpPost("{prId}/close")]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<ResponseEnvelope<PullRequestDto>>> ClosePullRequest(string prId)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnablePullRequests)
@@ -275,6 +399,11 @@ public class PullRequestsCompatController : SparkCompatControllerBase
     }
 
     [HttpPost("{prId}/comments")]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<PullRequestDto>>> CommentOnPullRequest(string prId, [FromBody] AddPullRequestCommentRequest request)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnablePullRequests)
@@ -321,7 +450,56 @@ public class PullRequestsCompatController : SparkCompatControllerBase
         return Ok(ResponseMapperUtilities.MapToEnvelope(MapPullRequest(pullRequest), HttpContext.TraceIdentifier, "Comment added"));
     }
 
+    [HttpGet("{prId}/files/{fileId}/comments")]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentListDto>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ResponseEnvelope<LineCommentListDto>>> GetFileLineComments(
+        string prId,
+        string fileId)
+    {
+        if (!IsCompatEnabled || !_rolloutOptions.EnablePullRequests)
+        {
+            return DisabledResponse<LineCommentListDto>("pull-requests");
+        }
+
+        var pullRequest = await BuildPullRequestQuery().FirstOrDefaultAsync(pr => pr.Id == prId);
+        if (pullRequest == null)
+        {
+            return NotFound(ResponseMapperUtilities.MapError<LineCommentListDto>(StatusCodes.Status404NotFound, "Pull request not found.", HttpContext.TraceIdentifier));
+        }
+
+        var fileComments = pullRequest.LineComments
+            .Where(lc => lc.FileId == fileId && !lc.IsDeleted)
+            .ToList();
+
+        // Build threaded structure: top-level comments (no parent), with replies nested
+        var topLevel = fileComments.Where(c => string.IsNullOrEmpty(c.ParentId)).OrderBy(c => c.Timestamp).ToList();
+        var byParent = fileComments.Where(c => !string.IsNullOrEmpty(c.ParentId)).GroupBy(c => c.ParentId!).ToDictionary(g => g.Key, g => g.OrderBy(c => c.Timestamp).ToList());
+
+        var threads = topLevel.Select(parent =>
+        {
+            var replies = byParent.TryGetValue(parent.Id, out var r) ? r.Select(MapLineComment).ToList() : new List<LineCommentDto>();
+            var dto = MapLineComment(parent);
+            dto.Replies = replies;
+            return dto;
+        }).ToList();
+
+        var payload = new LineCommentListDto
+        {
+            PullRequestId = prId,
+            FileId = fileId,
+            Comments = threads,
+            Total = threads.Count
+        };
+
+        return Ok(ResponseMapperUtilities.MapToEnvelope(payload, HttpContext.TraceIdentifier));
+    }
+
     [HttpPost("{prId}/files/{fileId}/comments")]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<LineCommentDto>>> AddLineComment(
         string prId,
         string fileId,
@@ -374,6 +552,8 @@ public class PullRequestsCompatController : SparkCompatControllerBase
     }
 
     [HttpPost("{prId}/line-comments/{commentId}/resolve")]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<LineCommentDto>>> ResolveLineComment(string prId, string commentId)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnablePullRequests)
@@ -387,7 +567,7 @@ public class PullRequestsCompatController : SparkCompatControllerBase
             return NotFound(ResponseMapperUtilities.MapError<LineCommentDto>(StatusCodes.Status404NotFound, "Pull request not found.", HttpContext.TraceIdentifier));
         }
 
-        var lineComment = pullRequest.LineComments.FirstOrDefault(comment => comment.Id == commentId);
+        var lineComment = pullRequest.LineComments.FirstOrDefault(comment => comment.Id == commentId && !comment.IsDeleted);
         if (lineComment == null)
         {
             return NotFound(ResponseMapperUtilities.MapError<LineCommentDto>(StatusCodes.Status404NotFound, "Line comment not found.", HttpContext.TraceIdentifier));
@@ -401,11 +581,139 @@ public class PullRequestsCompatController : SparkCompatControllerBase
         return Ok(ResponseMapperUtilities.MapToEnvelope(MapLineComment(lineComment), HttpContext.TraceIdentifier, "Line comment resolved"));
     }
 
+    [HttpPatch("{prId}/comments/{commentId}")]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ResponseEnvelope<LineCommentDto>>> EditLineComment(
+        string prId,
+        string commentId,
+        [FromBody] EditLineCommentRequest request)
+    {
+        if (!IsCompatEnabled || !_rolloutOptions.EnablePullRequests)
+        {
+            return DisabledResponse<LineCommentDto>("pull-requests");
+        }
+
+        var user = await GetCurrentUserAsync();
+        if (user == null)
+        {
+            return Unauthorized(ResponseMapperUtilities.MapError<LineCommentDto>(StatusCodes.Status401Unauthorized, "Authentication required.", HttpContext.TraceIdentifier));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Content))
+        {
+            return BadRequest(ResponseMapperUtilities.MapError<LineCommentDto>(StatusCodes.Status400BadRequest, "Content is required.", HttpContext.TraceIdentifier));
+        }
+
+        var pullRequest = await BuildPullRequestQuery(track: true).FirstOrDefaultAsync(pr => pr.Id == prId);
+        if (pullRequest == null)
+        {
+            return NotFound(ResponseMapperUtilities.MapError<LineCommentDto>(StatusCodes.Status404NotFound, "Pull request not found.", HttpContext.TraceIdentifier));
+        }
+
+        var lineComment = pullRequest.LineComments.FirstOrDefault(c => c.Id == commentId && !c.IsDeleted);
+        if (lineComment == null)
+        {
+            return NotFound(ResponseMapperUtilities.MapError<LineCommentDto>(StatusCodes.Status404NotFound, "Line comment not found.", HttpContext.TraceIdentifier));
+        }
+
+        if (lineComment.AuthorUserId != user.Id)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, ResponseMapperUtilities.MapError<LineCommentDto>(StatusCodes.Status403Forbidden, "Only the author can edit this comment.", HttpContext.TraceIdentifier));
+        }
+
+        lineComment.Content = request.Content.Trim();
+        lineComment.UpdatedAt = DateTime.UtcNow;
+        pullRequest.UpdatedAt = DateTime.UtcNow;
+        await DbContext.SaveChangesAsync();
+        await BroadcastPullRequestEventAsync(pullRequest, "line_comment_edited", new { prId, commentId });
+
+        return Ok(ResponseMapperUtilities.MapToEnvelope(MapLineComment(lineComment), HttpContext.TraceIdentifier, "Line comment updated"));
+    }
+
+    [HttpDelete("{prId}/comments/{commentId}")]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ResponseEnvelope<LineCommentDto>>> DeleteLineComment(
+        string prId,
+        string commentId)
+    {
+        if (!IsCompatEnabled || !_rolloutOptions.EnablePullRequests)
+        {
+            return DisabledResponse<LineCommentDto>("pull-requests");
+        }
+
+        var user = await GetCurrentUserAsync();
+        if (user == null)
+        {
+            return Unauthorized(ResponseMapperUtilities.MapError<LineCommentDto>(StatusCodes.Status401Unauthorized, "Authentication required.", HttpContext.TraceIdentifier));
+        }
+
+        var pullRequest = await BuildPullRequestQuery(track: true).FirstOrDefaultAsync(pr => pr.Id == prId);
+        if (pullRequest == null)
+        {
+            return NotFound(ResponseMapperUtilities.MapError<LineCommentDto>(StatusCodes.Status404NotFound, "Pull request not found.", HttpContext.TraceIdentifier));
+        }
+
+        var lineComment = pullRequest.LineComments.FirstOrDefault(c => c.Id == commentId && !c.IsDeleted);
+        if (lineComment == null)
+        {
+            return NotFound(ResponseMapperUtilities.MapError<LineCommentDto>(StatusCodes.Status404NotFound, "Line comment not found.", HttpContext.TraceIdentifier));
+        }
+
+        if (lineComment.AuthorUserId != user.Id)
+        {
+            var isAdmin = await CanReviewAsync(user.Id);
+            if (!isAdmin)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, ResponseMapperUtilities.MapError<LineCommentDto>(StatusCodes.Status403Forbidden, "Only the author or an admin can delete this comment.", HttpContext.TraceIdentifier));
+            }
+        }
+
+        lineComment.IsDeleted = true;
+        lineComment.DeletedAt = DateTime.UtcNow;
+        pullRequest.UpdatedAt = DateTime.UtcNow;
+        await DbContext.SaveChangesAsync();
+        await BroadcastPullRequestEventAsync(pullRequest, "line_comment_deleted", new { prId, commentId });
+
+        return Ok(ResponseMapperUtilities.MapToEnvelope(MapLineComment(lineComment), HttpContext.TraceIdentifier, "Line comment deleted"));
+    }
+
+    [HttpPost("{prId}/comments/{commentId}/reactions")]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ResponseEnvelope<LineCommentDto>>> ToggleCommentReaction(
+        string prId,
+        string commentId,
+        [FromBody] ToggleReactionRequest request)
+    {
+        return await ToggleLineCommentReactionCore(prId, commentId, request);
+    }
+
     [HttpPost("{prId}/line-comments/{commentId}/reactions/toggle")]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<LineCommentDto>>> ToggleLineCommentReaction(
         string prId,
         string commentId,
         [FromBody] ToggleReactionRequest request)
+    {
+        return await ToggleLineCommentReactionCore(prId, commentId, request);
+    }
+
+    private async Task<ActionResult<ResponseEnvelope<LineCommentDto>>> ToggleLineCommentReactionCore(
+        string prId,
+        string commentId,
+        ToggleReactionRequest request)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnablePullRequests)
         {
@@ -429,7 +737,7 @@ public class PullRequestsCompatController : SparkCompatControllerBase
             return NotFound(ResponseMapperUtilities.MapError<LineCommentDto>(StatusCodes.Status404NotFound, "Pull request not found.", HttpContext.TraceIdentifier));
         }
 
-        var lineComment = pullRequest.LineComments.FirstOrDefault(comment => comment.Id == commentId);
+        var lineComment = pullRequest.LineComments.FirstOrDefault(comment => comment.Id == commentId && !comment.IsDeleted);
         if (lineComment == null)
         {
             return NotFound(ResponseMapperUtilities.MapError<LineCommentDto>(StatusCodes.Status404NotFound, "Line comment not found.", HttpContext.TraceIdentifier));
@@ -528,9 +836,12 @@ public class PullRequestsCompatController : SparkCompatControllerBase
             Id = pullRequest.Id,
             Title = pullRequest.Title,
             Description = pullRequest.Description,
+            SourceBranch = pullRequest.SourceBranch,
+            TargetBranch = pullRequest.TargetBranch,
             ChatId = pullRequest.ChatId,
             Author = pullRequest.AuthorName,
             Status = pullRequest.Status,
+            FilesChangedCount = pullRequest.FileChanges.Count,
             CreatedAt = SparkCompatUtilities.ToUnixMilliseconds(pullRequest.CreatedAt),
             UpdatedAt = SparkCompatUtilities.ToUnixMilliseconds(pullRequest.UpdatedAt),
             FileChanges = pullRequest.FileChanges.Select(change => new FileChangeDto
@@ -549,7 +860,7 @@ public class PullRequestsCompatController : SparkCompatControllerBase
                 Timestamp = SparkCompatUtilities.ToUnixMilliseconds(comment.Timestamp)
             }).ToList(),
             Approvals = approvals,
-            LineComments = pullRequest.LineComments.Select(MapLineComment).ToList()
+            LineComments = pullRequest.LineComments.Where(lc => !lc.IsDeleted).Select(MapLineComment).ToList()
         };
     }
 
@@ -576,7 +887,9 @@ public class PullRequestsCompatController : SparkCompatControllerBase
             AuthorAvatar = lineComment.AuthorAvatar,
             Content = lineComment.Content,
             Timestamp = SparkCompatUtilities.ToUnixMilliseconds(lineComment.Timestamp),
+            UpdatedAt = lineComment.UpdatedAt.HasValue ? SparkCompatUtilities.ToUnixMilliseconds(lineComment.UpdatedAt.Value) : null,
             Resolved = lineComment.Resolved,
+            IsDeleted = lineComment.IsDeleted,
             Reactions = groupedReactions
         };
     }
@@ -585,8 +898,17 @@ public class PullRequestsCompatController : SparkCompatControllerBase
     {
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
+        public string? SourceBranch { get; set; }
+        public string? TargetBranch { get; set; }
         public string? ChatId { get; set; }
         public List<FileChangeDto> FileChanges { get; set; } = new();
+    }
+
+    public sealed class UpdatePullRequestRequest
+    {
+        public string? Title { get; set; }
+        public string? Description { get; set; }
+        public string? Status { get; set; }
     }
 
     public sealed class AddPullRequestCommentRequest
@@ -600,6 +922,11 @@ public class PullRequestsCompatController : SparkCompatControllerBase
         public string LineType { get; set; } = "unchanged";
         public string Content { get; set; } = string.Empty;
         public string? ParentId { get; set; }
+    }
+
+    public sealed class EditLineCommentRequest
+    {
+        public string Content { get; set; } = string.Empty;
     }
 
     public sealed class ToggleReactionRequest
@@ -620,15 +947,25 @@ public class PullRequestsCompatController : SparkCompatControllerBase
         public string Id { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
+        public string SourceBranch { get; set; } = string.Empty;
+        public string TargetBranch { get; set; } = string.Empty;
         public string? ChatId { get; set; }
         public string Author { get; set; } = string.Empty;
         public string Status { get; set; } = "open";
+        public int FilesChangedCount { get; set; }
         public long CreatedAt { get; set; }
         public long UpdatedAt { get; set; }
         public List<FileChangeDto> FileChanges { get; set; } = new();
         public List<PullRequestCommentDto> Comments { get; set; } = new();
         public List<string> Approvals { get; set; } = new();
         public List<LineCommentDto> LineComments { get; set; } = new();
+    }
+
+    public sealed class FileChangesListDto
+    {
+        public string PullRequestId { get; set; } = string.Empty;
+        public List<FileChangeDto> Files { get; set; } = new();
+        public int Total { get; set; }
     }
 
     public sealed class PullRequestCommentDto
@@ -648,6 +985,14 @@ public class PullRequestsCompatController : SparkCompatControllerBase
         public string Status { get; set; } = "staged";
     }
 
+    public sealed class LineCommentListDto
+    {
+        public string PullRequestId { get; set; } = string.Empty;
+        public string FileId { get; set; } = string.Empty;
+        public List<LineCommentDto> Comments { get; set; } = new();
+        public int Total { get; set; }
+    }
+
     public sealed class LineCommentDto
     {
         public string Id { get; set; } = string.Empty;
@@ -659,8 +1004,11 @@ public class PullRequestsCompatController : SparkCompatControllerBase
         public string AuthorAvatar { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
         public long Timestamp { get; set; }
+        public long? UpdatedAt { get; set; }
         public bool Resolved { get; set; }
+        public bool IsDeleted { get; set; }
         public List<EmojiReactionDto> Reactions { get; set; } = new();
+        public List<LineCommentDto> Replies { get; set; } = new();
     }
 
     public sealed class EmojiReactionDto

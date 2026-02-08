@@ -60,6 +60,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Email).IsRequired();
             entity.Property(e => e.PasswordHash).IsRequired();
             entity.Property(e => e.DisplayName).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.AvatarUrl).HasMaxLength(1000);
             entity.HasIndex(e => e.Email).IsUnique();
         });
 
@@ -589,6 +590,11 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Feature).HasMaxLength(200);
             entity.HasIndex(e => e.UpdatedAt);
             entity.HasIndex(e => e.CreatedByUserId);
+            entity.Property(e => e.IsDeleted).HasDefaultValue(false);
+            entity.HasIndex(e => e.IsDeleted)
+                .HasDatabaseName("idx_spark_chats_is_deleted");
+            entity.HasIndex(e => e.Domain)
+                .HasDatabaseName("idx_spark_chats_domain");
         });
 
         modelBuilder.Entity<SparkCompatMessage>(entity =>
@@ -603,6 +609,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.WorkflowContextJson).HasColumnName("workflow_context_json");
             entity.Property(e => e.AttributionJson).HasColumnName("attribution_json");
             entity.Property(e => e.PersonaMetadataJson).HasColumnName("persona_metadata_json");
+            entity.Property(e => e.TranslationsJson).HasColumnName("translations_json");
             entity.HasIndex(e => new { e.ChatId, e.Timestamp })
                 .HasDatabaseName("idx_spark_messages_chat_time");
             entity.HasOne(e => e.Chat)
@@ -617,11 +624,14 @@ public class ApplicationDbContext : DbContext
             entity.HasKey(e => e.UserId);
             entity.Property(e => e.UserName).IsRequired().HasMaxLength(200);
             entity.Property(e => e.AvatarUrl).IsRequired().HasMaxLength(1000);
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(32).HasDefaultValue("online");
+            entity.Property(e => e.Domain).IsRequired().HasMaxLength(32).HasDefaultValue("chat");
             entity.Property(e => e.ActiveChatId).HasMaxLength(64);
             entity.Property(e => e.TypingChatId).HasMaxLength(64);
             entity.Property(e => e.CursorPositionJson).HasColumnName("cursor_position_json");
             entity.HasIndex(e => e.LastSeenAt);
             entity.HasIndex(e => e.ActiveChatId);
+            entity.HasIndex(e => e.Domain);
         });
 
         modelBuilder.Entity<SparkCompatPullRequest>(entity =>
@@ -632,6 +642,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ChatId).HasMaxLength(64);
             entity.Property(e => e.Title).IsRequired().HasMaxLength(300);
             entity.Property(e => e.Description).IsRequired();
+            entity.Property(e => e.SourceBranch).HasMaxLength(256).HasDefaultValue(string.Empty);
+            entity.Property(e => e.TargetBranch).HasMaxLength(256).HasDefaultValue(string.Empty);
             entity.Property(e => e.AuthorName).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Status).IsRequired().HasMaxLength(32);
             entity.Property(e => e.ApprovalsJson).IsRequired().HasColumnName("approvals_json");
@@ -686,6 +698,7 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.PullRequestId);
             entity.HasIndex(e => e.FileId);
             entity.HasIndex(e => e.ParentId);
+            entity.HasIndex(e => e.IsDeleted);
             entity.HasOne(e => e.PullRequest)
                 .WithMany(pr => pr.LineComments)
                 .HasForeignKey(e => e.PullRequestId)

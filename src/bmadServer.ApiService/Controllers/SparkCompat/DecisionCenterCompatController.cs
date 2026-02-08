@@ -32,6 +32,9 @@ public class DecisionCenterCompatController : SparkCompatControllerBase
     }
 
     [HttpGet]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionListDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionListDto>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<DecisionListDto>>> ListDecisions([FromQuery] string chatId)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnableDecisionCenter)
@@ -60,6 +63,10 @@ public class DecisionCenterCompatController : SparkCompatControllerBase
     }
 
     [HttpPost]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionDto>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<DecisionDto>>> CreateDecision([FromBody] CreateDecisionRequest request)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnableDecisionCenter)
@@ -112,6 +119,10 @@ public class DecisionCenterCompatController : SparkCompatControllerBase
     }
 
     [HttpPatch("{decisionId}")]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionDto>), 423)]
     public async Task<ActionResult<ResponseEnvelope<DecisionDto>>> UpdateDecision(string decisionId, [FromBody] UpdateDecisionRequest request)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnableDecisionCenter)
@@ -174,18 +185,27 @@ public class DecisionCenterCompatController : SparkCompatControllerBase
     }
 
     [HttpPost("{decisionId}/lock")]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionDto>), 423)]
     public async Task<ActionResult<ResponseEnvelope<DecisionDto>>> LockDecision(string decisionId, [FromBody] LockDecisionRequest request)
     {
         return await SetLockStateAsync(decisionId, true, request.Reason);
     }
 
     [HttpPost("{decisionId}/unlock")]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionDto>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<DecisionDto>>> UnlockDecision(string decisionId)
     {
         return await SetLockStateAsync(decisionId, false, null);
     }
 
     [HttpGet("{decisionId}/history")]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionHistoryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionHistoryDto>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<DecisionHistoryDto>>> GetDecisionHistory(string decisionId)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnableDecisionCenter)
@@ -221,6 +241,8 @@ public class DecisionCenterCompatController : SparkCompatControllerBase
     }
 
     [HttpGet("{decisionId}/conflicts")]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionConflictListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionConflictListDto>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<DecisionConflictListDto>>> GetConflicts(string decisionId)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnableDecisionCenter)
@@ -243,6 +265,9 @@ public class DecisionCenterCompatController : SparkCompatControllerBase
     }
 
     [HttpPost("{decisionId}/conflicts/{conflictId:guid}/resolve")]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionConflictDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionConflictDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionConflictDto>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<DecisionConflictDto>>> ResolveConflict(string decisionId, Guid conflictId, [FromBody] ResolveConflictRequest request)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnableDecisionCenter)

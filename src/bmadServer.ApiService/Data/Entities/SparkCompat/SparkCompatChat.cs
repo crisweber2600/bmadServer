@@ -8,6 +8,7 @@ public class SparkCompatChat
     public string? Domain { get; set; }
     public string? Service { get; set; }
     public string? Feature { get; set; }
+    public bool IsDeleted { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

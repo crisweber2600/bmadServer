@@ -14,7 +14,10 @@ public class SparkCompatLineComment
     public string AuthorAvatar { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
     public bool Resolved { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
 
     public ICollection<SparkCompatLineCommentReaction> Reactions { get; set; } = new List<SparkCompatLineCommentReaction>();
 }

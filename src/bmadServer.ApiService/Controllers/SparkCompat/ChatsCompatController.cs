@@ -4,10 +4,12 @@ using bmadServer.ApiService.Data;
 using bmadServer.ApiService.Data.Entities;
 using bmadServer.ApiService.Data.Entities.SparkCompat;
 using bmadServer.ApiService.DTOs.SparkCompat;
+using bmadServer.ApiService.Hubs;
 using bmadServer.ApiService.Services;
 using bmadServer.ApiService.Services.SparkCompat;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -21,20 +23,25 @@ public class ChatsCompatController : SparkCompatControllerBase
     private readonly SparkCompatRolloutOptions _rolloutOptions;
     private readonly ITranslationService _translationService;
     private readonly IResponseMetadataService _responseMetadataService;
+    private readonly IHubContext<ChatHub> _hubContext;
 
     public ChatsCompatController(
         ApplicationDbContext dbContext,
         ITranslationService translationService,
         IResponseMetadataService responseMetadataService,
+        IHubContext<ChatHub> hubContext,
         IOptions<SparkCompatRolloutOptions> rolloutOptions)
         : base(dbContext, rolloutOptions)
     {
         _translationService = translationService;
         _responseMetadataService = responseMetadataService;
+        _hubContext = hubContext;
         _rolloutOptions = rolloutOptions.Value;
     }
 
     [HttpGet]
+    [ProducesResponseType(typeof(ResponseEnvelope<ChatListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<ChatListDto>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<ChatListDto>>> ListChats(
         [FromQuery] string? domain = null,
         [FromQuery] string? service = null,
@@ -50,7 +57,10 @@ public class ChatsCompatController : SparkCompatControllerBase
         limit = Math.Clamp(limit, 1, 100);
         offset = Math.Max(offset, 0);
 
-        var query = DbContext.SparkCompatChats.AsNoTracking().Include(chat => chat.Messages).AsQueryable();
+        var query = DbContext.SparkCompatChats.AsNoTracking()
+            .Where(chat => !chat.IsDeleted)
+            .Include(chat => chat.Messages)
+            .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(domain))
         {
@@ -86,6 +96,10 @@ public class ChatsCompatController : SparkCompatControllerBase
     }
 
     [HttpPost]
+    [ProducesResponseType(typeof(ResponseEnvelope<ChatDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ResponseEnvelope<ChatDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ResponseEnvelope<ChatDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseEnvelope<ChatDto>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<ChatDto>>> CreateChat([FromBody] CreateChatRequest request)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnableChats)
@@ -124,6 +138,8 @@ public class ChatsCompatController : SparkCompatControllerBase
     }
 
     [HttpGet("{chatId}")]
+    [ProducesResponseType(typeof(ResponseEnvelope<ChatDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<ChatDto>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<ChatDto>>> GetChat(string chatId)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnableChats)
@@ -134,7 +150,7 @@ public class ChatsCompatController : SparkCompatControllerBase
         var chat = await DbContext.SparkCompatChats
             .AsNoTracking()
             .Include(candidate => candidate.Messages)
-            .FirstOrDefaultAsync(candidate => candidate.Id == chatId);
+            .FirstOrDefaultAsync(candidate => candidate.Id == chatId && !candidate.IsDeleted);
 
         if (chat == null)
         {
@@ -145,6 +161,8 @@ public class ChatsCompatController : SparkCompatControllerBase
     }
 
     [HttpPatch("{chatId}")]
+    [ProducesResponseType(typeof(ResponseEnvelope<ChatDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<ChatDto>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<ChatDto>>> UpdateChat(string chatId, [FromBody] UpdateChatRequest request)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnableChats)
@@ -152,7 +170,7 @@ public class ChatsCompatController : SparkCompatControllerBase
             return DisabledResponse<ChatDto>("chats");
         }
 
-        var chat = await DbContext.SparkCompatChats.Include(candidate => candidate.Messages).FirstOrDefaultAsync(candidate => candidate.Id == chatId);
+        var chat = await DbContext.SparkCompatChats.Include(candidate => candidate.Messages).FirstOrDefaultAsync(candidate => candidate.Id == chatId && !candidate.IsDeleted);
         if (chat == null)
         {
             return NotFound(ResponseMapperUtilities.MapError<ChatDto>(StatusCodes.Status404NotFound, "Chat not found.", HttpContext.TraceIdentifier));
@@ -185,6 +203,8 @@ public class ChatsCompatController : SparkCompatControllerBase
     }
 
     [HttpDelete("{chatId}")]
+    [ProducesResponseType(typeof(ResponseEnvelope<DeleteResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<DeleteResponse>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<DeleteResponse>>> DeleteChat(string chatId)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnableChats)
@@ -192,19 +212,22 @@ public class ChatsCompatController : SparkCompatControllerBase
             return DisabledResponse<DeleteResponse>("chats");
         }
 
-        var chat = await DbContext.SparkCompatChats.FirstOrDefaultAsync(candidate => candidate.Id == chatId);
+        var chat = await DbContext.SparkCompatChats.FirstOrDefaultAsync(candidate => candidate.Id == chatId && !candidate.IsDeleted);
         if (chat == null)
         {
             return NotFound(ResponseMapperUtilities.MapError<DeleteResponse>(StatusCodes.Status404NotFound, "Chat not found.", HttpContext.TraceIdentifier));
         }
 
-        DbContext.SparkCompatChats.Remove(chat);
+        chat.IsDeleted = true;
+        chat.UpdatedAt = DateTime.UtcNow;
         await DbContext.SaveChangesAsync();
 
-        return Ok(ResponseMapperUtilities.MapToEnvelope(new DeleteResponse { Deleted = true }, HttpContext.TraceIdentifier, "Chat deleted"));
+        return Ok(ResponseMapperUtilities.MapToEnvelope(new DeleteResponse { Deleted = true }, HttpContext.TraceIdentifier, "Chat soft-deleted"));
     }
 
     [HttpGet("{chatId}/messages")]
+    [ProducesResponseType(typeof(ResponseEnvelope<MessageListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<MessageListDto>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<MessageListDto>>> ListMessages(
         string chatId,
         [FromQuery] int limit = 50,
@@ -214,6 +237,13 @@ public class ChatsCompatController : SparkCompatControllerBase
         if (!IsCompatEnabled || !_rolloutOptions.EnableChats)
         {
             return DisabledResponse<MessageListDto>("chats");
+        }
+
+        var chatExists = await DbContext.SparkCompatChats.AsNoTracking()
+            .AnyAsync(c => c.Id == chatId && !c.IsDeleted);
+        if (!chatExists)
+        {
+            return NotFound(ResponseMapperUtilities.MapError<MessageListDto>(StatusCodes.Status404NotFound, "Chat not found.", HttpContext.TraceIdentifier));
         }
 
         limit = Math.Clamp(limit, 1, 100);
@@ -247,6 +277,10 @@ public class ChatsCompatController : SparkCompatControllerBase
     }
 
     [HttpPost("{chatId}/messages")]
+    [ProducesResponseType(typeof(ResponseEnvelope<SendMessageResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ResponseEnvelope<SendMessageResponse>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ResponseEnvelope<SendMessageResponse>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseEnvelope<SendMessageResponse>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<SendMessageResponse>>> SendMessage(string chatId, [FromBody] SendMessageRequest request)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnableChats)
@@ -265,11 +299,15 @@ public class ChatsCompatController : SparkCompatControllerBase
             return BadRequest(ResponseMapperUtilities.MapError<SendMessageResponse>(StatusCodes.Status400BadRequest, "Message content is required.", HttpContext.TraceIdentifier));
         }
 
-        var chat = await DbContext.SparkCompatChats.FirstOrDefaultAsync(candidate => candidate.Id == chatId);
+        var chat = await DbContext.SparkCompatChats.FirstOrDefaultAsync(candidate => candidate.Id == chatId && !candidate.IsDeleted);
         if (chat == null)
         {
             return NotFound(ResponseMapperUtilities.MapError<SendMessageResponse>(StatusCodes.Status404NotFound, "Chat not found.", HttpContext.TraceIdentifier));
         }
+
+        var persona = string.IsNullOrWhiteSpace(request.PersonaOverride)
+            ? user.PersonaType
+            : SparkCompatUtilities.ToPersonaType(request.PersonaOverride);
 
         var userMessage = new SparkCompatMessage
         {
@@ -280,12 +318,17 @@ public class ChatsCompatController : SparkCompatControllerBase
             Timestamp = DateTime.UtcNow,
             UserId = user.Id,
             WorkflowContextJson = request.WorkflowContext == null ? null : SparkCompatUtilities.ToJson(request.WorkflowContext),
-            AttributionJson = request.AttributionMetadata == null ? null : SparkCompatUtilities.ToJson(request.AttributionMetadata)
+            AttributionJson = request.AttributionMetadata == null ? null : SparkCompatUtilities.ToJson(request.AttributionMetadata),
+            PersonaMetadataJson = SparkCompatUtilities.ToJson(new PersonaMetadataDto
+            {
+                Persona = SparkCompatUtilities.ToSparkRole(persona),
+                ContentType = "user-input",
+                HasTechnicalDetails = false,
+                WasTranslated = false,
+                DisplayName = user.DisplayName,
+                AvatarUrl = user.AvatarUrl
+            })
         };
-
-        var persona = string.IsNullOrWhiteSpace(request.PersonaOverride)
-            ? user.PersonaType
-            : SparkCompatUtilities.ToPersonaType(request.PersonaOverride);
 
         var aiBaseContent = $"Captured decision context for '{chat.Title}'. Next recommended step: review and confirm assumptions before merge.";
         var translated = await _translationService.TranslateToBusinessLanguageAsync(aiBaseContent, persona, request.WorkflowContext?.StepId);
@@ -298,14 +341,15 @@ public class ChatsCompatController : SparkCompatControllerBase
             Role = "assistant",
             Content = translated.Content,
             Timestamp = DateTime.UtcNow,
-            PersonaMetadataJson = SparkCompatUtilities.ToJson(new
+            PersonaMetadataJson = SparkCompatUtilities.ToJson(new PersonaMetadataDto
             {
-                persona = SparkCompatUtilities.ToSparkRole(persona),
-                metadata.ContentType,
-                metadata.HasTechnicalDetails,
-                metadata.TechnicalTermsFound,
-                translated.WasTranslated,
-                translated.AdaptationReason
+                Persona = SparkCompatUtilities.ToSparkRole(persona),
+                ContentType = metadata.ContentType,
+                HasTechnicalDetails = metadata.HasTechnicalDetails,
+                TechnicalTermsFound = metadata.TechnicalTermsFound,
+                WasTranslated = translated.WasTranslated,
+                DisplayName = "Spark Assistant",
+                AvatarUrl = null
             })
         };
 
@@ -313,6 +357,10 @@ public class ChatsCompatController : SparkCompatControllerBase
         DbContext.SparkCompatMessages.Add(aiMessage);
         chat.UpdatedAt = DateTime.UtcNow;
         await DbContext.SaveChangesAsync();
+
+        // Emit message_sent collaboration event
+        await EmitCollaborationEventAsync("message_sent", user.Id, user.DisplayName, chatId, null,
+            new { messageId = userMessage.Id, chatId, chatTitle = chat.Title });
 
         var payload = new SendMessageResponse
         {
@@ -327,6 +375,10 @@ public class ChatsCompatController : SparkCompatControllerBase
     }
 
     [HttpPost("{chatId}/messages/{messageId}/translate")]
+    [ProducesResponseType(typeof(ResponseEnvelope<TranslateMessageResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<TranslateMessageResponse>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseEnvelope<TranslateMessageResponse>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ResponseEnvelope<TranslateMessageResponse>), StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<ResponseEnvelope<TranslateMessageResponse>>> TranslateMessage(string chatId, string messageId, [FromBody] TranslateMessageRequest request)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnableChats)
@@ -348,9 +400,10 @@ public class ChatsCompatController : SparkCompatControllerBase
 
         try
         {
-            var persona = string.IsNullOrWhiteSpace(request.Role)
+            var targetRole = request.TargetPersona ?? request.Role;
+            var persona = string.IsNullOrWhiteSpace(targetRole)
                 ? user.PersonaType
-                : SparkCompatUtilities.ToPersonaType(request.Role);
+                : SparkCompatUtilities.ToPersonaType(targetRole);
 
             var translated = await _translationService.TranslateToBusinessLanguageAsync(message.Content, persona, request.WorkflowStep);
             var metadata = _responseMetadataService.CreateMetadata(translated.Content, persona, translated.WasTranslated);
@@ -365,6 +418,19 @@ public class ChatsCompatController : SparkCompatControllerBase
                 SimplifiedText = translated.WasTranslated ? translated.Content : null
             };
 
+            // Persist the translation on the message
+            var existingTranslations = SparkCompatUtilities.FromJson<Dictionary<string, object>>(message.TranslationsJson)
+                                       ?? new Dictionary<string, object>();
+            existingTranslations[SparkCompatUtilities.ToSparkRole(persona)] = new
+            {
+                content = translated.Content,
+                wasTranslated = translated.WasTranslated,
+                adaptationReason = translated.AdaptationReason,
+                translatedAt = DateTime.UtcNow
+            };
+            message.TranslationsJson = SparkCompatUtilities.ToJson(existingTranslations);
+            await DbContext.SaveChangesAsync();
+
             var payload = new TranslateMessageResponse
             {
                 Translation = new MessageTranslationDto
@@ -378,7 +444,9 @@ public class ChatsCompatController : SparkCompatControllerBase
                     ContentType = metadata.ContentType,
                     HasTechnicalDetails = metadata.HasTechnicalDetails,
                     TechnicalTermsFound = metadata.TechnicalTermsFound,
-                    WasTranslated = translated.WasTranslated
+                    WasTranslated = translated.WasTranslated,
+                    DisplayName = user.DisplayName,
+                    AvatarUrl = user.AvatarUrl
                 }
             };
 
@@ -391,6 +459,42 @@ public class ChatsCompatController : SparkCompatControllerBase
                     StatusCodes.Status500InternalServerError,
                     "Translation failed. Retry after refreshing context or selecting a different persona.",
                     HttpContext.TraceIdentifier));
+        }
+    }
+
+    private async Task EmitCollaborationEventAsync(string eventType, Guid userId, string userName, string? chatId, string? prId, object? metadata)
+    {
+        var evt = new SparkCompatCollaborationEvent
+        {
+            Id = SparkCompatUtilities.CreateId("event"),
+            Type = eventType,
+            UserId = userId,
+            UserName = userName,
+            ChatId = chatId,
+            PrId = prId,
+            Timestamp = DateTime.UtcNow,
+            MetadataJson = metadata == null ? null : SparkCompatUtilities.ToJson(metadata)
+        };
+
+        DbContext.SparkCompatCollaborationEvents.Add(evt);
+        await DbContext.SaveChangesAsync();
+
+        var payload = new
+        {
+            id = evt.Id,
+            type = evt.Type,
+            userId = evt.UserId.ToString(),
+            userName = evt.UserName,
+            chatId = evt.ChatId,
+            prId = evt.PrId,
+            timestamp = SparkCompatUtilities.ToUnixMilliseconds(evt.Timestamp),
+            metadata
+        };
+
+        await _hubContext.Clients.All.SendAsync("SparkCompatEvent", payload);
+        if (!string.IsNullOrWhiteSpace(evt.ChatId))
+        {
+            await _hubContext.Clients.Group($"chat-{evt.ChatId}").SendAsync("SparkCompatEvent", payload);
         }
     }
 
@@ -463,6 +567,8 @@ public class ChatsCompatController : SparkCompatControllerBase
 
     public sealed class TranslateMessageRequest
     {
+        public string? TargetPersona { get; set; }
+        /// <summary>Alias for TargetPersona (backward compat)</summary>
         public string? Role { get; set; }
         public string? WorkflowStep { get; set; }
     }
@@ -563,5 +669,7 @@ public class ChatsCompatController : SparkCompatControllerBase
         public bool HasTechnicalDetails { get; set; }
         public List<string> TechnicalTermsFound { get; set; } = new();
         public bool WasTranslated { get; set; }
+        public string? DisplayName { get; set; }
+        public string? AvatarUrl { get; set; }
     }
 }
