@@ -68,6 +68,15 @@ public class AuthCompatController : SparkCompatControllerBase
                 HttpContext.TraceIdentifier));
         }
 
+        var passwordError = ValidatePasswordStrength(request.Password);
+        if (passwordError != null)
+        {
+            return BadRequest(ResponseMapperUtilities.MapError<SparkAuthResponseDto>(
+                StatusCodes.Status400BadRequest,
+                passwordError,
+                HttpContext.TraceIdentifier));
+        }
+
         var email = request.Email.Trim().ToLowerInvariant();
         var existingUser = await DbContext.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email);
         if (existingUser != null)
@@ -240,9 +249,9 @@ public class AuthCompatController : SparkCompatControllerBase
                 HttpContext.TraceIdentifier));
         }
 
-        var (newToken, error) = await _refreshTokenService.ValidateAndRotateAsync(refreshToken);
+        var (newToken, plainRefreshToken, error) = await _refreshTokenService.ValidateAndRotateAsync(refreshToken);
 
-        if (error != null || newToken == null)
+        if (error != null || newToken == null || plainRefreshToken == null)
         {
             return Unauthorized(ResponseMapperUtilities.MapError<SparkAuthResponseDto>(
                 StatusCodes.Status401Unauthorized,
@@ -252,8 +261,8 @@ public class AuthCompatController : SparkCompatControllerBase
 
         var accessToken = _jwtTokenService.GenerateAccessToken(newToken.User);
 
-        // Set rotated refresh token cookie
-        Response.Cookies.Append("refreshToken", newToken.TokenHash, GetRefreshTokenCookieOptions());
+        // Set rotated refresh token cookie (plaintext, NOT the hash)
+        Response.Cookies.Append("refreshToken", plainRefreshToken, GetRefreshTokenCookieOptions());
 
         var payload = new SparkAuthResponseDto
         {
@@ -293,6 +302,19 @@ public class AuthCompatController : SparkCompatControllerBase
             timestamp = SparkCompatUtilities.ToUnixMilliseconds(evt.Timestamp),
             metadata
         });
+    }
+
+    private static string? ValidatePasswordStrength(string password)
+    {
+        if (password.Length < 8)
+            return "Password must be at least 8 characters long.";
+        if (!password.Any(char.IsUpper))
+            return "Password must contain at least one uppercase letter.";
+        if (!password.Any(char.IsLower))
+            return "Password must contain at least one lowercase letter.";
+        if (!password.Any(char.IsDigit))
+            return "Password must contain at least one digit.";
+        return null;
     }
 
     private CookieOptions GetRefreshTokenCookieOptions() => new()

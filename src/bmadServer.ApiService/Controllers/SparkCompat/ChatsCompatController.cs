@@ -59,7 +59,6 @@ public class ChatsCompatController : SparkCompatControllerBase
 
         var query = DbContext.SparkCompatChats.AsNoTracking()
             .Where(chat => !chat.IsDeleted)
-            .Include(chat => chat.Messages)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(domain))
@@ -82,11 +81,26 @@ public class ChatsCompatController : SparkCompatControllerBase
             .OrderByDescending(chat => chat.UpdatedAt)
             .Skip(offset)
             .Take(limit)
+            .Select(chat => new ChatSummaryDto
+            {
+                Id = chat.Id,
+                Title = chat.Title,
+                CreatedAt = SparkCompatUtilities.ToUnixMilliseconds(chat.CreatedAt),
+                UpdatedAt = SparkCompatUtilities.ToUnixMilliseconds(chat.UpdatedAt),
+                Domain = chat.Domain,
+                Service = chat.Service,
+                Feature = chat.Feature,
+                MessageCount = chat.Messages.Count,
+                LastMessageAt = chat.Messages.Any()
+                    ? SparkCompatUtilities.ToUnixMilliseconds(chat.Messages.Max(m => m.Timestamp))
+                    : (long?)null,
+                CreatedByUserId = chat.CreatedByUserId.ToString()
+            })
             .ToListAsync();
 
         var payload = new ChatListDto
         {
-            Chats = chats.Select(MapChat).ToList(),
+            Chats = chats,
             Total = total,
             Limit = limit,
             Offset = offset
@@ -587,10 +601,27 @@ public class ChatsCompatController : SparkCompatControllerBase
 
     public sealed class ChatListDto
     {
-        public List<ChatDto> Chats { get; set; } = new();
+        public List<ChatSummaryDto> Chats { get; set; } = new();
         public int Total { get; set; }
         public int Limit { get; set; }
         public int Offset { get; set; }
+    }
+
+    /// <summary>
+    /// Lightweight chat summary for list endpoints — no messages loaded.
+    /// </summary>
+    public sealed class ChatSummaryDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public long CreatedAt { get; set; }
+        public long UpdatedAt { get; set; }
+        public string? Domain { get; set; }
+        public string? Service { get; set; }
+        public string? Feature { get; set; }
+        public int MessageCount { get; set; }
+        public long? LastMessageAt { get; set; }
+        public string CreatedByUserId { get; set; } = string.Empty;
     }
 
     public sealed class ChatDto

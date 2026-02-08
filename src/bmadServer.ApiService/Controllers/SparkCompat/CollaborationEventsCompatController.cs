@@ -35,41 +35,65 @@ public class CollaborationEventsCompatController : SparkCompatControllerBase
     [ProducesResponseType(typeof(ResponseEnvelope<CollaborationEventListDto>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<CollaborationEventListDto>>> GetEvents(
         [FromQuery] string? domain = null,
-        [FromQuery] long? since = null)
+        [FromQuery] long? since = null,
+        [FromQuery] int limit = 50,
+        [FromQuery] int offset = 0)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnableCollaborationEvents)
         {
             return DisabledResponse<CollaborationEventListDto>("collaboration-events");
         }
 
+        limit = Math.Clamp(limit, 1, 200);
+        offset = Math.Max(offset, 0);
+
         var query = DbContext.SparkCompatCollaborationEvents.AsNoTracking();
-        if (since.HasValue)
-        {
-            var sinceTime = SparkCompatUtilities.FromUnixMilliseconds(since.Value);
-            query = query.Where(evt => evt.Timestamp > sinceTime);
-        }
+
+        // Default to last 24 hours if no since provided
+        var sinceTime = since.HasValue
+            ? SparkCompatUtilities.FromUnixMilliseconds(since.Value)
+            : DateTime.UtcNow.AddHours(-24);
+        query = query.Where(evt => evt.Timestamp > sinceTime);
 
         if (!string.IsNullOrWhiteSpace(domain))
         {
-            var typePrefixes = GetTypePrefixesForDomain(domain);
-            if (typePrefixes.Length > 0)
-            {
-                query = query.Where(evt => typePrefixes.Any(prefix => evt.Type.StartsWith(prefix)));
-            }
+            query = ApplyDomainFilter(query, domain);
         }
 
+        var total = await query.CountAsync();
         var items = await query
             .OrderBy(evt => evt.Timestamp)
             .ThenBy(evt => evt.Id)
-            .Take(500)
+            .Skip(offset)
+            .Take(limit)
             .ToListAsync();
 
         var payload = new CollaborationEventListDto
         {
-            Events = items.Select(MapEvent).ToList()
+            Events = items.Select(MapEvent).ToList(),
+            Total = total,
+            Limit = limit,
+            Offset = offset
         };
 
         return Ok(ResponseMapperUtilities.MapToEnvelope(payload, HttpContext.TraceIdentifier));
+    }
+
+    /// <summary>
+    /// Applies domain-based type filtering using explicit OR conditions
+    /// to ensure EF Core can translate to SQL properly.
+    /// </summary>
+    private static IQueryable<SparkCompatCollaborationEvent> ApplyDomainFilter(
+        IQueryable<SparkCompatCollaborationEvent> query, string domain)
+    {
+        return domain.ToLowerInvariant() switch
+        {
+            "pr" => query.Where(evt => evt.Type.StartsWith("pr_") || evt.Type.StartsWith("line_comment_")),
+            "chat" => query.Where(evt => evt.Type.StartsWith("message_")),
+            "decision" => query.Where(evt => evt.Type.StartsWith("decision_")),
+            "auth" => query.Where(evt => evt.Type.StartsWith("user_")),
+            _ => query
+        };
     }
 
     [HttpPost]
@@ -124,18 +148,6 @@ public class CollaborationEventsCompatController : SparkCompatControllerBase
         return StatusCode(StatusCodes.Status201Created, envelope);
     }
 
-    private static string[] GetTypePrefixesForDomain(string domain)
-    {
-        return domain.ToLowerInvariant() switch
-        {
-            "pr" => new[] { "pr_", "line_comment_" },
-            "chat" => new[] { "message_" },
-            "decision" => new[] { "decision_" },
-            "auth" => new[] { "user_" },
-            _ => Array.Empty<string>()
-        };
-    }
-
     private static CollaborationEventDto MapEvent(SparkCompatCollaborationEvent evt)
     {
         return new CollaborationEventDto
@@ -166,6 +178,9 @@ public class CollaborationEventsCompatController : SparkCompatControllerBase
     public sealed class CollaborationEventListDto
     {
         public List<CollaborationEventDto> Events { get; set; } = new();
+        public int Total { get; set; }
+        public int Limit { get; set; }
+        public int Offset { get; set; }
     }
 
     public sealed class CollaborationEventDto

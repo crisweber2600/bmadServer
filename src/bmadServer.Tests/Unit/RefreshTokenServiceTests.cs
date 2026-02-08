@@ -124,11 +124,12 @@ public class RefreshTokenServiceTests : IDisposable
         var (oldToken, plainToken) = await _service.CreateRefreshTokenAsync(user);
 
         // Act
-        var (newToken, error) = await _service.ValidateAndRotateAsync(plainToken);
+        var (newToken, newPlainToken, error) = await _service.ValidateAndRotateAsync(plainToken);
 
         // Assert
         Assert.Null(error);
         Assert.NotNull(newToken);
+        Assert.NotNull(newPlainToken);
         Assert.NotEqual(oldToken.Id, newToken.Id);
         Assert.Equal(user.Id, newToken.UserId);
 
@@ -167,7 +168,7 @@ public class RefreshTokenServiceTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         // Act
-        var (token, error) = await _service.ValidateAndRotateAsync(plainToken);
+        var (token, _, error) = await _service.ValidateAndRotateAsync(plainToken);
 
         // Assert
         Assert.Null(token);
@@ -207,7 +208,7 @@ public class RefreshTokenServiceTests : IDisposable
         var (activeToken, _) = await _service.CreateRefreshTokenAsync(user);
 
         // Act
-        var (token, error) = await _service.ValidateAndRotateAsync(plainToken);
+        var (token, _, error) = await _service.ValidateAndRotateAsync(plainToken);
 
         // Assert
         Assert.Null(token);
@@ -225,7 +226,7 @@ public class RefreshTokenServiceTests : IDisposable
     public async Task ValidateAndRotateAsync_WithInvalidToken_ShouldReturnError()
     {
         // Act
-        var (token, error) = await _service.ValidateAndRotateAsync("invalid-token-123");
+        var (token, _, error) = await _service.ValidateAndRotateAsync("invalid-token-123");
 
         // Assert
         Assert.Null(token);

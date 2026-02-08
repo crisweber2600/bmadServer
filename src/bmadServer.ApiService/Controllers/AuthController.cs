@@ -248,9 +248,9 @@ public class AuthController : ControllerBase
         }
 
         // Validate and rotate refresh token
-        var (newToken, error) = await _refreshTokenService.ValidateAndRotateAsync(refreshToken);
+        var (newToken, plainRefreshToken, error) = await _refreshTokenService.ValidateAndRotateAsync(refreshToken);
 
-        if (error != null || newToken == null)
+        if (error != null || newToken == null || plainRefreshToken == null)
         {
             return Unauthorized(new ProblemDetails
             {
@@ -264,8 +264,8 @@ public class AuthController : ControllerBase
         // Generate new access token
         var accessToken = _jwtTokenService.GenerateAccessToken(newToken.User);
 
-        // Set new refresh token cookie (plain token is in TokenHash temporarily)
-        Response.Cookies.Append("refreshToken", newToken.TokenHash, GetRefreshTokenCookieOptions());
+        // Set new refresh token cookie (plaintext, NOT the hash)
+        Response.Cookies.Append("refreshToken", plainRefreshToken, GetRefreshTokenCookieOptions());
 
         _logger.LogInformation("Token refreshed successfully for user: {UserId}", newToken.UserId);
 

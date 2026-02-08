@@ -35,7 +35,11 @@ public class DecisionCenterCompatController : SparkCompatControllerBase
     [ProducesResponseType(typeof(ResponseEnvelope<DecisionListDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ResponseEnvelope<DecisionListDto>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ResponseEnvelope<DecisionListDto>), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ResponseEnvelope<DecisionListDto>>> ListDecisions([FromQuery] string chatId)
+    public async Task<ActionResult<ResponseEnvelope<DecisionListDto>>> ListDecisions(
+        [FromQuery] string chatId,
+        [FromQuery] string? status = null,
+        [FromQuery] int limit = 50,
+        [FromQuery] int offset = 0)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnableDecisionCenter)
         {
@@ -47,16 +51,32 @@ public class DecisionCenterCompatController : SparkCompatControllerBase
             return BadRequest(ResponseMapperUtilities.MapError<DecisionListDto>(StatusCodes.Status400BadRequest, "chatId is required.", HttpContext.TraceIdentifier));
         }
 
-        var items = await DbContext.SparkCompatDecisions
+        limit = Math.Clamp(limit, 1, 200);
+        offset = Math.Max(offset, 0);
+
+        var query = DbContext.SparkCompatDecisions
             .AsNoTracking()
             .Include(decision => decision.Conflicts)
-            .Where(decision => decision.ChatId == chatId)
+            .Where(decision => decision.ChatId == chatId);
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            query = query.Where(decision => decision.Status == status);
+        }
+
+        var total = await query.CountAsync();
+        var items = await query
             .OrderByDescending(decision => decision.UpdatedAt)
+            .Skip(offset)
+            .Take(limit)
             .ToListAsync();
 
         var payload = new DecisionListDto
         {
-            Decisions = items.Select(MapDecision).ToList()
+            Decisions = items.Select(MapDecision).ToList(),
+            Total = total,
+            Limit = limit,
+            Offset = offset
         };
 
         return Ok(ResponseMapperUtilities.MapToEnvelope(payload, HttpContext.TraceIdentifier));
@@ -83,6 +103,12 @@ public class DecisionCenterCompatController : SparkCompatControllerBase
         if (string.IsNullOrWhiteSpace(request.ChatId) || string.IsNullOrWhiteSpace(request.Title))
         {
             return BadRequest(ResponseMapperUtilities.MapError<DecisionDto>(StatusCodes.Status400BadRequest, "chatId and title are required.", HttpContext.TraceIdentifier));
+        }
+
+        var valueValidationError = ValidateDecisionValue(request.Value, isNew: true);
+        if (valueValidationError != null)
+        {
+            return BadRequest(ResponseMapperUtilities.MapError<DecisionDto>(StatusCodes.Status400BadRequest, valueValidationError, HttpContext.TraceIdentifier));
         }
 
         var now = DateTime.UtcNow;
@@ -120,8 +146,10 @@ public class DecisionCenterCompatController : SparkCompatControllerBase
 
     [HttpPatch("{decisionId}")]
     [ProducesResponseType(typeof(ResponseEnvelope<DecisionDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionDto>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ResponseEnvelope<DecisionDto>), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ResponseEnvelope<DecisionDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ResponseEnvelope<DecisionDto>), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ResponseEnvelope<DecisionDto>), 423)]
     public async Task<ActionResult<ResponseEnvelope<DecisionDto>>> UpdateDecision(string decisionId, [FromBody] UpdateDecisionRequest request)
     {
@@ -149,6 +177,15 @@ public class DecisionCenterCompatController : SparkCompatControllerBase
             return StatusCode(StatusCodes.Status423Locked, ResponseMapperUtilities.MapError<DecisionDto>(StatusCodes.Status423Locked, "Decision is locked by another user.", HttpContext.TraceIdentifier));
         }
 
+        // Optimistic concurrency check
+        if (request.ExpectedVersion.HasValue && decision.CurrentVersion != request.ExpectedVersion.Value)
+        {
+            return Conflict(ResponseMapperUtilities.MapError<DecisionDto>(
+                StatusCodes.Status409Conflict,
+                $"Version conflict. Expected version {request.ExpectedVersion.Value} but current version is {decision.CurrentVersion}. Please refresh and retry.",
+                HttpContext.TraceIdentifier));
+        }
+
         if (!string.IsNullOrWhiteSpace(request.Title))
         {
             decision.Title = request.Title.Trim();
@@ -156,6 +193,12 @@ public class DecisionCenterCompatController : SparkCompatControllerBase
 
         if (request.Value.HasValue)
         {
+            var valueValidationError = ValidateDecisionValue(request.Value.Value, isNew: false);
+            if (valueValidationError != null)
+            {
+                return BadRequest(ResponseMapperUtilities.MapError<DecisionDto>(StatusCodes.Status400BadRequest, valueValidationError, HttpContext.TraceIdentifier));
+            }
+
             decision.ValueJson = request.Value.Value.GetRawText();
         }
 
@@ -342,6 +385,68 @@ public class DecisionCenterCompatController : SparkCompatControllerBase
         return Ok(ResponseMapperUtilities.MapToEnvelope(MapDecision(decision), HttpContext.TraceIdentifier, lockState ? "Decision locked" : "Decision unlocked"));
     }
 
+    /// <summary>
+    /// Validates the decision value JSON structure.
+    /// For new decisions: requires question, decisionType, and options with at least 2 items.
+    /// For updates: validates structure if present.
+    /// </summary>
+    private static string? ValidateDecisionValue(JsonElement value, bool isNew)
+    {
+        try
+        {
+            if (value.ValueKind != JsonValueKind.Object)
+            {
+                return "Decision value must be a JSON object.";
+            }
+
+            if (isNew)
+            {
+                if (!value.TryGetProperty("question", out var question) || question.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(question.GetString()))
+                {
+                    return "Decision value must contain a non-empty 'question' field.";
+                }
+
+                if (!value.TryGetProperty("decisionType", out var decisionType) || decisionType.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(decisionType.GetString()))
+                {
+                    return "Decision value must contain a non-empty 'decisionType' field.";
+                }
+
+                if (value.TryGetProperty("options", out var options))
+                {
+                    if (options.ValueKind != JsonValueKind.Array)
+                    {
+                        return "Decision 'options' must be an array.";
+                    }
+                    if (options.GetArrayLength() < 2)
+                    {
+                        return "Decision must have at least 2 options.";
+                    }
+                }
+            }
+            else
+            {
+                // For updates, validate options count if present
+                if (value.TryGetProperty("options", out var options))
+                {
+                    if (options.ValueKind != JsonValueKind.Array)
+                    {
+                        return "Decision 'options' must be an array.";
+                    }
+                    if (options.GetArrayLength() < 2)
+                    {
+                        return "Decision must have at least 2 options.";
+                    }
+                }
+            }
+
+            return null;
+        }
+        catch (Exception)
+        {
+            return "Decision value contains malformed JSON.";
+        }
+    }
+
     private async Task GenerateConflictsAsync(SparkCompatDecision decision)
     {
         var siblings = await DbContext.SparkCompatDecisions
@@ -461,6 +566,7 @@ public class DecisionCenterCompatController : SparkCompatControllerBase
         public string? Title { get; set; }
         public JsonElement? Value { get; set; }
         public string? Reason { get; set; }
+        public int? ExpectedVersion { get; set; }
     }
 
     public sealed class LockDecisionRequest
@@ -476,6 +582,9 @@ public class DecisionCenterCompatController : SparkCompatControllerBase
     public sealed class DecisionListDto
     {
         public List<DecisionDto> Decisions { get; set; } = new();
+        public int Total { get; set; }
+        public int Limit { get; set; }
+        public int Offset { get; set; }
     }
 
     public sealed class DecisionDto

@@ -53,7 +53,7 @@ public class PullRequestsCompatController : SparkCompatControllerBase
         limit = Math.Clamp(limit, 1, 100);
         offset = Math.Max(offset, 0);
 
-        var query = BuildPullRequestQuery();
+        var query = BuildListQuery();
 
         if (!string.IsNullOrWhiteSpace(status))
         {
@@ -71,11 +71,32 @@ public class PullRequestsCompatController : SparkCompatControllerBase
         }
 
         var total = await query.CountAsync();
-        var items = await query.OrderByDescending(pr => pr.UpdatedAt).Skip(offset).Take(limit).ToListAsync();
+        var items = await query
+            .OrderByDescending(pr => pr.UpdatedAt)
+            .Skip(offset)
+            .Take(limit)
+            .Select(pr => new PullRequestSummaryDto
+            {
+                Id = pr.Id,
+                Title = pr.Title,
+                Description = pr.Description,
+                SourceBranch = pr.SourceBranch,
+                TargetBranch = pr.TargetBranch,
+                ChatId = pr.ChatId,
+                Author = pr.AuthorName,
+                Status = pr.Status,
+                FilesChangedCount = pr.FileChanges.Count,
+                CommentsCount = pr.Comments.Count,
+                LineCommentsCount = pr.LineComments.Count(lc => !lc.IsDeleted),
+                Approvals = SparkCompatUtilities.FromJson<List<string>>(pr.ApprovalsJson) ?? new List<string>(),
+                CreatedAt = SparkCompatUtilities.ToUnixMilliseconds(pr.CreatedAt),
+                UpdatedAt = SparkCompatUtilities.ToUnixMilliseconds(pr.UpdatedAt)
+            })
+            .ToListAsync();
 
         var payload = new PullRequestListDto
         {
-            PullRequests = items.Select(MapPullRequest).ToList(),
+            PullRequests = items,
             Total = total,
             Limit = limit,
             Offset = offset
@@ -369,6 +390,8 @@ public class PullRequestsCompatController : SparkCompatControllerBase
 
     [HttpPost("{prId}/close")]
     [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ResponseEnvelope<PullRequestDto>), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<ResponseEnvelope<PullRequestDto>>> ClosePullRequest(string prId)
@@ -378,10 +401,22 @@ public class PullRequestsCompatController : SparkCompatControllerBase
             return DisabledResponse<PullRequestDto>("pull-requests");
         }
 
+        var user = await GetCurrentUserAsync();
+        if (user == null)
+        {
+            return Unauthorized(ResponseMapperUtilities.MapError<PullRequestDto>(StatusCodes.Status401Unauthorized, "Authentication required.", HttpContext.TraceIdentifier));
+        }
+
         var pullRequest = await BuildPullRequestQuery(track: true).FirstOrDefaultAsync(pr => pr.Id == prId);
         if (pullRequest == null)
         {
             return NotFound(ResponseMapperUtilities.MapError<PullRequestDto>(StatusCodes.Status404NotFound, "Pull request not found.", HttpContext.TraceIdentifier));
+        }
+
+        // Authorization: must be PR author or admin
+        if (pullRequest.AuthorUserId != user.Id && !await CanReviewAsync(user.Id))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, ResponseMapperUtilities.MapError<PullRequestDto>(StatusCodes.Status403Forbidden, "Only the PR author or an admin can close this pull request.", HttpContext.TraceIdentifier));
         }
 
         if (pullRequest.Status == "merged" || pullRequest.Status == "closed")
@@ -553,12 +588,20 @@ public class PullRequestsCompatController : SparkCompatControllerBase
 
     [HttpPost("{prId}/line-comments/{commentId}/resolve")]
     [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ResponseEnvelope<LineCommentDto>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ResponseEnvelope<LineCommentDto>>> ResolveLineComment(string prId, string commentId)
     {
         if (!IsCompatEnabled || !_rolloutOptions.EnablePullRequests)
         {
             return DisabledResponse<LineCommentDto>("pull-requests");
+        }
+
+        var user = await GetCurrentUserAsync();
+        if (user == null)
+        {
+            return Unauthorized(ResponseMapperUtilities.MapError<LineCommentDto>(StatusCodes.Status401Unauthorized, "Authentication required.", HttpContext.TraceIdentifier));
         }
 
         var pullRequest = await BuildPullRequestQuery(track: true).FirstOrDefaultAsync(pr => pr.Id == prId);
@@ -571,6 +614,12 @@ public class PullRequestsCompatController : SparkCompatControllerBase
         if (lineComment == null)
         {
             return NotFound(ResponseMapperUtilities.MapError<LineCommentDto>(StatusCodes.Status404NotFound, "Line comment not found.", HttpContext.TraceIdentifier));
+        }
+
+        // Authorization: must be comment author or admin
+        if (lineComment.AuthorUserId != user.Id && !await CanReviewAsync(user.Id))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, ResponseMapperUtilities.MapError<LineCommentDto>(StatusCodes.Status403Forbidden, "Only the comment author or an admin can resolve this comment.", HttpContext.TraceIdentifier));
         }
 
         lineComment.Resolved = true;
@@ -781,6 +830,14 @@ public class PullRequestsCompatController : SparkCompatControllerBase
             .ThenInclude(line => line.Reactions);
     }
 
+    /// <summary>
+    /// Lightweight query for list endpoints — no eager loading of related entities.
+    /// </summary>
+    private IQueryable<SparkCompatPullRequest> BuildListQuery()
+    {
+        return DbContext.SparkCompatPullRequests.AsNoTracking();
+    }
+
     private async Task<bool> CanReviewAsync(Guid userId)
     {
         var roles = await _roleService.GetUserRolesAsync(userId);
@@ -936,10 +993,28 @@ public class PullRequestsCompatController : SparkCompatControllerBase
 
     public sealed class PullRequestListDto
     {
-        public List<PullRequestDto> PullRequests { get; set; } = new();
+        public List<PullRequestSummaryDto> PullRequests { get; set; } = new();
         public int Total { get; set; }
         public int Limit { get; set; }
         public int Offset { get; set; }
+    }
+
+    public sealed class PullRequestSummaryDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string SourceBranch { get; set; } = string.Empty;
+        public string TargetBranch { get; set; } = string.Empty;
+        public string? ChatId { get; set; }
+        public string Author { get; set; } = string.Empty;
+        public string Status { get; set; } = "open";
+        public int FilesChangedCount { get; set; }
+        public int CommentsCount { get; set; }
+        public int LineCommentsCount { get; set; }
+        public List<string> Approvals { get; set; } = new();
+        public long CreatedAt { get; set; }
+        public long UpdatedAt { get; set; }
     }
 
     public sealed class PullRequestDto
